@@ -17,3 +17,6 @@ tools/spectator-overlay/ICONS/
 tools/spectator-overlay/GA_BROADCAST_ICONS.zip
 tools/spectator-overlay/.env
 __pycache__/
+
+# written by the release tool at build time, carried in the source bundle (see src/Shared/SourceRevision.hpp)
+src/Shared/SourceRevisionId.inc

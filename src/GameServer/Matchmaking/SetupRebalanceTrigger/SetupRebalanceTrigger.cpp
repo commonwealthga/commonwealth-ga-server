@@ -68,6 +68,17 @@ void SetupRebalanceTrigger::Tick() {
 		remaining, (long long)IpcClient::GetInstanceId());
 }
 
+int SetupRebalanceTrigger::TimerState() {
+	ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
+	return Game ? (int)Game->m_eTimerState : 0;
+}
+
+float SetupRebalanceTrigger::SetupSecondsLeft() {
+	ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
+	if (Game == nullptr || (int)Game->m_eTimerState != (int)TGMTS_SETUP) return -1.0f;
+	return SetupRemaining(Game);
+}
+
 void SetupRebalanceTrigger::Reset() {
 	s_state.clear();
 }

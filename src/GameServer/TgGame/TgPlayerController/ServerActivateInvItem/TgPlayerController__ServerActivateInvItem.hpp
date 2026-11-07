@@ -9,6 +9,8 @@ class TgPlayerController__ServerActivateInvItem : public HookBase<
 	TgPlayerController__ServerActivateInvItem> {
 public:
 	static void __fastcall Call(ATgPlayerController* Controller, void* edx, int nInvId);
+	// Resummon the saved vanity pet after a spawn (map change / respawn).
+	static void SummonSavedVanityPet(ATgPawn_Character* Pawn);
 	static inline void __fastcall CallOriginal(ATgPlayerController* Controller, void* edx, int nInvId) {
 		m_original(Controller, edx, nInvId);
 	};

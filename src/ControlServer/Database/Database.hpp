@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <optional>
+#include <utility>
 #include <cstdint>
 
 class Database {
@@ -48,8 +49,22 @@ public:
     // Credited to the USING player only, not the task force: unlike a kill
     // (TgPawn.uc passes the killer's TaskForce), the Use press is an individual
     // act and each member walks up to the volume themselves.
+    static std::vector<QuestProgress> CreditScriptQuestRequirement(int64_t character_id,
+                                                                   int quest_id, int quest_requirement_id);
     static std::vector<QuestProgress> CreditVolumeQuestRequirements(int64_t character_id,
                                                                     int ui_volume_id);
+
+    // One WON mission on `map_name` at queue difficulty
+    // `difficulty_value_id` (0 = none) -> Complete Mission (1432) progress.
+    static std::vector<QuestProgress> CreditMissionQuestRequirements(int64_t character_id,
+                                                                     const std::string& map_name,
+                                                                     int difficulty_value_id);
+    static std::vector<std::pair<int64_t, std::vector<QuestProgress>>>
+    CreditMissionWinForInstance(int64_t instance_id, int winning_task_force,
+                                int difficulty_value_id);
+    // Every agent in a PvP instance at its end -> Finish PvP (1512) progress.
+    static std::vector<std::pair<int64_t, std::vector<QuestProgress>>>
+    CreditPvpFinishForInstance(int64_t instance_id);
 
     // ---- Crafting components -------------------------------------------
     //
@@ -76,11 +91,93 @@ public:
     // asm_data_set_bots.loot_table_id / asm_data_set_quests.loot_table_id.
     static int GetBotLootTableId(int bot_id);
     static int GetQuestRewardLootTableId(int quest_id);
+    // True when the table is a placed-chest table
+    // (asm_data_set_loot_tables.loot_table_type_value_id 1413 'Chest').
+    static bool IsChestLootTable(int loot_table_id);
+
+    // A quest turn-in pays the quest's own xp_reward_value +
+    // currency_reward_value (asm_data_set_quests) into ga_characters (xp capped
+    // at the curve top, like mission rewards). Returns what was actually added.
+    // xp_percent (p0366, 0..300, 100 = data value) scales the quest's base xp
+    // only; credits never change. The extra xp never runs past the curve top
+    // (bonus_xp = extra xp really added).
+    struct QuestCashReward { int64_t xp = 0; int64_t credits = 0; int64_t bonus_xp = 0; };
+    static QuestCashReward AwardQuestXpCredits(int64_t character_id, int quest_id, int xp_percent = 100);
+    // Quest base xp (asm xp_reward_value) + the agent's level (p0366, hook payload).
+    static int64_t LookupQuestBaseXp(int quest_id);
+    static int CharacterLevel(int64_t character_id);
+    static int LookupQuestLevelMin(int quest_id);
+    // Repeatable quests (asm repeatable_flag) can be taken again
+    // after a turn-in; cooldown 1631 = daily (again from the next UTC day, the
+    // day the client gets as DAILY_TIMEFRAME_ID). Re-accept resets the row to
+    // active and clears its progress. false + why when not allowed.
+    static bool ReacceptRepeatableQuest(int64_t character_id, int quest_id, std::string* why);
+    // COMPLETED_QUEST_TIMEFRAME_ID for a completed daily quest (UTC day + 1,
+    // same numbering as DAILY_TIMEFRAME_ID); 0 for every other quest.
+    static uint32_t QuestCompletedTimeframe(int quest_id, int64_t completed_at);
+    // Accept gate = every asm_data_set_quest_prerequisites row
+    // (status 1618 = completed) met. level_min is checked by the caller.
+    static bool QuestPrerequisitesMet(int64_t character_id, int quest_id, std::string* why);
+    // ga_quest_grants follow-ups due now / active quests with no turn-in volume.
+    static std::vector<int> PendingQuestGrants(int64_t character_id);
+    static std::vector<int> ActiveQuestsWithoutTurnIn(int64_t character_id);
 
     // Roll a loot table -> {item_id: quantity} for the COMPONENT rows that
     // dropped. Honours drop_chance, quantity and sub_loot_table_id recursion;
     // non-component rows are rolled and discarded so odds stay faithful.
     static std::map<int, int> RollLootTableComponents(int loot_table_id);
+    // Same roll, also returning blueprint/appearance drops
+    // (item_id -> copies) in bag_items; components are the return value.
+    // 0957: auto-created gear of the roll (created item, creating blueprint, loot row quality =
+    // max_quality_value_id, else quality_value_id) -> EconParity::ApplyGearDrops after GrantLootItems.
+    struct AutoGear { int item_id = 0, blueprint_id = 0, quality = 0; };
+    static std::map<int, int> RollLootTable(int loot_table_id, std::map<int, int>& bag_items,
+                                            int chosen_item_id = 0,
+                                            std::vector<AutoGear>* gear = nullptr,
+                                            uint32_t profile_id = 0);  // 0959: class filter (0 = none)
+    // Tables that grant exactly one row (config quest_reward_choice_tables).
+    static void SetChoiceLootTables(const std::vector<int>& tables);
+    // Insert dropped bag items into ga_players_inventory; returns the new row ids.
+    static std::vector<int64_t> GrantLootItems(int64_t user_id, const std::map<int, int>& items);
+    // Crafting (TgPlayerController.ServerCraftItem): the account must own the
+    // blueprint (bag row, matched by inventory id or blueprint item id) and hold every
+    // component of its recipe (asm_data_set_blueprint_items); components are spent and the
+    // created item (asm_data_set_blueprints.created_item_id) lands in the bag, all in one
+    // transaction. Blueprints are recipes and are kept.
+    // Crafting skills (asm skill group 138: 869 Armor Mods, 874 Weapon Mods, 899 Strikeforce,
+    // 900 Consumable, 901 Special Item): a blueprint item's skill_id + skill_level_min gate it;
+    // every craft in that skill adds points (kCraftSkillGain*, cap kCraftSkillMax).
+    struct CraftResult { bool ok = false; std::string reason; int blueprint_item_id = 0; int created_item_id = 0;
+                         std::vector<int64_t> inventory_ids; std::vector<int> depleted;
+                         int64_t spent_blueprint_row = 0;  // destroy_on_use_flag blueprint row deleted
+                         int skill_id = 0; int skill_points = 0; int skill_gain = 0; std::string skill_name; };
+    static CraftResult CraftItem(int64_t user_id, int64_t character_id, int blueprint_ref);
+    static std::vector<std::pair<int, int>> GetCraftingSkills(int64_t character_id);  // skill_id, points
+
+    // Bag 'Salvage' (TgPlayerController.ServerSalvageInvItem): an owned,
+    // unequipped bag row of Uncommon / Rare / Epic quality is destroyed for one pick
+    // from the game's own salvage tables (308 *Salvage Uncommon, 309 Rare, 310 Epic:
+    // consumable-crafting components). Common items (no table) are refused.
+    // 'Activate' (ServerActivateInvItem): a Container (item type 1634) is opened -
+    // one pick from its bundle_loot_table_id, rolled like a drop, row spent.
+    struct BagUseResult { bool ok = false; std::string reason; int item_id = 0; int loot_table_id = 0;
+                          std::map<int, int> components; std::vector<int64_t> inventory_ids;
+                          std::vector<AutoGear> gear; };  // 0959: container auto-create picks -> ApplyAutoGear
+    static BagUseResult SalvageItem(int64_t user_id, int64_t inventory_id);
+    static BagUseResult ActivateItem(int64_t user_id, int64_t inventory_id);
+
+    // Vendor stock for one loot table (asm_data_set_loot_table_items) with its
+    // in-game prices (asm_data_set_prices, credits 1603 / tokens 1604 / Agenda Points 1605).
+    struct VendorPrice { int price = 0; int currency_type_value_id = 0; };
+    struct VendorItem {
+        int loot_table_item_id = 0;
+        int item_id = 0;
+        int auto_create_flag = 0;
+        int max_quality_value_id = 0;
+        int sort_order = 0;
+        std::vector<VendorPrice> prices;
+    };
+    static std::vector<VendorItem> GetVendorItems(int loot_table_id);
 
     struct ComponentGrant {
         int item_id = 0;
@@ -133,6 +230,7 @@ public:
         int target_item_id = 0;
         int target_bot_id = 0;
         int target_ui_volume_id = 0;
+        int map_game_id = 0;
     };
     static std::vector<QuestRequirementRow> GetQuestRequirements(int quest_id);
 
@@ -427,6 +525,16 @@ public:
 
     // Agency id the account currently belongs to, or 0 if none.
     static int64_t GetAgencyIdForUser(int64_t user_id);
+    // Replace ga_squad_members with {character_id, squad_id} rows.
+    static void SyncSquadMembers(const std::vector<std::pair<int64_t, uint64_t>>& rows);
+
+    // Agency directory (AGENCY_GET_DIRECTORY 0xD0) - recruiting agencies first.
+    struct AgencyDirRow {
+        int64_t id = 0; std::string name; int members = 0;
+        bool recruiting = false; std::string recruiting_text; bool sub_only = false;
+        std::string alliance_name; int alliance_members = 0;
+    };
+    static std::vector<AgencyDirRow> GetAgencyDirectory(const std::string& name_filter, int limit);
 
     // Full agency record (meta + members + ranks), or nullopt if not found.
     static std::optional<AgencyInfo> GetAgencyInfo(int64_t agency_id);

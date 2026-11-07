@@ -32,7 +32,7 @@ static const GetBuffedPropertyFn GetBuffedPropertyNative = (GetBuffedPropertyFn)
 // TgPawn::ApplyProperty — intact native @ 0x109cc7d0 (this, UTgProperty*). Reads
 // the property's m_fRaw and fans it out to the cached/replicated engine field
 // (e.g. r_nHealthMaximum @ +0x43c for HEALTH_MAX).
-typedef void(__fastcall* ApplyPropertyFn)(ATgPawn*, void* /*edx*/, UTgProperty*);
+typedef void(__fastcall* ApplyPropertyFn)(ATgPawn*, void* /*edx*/, UTgProperty*, int /*flag, native callers pass 0*/);
 static const ApplyPropertyFn ApplyPropertyNative = (ApplyPropertyFn)0x109cc7d0;
 
 // TgPawn::SetProperty — intact native @ 0x109bf420 (this, int propId, float).
@@ -72,7 +72,7 @@ static void RecomputeEagerBaseProp(ATgPawn* Pawn, int basePropId) {
 		/*&fBuffedValue=*/&buffed, /*Effect=*/nullptr);
 
 	prop->m_fRaw = buffed;
-	ApplyPropertyNative(Pawn, /*edx=*/nullptr, prop);
+	ApplyPropertyNative(Pawn, /*edx=*/nullptr, prop, 0);
 
 	if (Logger::IsChannelEnabled("effects")) {
 		// r_nHealthMaximum @ ATgPawn+0x43c — the eager-cached field ApplyProperty(304)

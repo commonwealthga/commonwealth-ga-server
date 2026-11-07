@@ -4,10 +4,10 @@
 #include "src/Utils/HookBase.hpp"
 
 // Hook on `TgAIController::TargetInLOS` (FUN_10a85c60).
-// Fixes the multi-dome turret bug: ForceField domes are transparent to friendly
-// fire (CheckTeamPassThrough), so they should also be transparent to LOS checks.
-// We disable bCollideActors on all live domes before the trace runs so the
-// recursive tracer (FUN_10a806e0) never hits them at all, then restore.
+// Line traces between two AI pawns always fail, so opted-in bot factories
+// (bot_sight_radius) could never shoot each other; for those pairs the radius
+// stands in for line of sight (BotSight::TargetInRadius). Everything else
+// keeps the original answer.
 class TgAIController__TargetInLOS : public HookBase<
 	int(__fastcall*)(ATgAIController*, void*),
 	0x10a85c60,

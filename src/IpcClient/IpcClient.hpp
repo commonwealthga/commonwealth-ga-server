@@ -49,12 +49,19 @@ public:
                                      const std::string& outcome,
                                      const std::string& details = "");
 
+    // Standalone (-node) mode: forward an economy event (MSG_NODE_CLAIM).
+    // key/value = the kind's id field ("bot_id" for kill, "inventory_id" for consume).
+    static void SendNodeClaim(const char* kind, int64_t user_id, int64_t character_id,
+                              const char* key, int64_t value);
+
     // DrainInbound -- game-thread API. Called from Actor__Tick each tick.
     // Processes all queued inbound messages received since the last call.
     static void DrainInbound();
 
     // GetInstanceId -- returns the instance_id assigned at Init().
     static int64_t GetInstanceId() { return instance_id_; }
+    // Sublevel names to stream to clients on join (from INSTANCE_HELLO_ACK).
+    static std::vector<std::string>& StreamLevels() { static std::vector<std::string> v; return v; }
 
     // IpcThread -- background thread entry point (CreateThread callback).
     static DWORD WINAPI IpcThread(LPVOID);

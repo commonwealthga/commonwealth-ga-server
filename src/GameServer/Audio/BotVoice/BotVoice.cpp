@@ -78,7 +78,64 @@ UObject* ResolveCue(int asmId, int cueId) {
 	return cue;
 }
 
+// res id -> loaded SoundCue (cached, nullptr = negative result)
+UObject* ResolveRes(int resId) {
+	static std::map<int, UObject*> s_resCache;
+	auto it = s_resCache.find(resId);
+	if (it != s_resCache.end()) return it->second;
+	std::wstring path;
+	sqlite3* db = Database::GetConnection();
+	if (db) {
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db, "SELECT name FROM asm_data_set_resources WHERE res_id = ? LIMIT 1;",
+			-1, &stmt, nullptr) == SQLITE_OK) {
+			sqlite3_bind_int(stmt, 1, resId);
+			if (sqlite3_step(stmt) == SQLITE_ROW) {
+				const unsigned char* n = sqlite3_column_text(stmt, 0);
+				if (n) { const std::string s(reinterpret_cast<const char*>(n)); path.assign(s.begin(), s.end()); }
+			}
+			sqlite3_finalize(stmt);
+		}
+	}
+	UObject* cue = nullptr;
+	UClass* cueClass = ClassPreloader::GetClass("Class Engine.SoundCue");
+	if (!path.empty() && cueClass)
+		cue = (UObject*)Core__LoadObject::CallOriginal(cueClass, nullptr, const_cast<wchar_t*>(path.c_str()), nullptr, 0, nullptr, 0);
+	Logger::Log("botvoice", "ResolveRes: res=%d -> '%ls' load=%p\n", resId, path.c_str(), (void*)cue);
+	s_resCache[resId] = cue;
+	return cue;
+}
+
 }  // namespace
+
+bool PlayResNear(ATgPawn* pawn, int resId, float radius) {
+	if (!pawn || resId <= 0) return false;
+	AWorldInfo* wi = pawn->WorldInfo;
+	if (!wi) return false;
+	UObject* cue = ResolveRes(resId);
+	if (!cue) return false;
+	static UFunction* fn = nullptr;
+	if (!fn) fn = (UFunction*)ObjectCache::Find("Function Engine.PlayerController.Kismet_ClientPlaySound");
+	if (!fn) return false;
+	struct {   // same hand-rolled layout as PlayPitched (SDK bitfield params bug)
+		void* ASound; void* SourceActor; float VolumeMultiplier; float PitchMultiplier; float FadeInTime;
+		uint32_t bSuppressSubtitles; uint32_t bSuppressSpatialization; void* AC;
+	} parms = { (void*)cue, (void*)pawn, 1.0f, 1.0f, 0.0f, 0, 0, nullptr };
+	const float r2 = radius * radius;
+	int sent = 0;
+	for (AController* c = wi->ControllerList; c; c = c->NextController) {
+		if (!ObjectClassCache::ClassNameContains(c, "PlayerController")) continue;
+		APawn* lp = c->Pawn;
+		if (lp != (APawn*)pawn) {
+			if (!lp) continue;
+			const float dx = lp->Location.X - pawn->Location.X, dy = lp->Location.Y - pawn->Location.Y, dz = lp->Location.Z - pawn->Location.Z;
+			if (dx * dx + dy * dy + dz * dz > r2) continue;
+		}
+		c->ProcessEvent(fn, &parms, nullptr);
+		sent++;
+	}
+	return sent > 0;
+}
 
 int LookupBodyAsmId(int botId) {
 	static std::map<int, int> s_cache;

@@ -13,6 +13,7 @@
 #include <thread>
 #include <mutex>
 #include <map>
+#include <set>
 
 #include "src/ControlServer/Constants/GameTypes.h"
 #include "src/ControlServer/Constants/TcpFunctions.h"
@@ -25,9 +26,24 @@
 #include "src/ControlServer/TeamService/TeamService.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/ControlServer/Database/Database.hpp"
+#include "src/ControlServer/MailService/MailService.hpp"
+#include "src/ControlServer/AuctionService/AuctionService.hpp"
 #include "src/Shared/HexUtils.hpp"
 #include "lib/nlohmann/json.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
+
+// Who an intro/tutorial chapter instance is for, so the spawner can offer
+// it to that player's own node first (player hosting first, like a 1P match).
+struct IntroHost {
+    int64_t user_id = 0;
+    int64_t character_id = 0;
+    std::string session_guid;
+    int64_t parent_instance_id = 0;   // chapter the player is leaving (0 = first map)
+    // out: the node is still hosting the parent chapter - the client is sent ahead
+    // to the new row (loading screen) while the node switches maps.
+    bool handover = false;
+    int wait_s = 180;                 // out: travel budget for this instance
+};
 
 class TcpSession : public std::enable_shared_from_this<TcpSession> {
 public:
@@ -54,10 +70,40 @@ public:
     // ── TcpSession registry (session_guid -> weak_ptr<TcpSession>) ───────────
 
     static void RegisterSession(const std::string& guid, std::weak_ptr<TcpSession> session);
+    static void AvaPushZoneToViewers(uint32_t zone, const std::string& except = {});  // 0 = every zone
+    static void AvaRegionTick(int64_t now);
+    static void AvaRestateBags();
     static void UnregisterSession(const std::string& guid);
 
     // Dispatch a GAME_EVENT JSON payload to the TcpSession identified by session_guid.
     static void DeliverGameEvent(const std::string& session_guid, const nlohmann::json& j);
+    // True if the live session `session_guid` plays character `character_id`.
+    static bool SessionHasCharacter(const std::string& session_guid, int64_t character_id);
+    // Re-send the F3 friends list to this live session (false = not online).
+    static bool RefreshFriendsList(const std::string& session_guid);
+
+    // Fill the mission end screen's reward panel (GIVE_REWARD_DETAILS
+    // 0x012C) for every online session playing one of these characters.
+    // System chat line to whoever plays this agent right now (no-op if offline).
+    static void SystemMessageToCharacter(int64_t character_id, const std::string& text);
+    static void SendRewardDetails(const std::vector<int64_t>& character_ids,
+                                  int64_t xp, int64_t credits, int64_t tokens);
+    // Per-agent amounts from rw.paid + the results screen's bonus
+    // line (MESSAGE) and Agenda Points row (NAME_MSG_TEXT / DESC_MSG_TEXT).
+    static void SendRewardDetails(const PlayerSessionStore::PveRewardResult& rw);
+    // Instance kill paths (server-hosted event, node claim) -> chat lines if XP crossed a level.
+    static void LevelLinesForCharacter(int64_t character_id);
+
+    // One quest requirement's absolute count -> the session playing
+    // `character_id` (Complete Mission credit at MISSION_ENDED).
+    static void SendQuestProgress(int64_t character_id, int quest_id,
+                                  int quest_requirement_id, int count);
+
+    // Newly earned achievements -> 0x177 popup per id + a fresh 0x176
+    // list to each agent's session (no-op for agents offline).
+    // AvA season-end AP payout + standings refresh; returns agents paid.
+    static int AvaSeasonTick(int64_t now_ts);
+    static void PushAchievementUnlocks(const std::vector<std::pair<int64_t, int>>& unlocks);
 
     // Deliver a MATCH_INVITATION to this session (called from matchmaking callback).
     static void DeliverMatchInvitation(const std::string& session_guid, int64_t instance_id, const std::string& game_mode, int task_force);
@@ -107,6 +153,21 @@ public:
                                           int source_task_force,
                                           std::string& message);
 
+    // Like AdminMovePlayerToInstance, but the target may still be starting:
+    // the client is sent there at once (it waits on the loading screen until
+    // the instance listens) and is registered when INSTANCE_READY arrives.
+    // Not registered within 90 s -> routed home.
+    static bool AdminMovePlayerWhenReady(const std::string& session_guid,
+                                         int64_t target_instance_id,
+                                         int target_task_force,
+                                         int64_t source_instance_id,
+                                         int source_task_force,
+                                         std::string& message,
+                                         uint32_t title_msg_id = 0);
+
+    // INSTANCE_READY hook: register the players sent ahead to this instance.
+    static void FlushEarlyMoves(int64_t instance_id);
+
     // Route a player out of an ended mission without forcing live
     // NetConnection cleanup, which is crash-prone inside UE3.
     static bool ForceMissionExit(const std::string& session_guid,
@@ -122,12 +183,18 @@ public:
                                        const std::string& map_name,
                                        int task_force);
 
+    // A zone sub-instance door (OpenWorldTravel) joins the
+    // hidden one-map queue for it, with the player's squad, via the normal match flow.
+    static void DeliverZoneQueueJoin(const std::string& session_guid, uint32_t queue_id);
+
     // Clear the per-session queue + pending-match state on the named session.
     // Called when a matchmade instance dies before delivering MATCH_INVITATION
     // (spawn failure or pre-READY crash) — without this the session stays
     // wedged with current_match_queue_id_ != 0 and the next GET_TICKET_INFO
     // shows the player as still queued. Silent if guid is unknown.
     static void DeliverMatchCancelled(const std::string& session_guid, const char* reason);
+    // Run that session's MATCH_LEAVE (team leader cancelling for a member).
+    static void DeliverMatchLeave(const std::string& session_guid);
 
     // Team wire pushes (TeamService). Resolve guid under sessions_mutex_.
     // 0x4A routes to the client's message-display handler (MSG_ID template +
@@ -137,6 +204,7 @@ public:
     static void DeliverTeamInvitation(const std::string& session_guid,
                                       const std::string& leader_name);
     static void DeliverTeamInviteExpired(const std::string& session_guid);
+    static bool DeliverRawPacket(const std::string& session_guid, std::vector<uint8_t> body);   // Social::Teams
     // TEAM_UPDATE (0x51) roster. Empty rows = "you are not in a team".
     static void DeliverTeamUpdate(const std::string& session_guid,
                                   const TeamRoster& roster);
@@ -148,6 +216,9 @@ public:
 private:
     // ── Static registry members ──────────────────────────────────────────────
     static std::mutex sessions_mutex_;
+    struct EarlyMove { std::string session_guid; int task_force; };
+    static std::mutex early_moves_mutex_;
+    static std::map<int64_t, std::vector<EarlyMove>> early_moves_;
     static std::map<std::string, std::weak_ptr<TcpSession>> g_sessions_;
     asio::ip::tcp::socket socket_;
     asio::io_context& io_ctx_;
@@ -175,6 +246,7 @@ private:
     // needs somewhere to send inventory records (-components); gameplay paths
     // take pawn_id from the event that triggered them.
     int      last_pawn_id_          = 0;
+    std::chrono::steady_clock::time_point last_agent_info_push_{};
     // ATgPawn_Character::r_nItemProfileId — required per-row key in the
     // skills response packet (FUN_1141f750 matches rows by this). Surfaced
     // from game server via spawn/skill_save IPC; default 0 until known.
@@ -195,12 +267,17 @@ private:
 
     // Static callback to spawn a home map instance on demand.
     static std::function<void()> on_need_home_map_;
+    // Intro mission: spawns a solo instance (map, mode; empty =
+    // config default) and returns its instance_id, 0 on failure. Unset = off.
+    static std::function<int64_t(const std::string&, const std::string&, IntroHost&)> on_need_intro_mission_;
 
     // Network config: external IP and chat port, set once from main.
     static std::string s_host_;
+    static std::string s_public_host_;   // advertised to non-private clients ("" = off)
     static uint16_t    s_chat_port_;
     static bool        s_allow_duplicate_account_logins_;
     static bool        s_require_password_verification_;
+    static bool        s_require_provisioned_accounts_;
 
     // Moderation knobs — pushed in from main.cpp at startup. Same static-setter
     // pattern as s_allow_duplicate_account_logins_ / SetLoginPolicy above.
@@ -209,12 +286,24 @@ private:
     static int         s_kick_fallback_close_sec_;         // 0 = never
 public:
     static void SetHomeMapSpawner(std::function<void()> cb);
-    static void SetNetworkConfig(const std::string& host, uint16_t chat_port);
+    static void SetIntroMissionSpawner(std::function<int64_t(const std::string&, const std::string&, IntroHost&)> cb);
+    // Tutorial chapters - first map + following chapters + allowed accounts (empty = all).
+    static void SetIntroChain(const std::string& first_map, const std::vector<std::string>& chain,
+                              const std::vector<int64_t>& user_ids);
+    static void SetHomeMapName(const std::string& name);
+    static void SetHomeArrivalMinLevel(uint32_t level);
+    static void SetNetworkConfig(const std::string& host, uint16_t chat_port,
+                                 const std::string& public_host = "");
     static void SetLoginPolicy(bool allow_duplicate_account_logins,
-                               bool require_password_verification = true);
+                               bool require_password_verification = true,
+                               bool require_provisioned_accounts = false);
     static void SetModerationConfig(const std::string& ban_spoof_mode,
                                     int ban_spoof_fallback_close_sec,
                                     int kick_fallback_close_sec);
+    // Limited launch: max agents past the login queue (0 = off).
+    static void SetMaxOnlinePlayers(int max_online_players);
+    // Fallback zone cap for the full-zone wait line (instances report their own).
+    static void SetZoneCap(int zone_cap) { s_zone_cap_ = zone_cap; }
 
     // Live-kick every TcpSession whose user_id / IP matches the predicate.
     // Sends a bogus GSC_GO_PLAY pointing at a non-existent map; client tears
@@ -232,6 +321,8 @@ public:
 
     // True when a live TcpSession object is registered under guid. Used by the
     // periodic ghost-player reconciliation in main.cpp.
+    // New-mail push for code outside a session (market bots)
+    static void NotifyNewMail(int64_t to_character_id) { DeliverNewMail(to_character_id); }
     static bool HasLiveSession(const std::string& guid);
 
     // Snapshot for the dashboard "Online now" panel.
@@ -255,6 +346,11 @@ private:
 
     // Set when a READY home map instance is found for this player.
     int64_t assigned_instance_id_ = 0;
+    // GSC_GO_PLAY already sent ahead for this (not yet READY) instance.
+    int64_t travel_sent_instance_id_ = 0;
+    std::string travel_sent_ip_;     // address/port of that GO_PLAY (a local
+    uint16_t travel_sent_port_ = 0;  // fallback moves the row -> send GO_PLAY again)
+    std::shared_ptr<asio::steady_timer> early_move_timer_;
     int home_task_force_ = 1;
 
     // True from a successful spectate-join PLAYER_REGISTER ACK (see
@@ -324,9 +420,22 @@ private:
         append(buffer, val & 0xFF, (val >> 8) & 0xFF, (val >> 16) & 0xFF, (val >> 24) & 0xFF);
     }
 
+    void Write8B(std::vector<uint8_t>& buffer, uint16_t type, uint64_t val) {
+        append(buffer, type & 0xFF, type >> 8);
+        for (int i = 0; i < 8; ++i) buffer.push_back(static_cast<uint8_t>(val >> (8 * i)));
+    }
+
+    void send_hex_auction(uint32_t nPosition);
+    void send_hex_bid_reply(uint32_t msg_id);
     void WriteString(std::vector<uint8_t>& buffer, uint16_t type, const std::string& str) {
         append(buffer, type & 0xFF, type >> 8);
-        append(buffer, static_cast<uint8_t>(str.size()), 0x00);
+        // The length is 2 bytes (as ChatSession/WriteWideString). It was written as 1 byte + 0x00, so
+        // any text over 255 bytes (e.g. a reward mail body) shifted the packet and the client dropped that mail and every
+        // older one in the inbox list.
+        const uint16_t len = static_cast<uint16_t>(std::min<size_t>(str.size(), 0xFFFF));
+        append(buffer, len & 0xFF, len >> 8);
+        buffer.insert(buffer.end(), str.begin(), str.begin() + len);
+        return;
         buffer.insert(buffer.end(), str.begin(), str.end());
     }
 
@@ -394,7 +503,12 @@ private:
          );
     }
 
-    void WriteIP(std::vector<uint8_t>& response, uint16_t type, const std::string& ip, uint16_t port) {
+    // Per-client advertised address. Clients from outside the
+    // LAN/Tailscale get public_host in place of the LAN host.
+    std::string AdvertisedIp(const std::string& ip);
+
+    void WriteIP(std::vector<uint8_t>& response, uint16_t type, const std::string& ip_in, uint16_t port) {
+        const std::string ip = AdvertisedIp(ip_in);
         response.push_back(type & 0xFF);       // low byte
         response.push_back(type >> 8);         // high byte
 
@@ -414,10 +528,14 @@ private:
     }
 
     static std::string GenerateSessionGuid() {
-        std::mt19937 gen(std::random_device{}());
-        std::uniform_int_distribution<unsigned int> dist(0, 255);
+        // All 128 bits straight from the OS RNG (the GUID is a bearer
+        // token for chat/IPC); was one 32-bit seed per GUID.
+        std::random_device rd;
         uint8_t bytes[16];
-        for (auto& b : bytes) b = static_cast<uint8_t>(dist(gen));
+        for (int i = 0; i < 16; i += 4) {
+            const uint32_t v = rd();
+            for (int k = 0; k < 4; ++k) bytes[i + k] = static_cast<uint8_t>(v >> (8 * k));
+        }
         bytes[6] = (bytes[6] & 0x0F) | 0x40;
         bytes[8] = (bytes[8] & 0x3F) | 0x80;
         std::ostringstream oss;
@@ -617,8 +735,32 @@ private:
     void travel_to_map_when_ready(const std::string& map_name, int task_force,
                                   int remaining_seconds);
     bool travel_in_flight_ = false;
+    // Full-zone wait line (InstanceAdmission): 0 = not waiting.
+    bool admission_wait(const std::string& map_name, const struct InstanceInfo& target, int task_force);
+    void send_alert_text(const char* text, float duration);
+    time_t  admission_since_ = 0;
+    time_t  admission_shown_at_ = 0;
+    int     admission_shown_pos_ = 0;
+    int64_t admission_from_instance_ = 0;
+    // Intro mission: spawn a solo intro instance for a freshly
+    // created agent and send them there once READY (falls back to the home map).
+    bool start_intro_mission(uint32_t training_map_game_id);
+    void travel_to_instance_when_ready(int64_t instance_id, int task_force, int remaining_seconds);
 
     void route_from_mission_instance(int64_t parent_instance_id, const char* reason);
+    // Tutorial chapters - spawn + send to the chapter after parent_map; false = go home.
+    bool start_next_tutorial_chapter(const std::string& parent_map, const char* reason,
+                                     int64_t parent_instance_id = 0);  // chapter being left
+    static std::vector<std::string> intro_chain_;      // [first map, chapter 2, ...]
+    // Instance whose Kismet RequestMission this player reached (chapter completed);
+    // a change-instance without it = Esc > Quit Tutorial -> home.
+    int64_t request_mission_instance_ = 0;
+    int64_t early_route_from_ = 0;  // routed on RequestMission (ignore the client's late change-instance)
+    // Next chapter still spawning for this agent; a Quit Tutorial meanwhile
+    // (tutorial_quit_) beats it -> home.
+    int64_t chapter_pending_instance_ = 0;
+    bool tutorial_quit_ = false;
+    static std::vector<int64_t>     intro_chain_users_;
 
     // Continue-in-queue routing. Sends PLAYER_REGISTER to the given target
     // mission instance with task_force assignment; on ACK success replies
@@ -653,7 +795,7 @@ private:
     // straight home.
     void exit_spectate();
 
-    void send_get_loot_table_items_by_id_filtered_response();
+    void send_get_loot_table_items_by_id_filtered_response(int nLootTableId);
 
     void send_inventory_response(int nPawnId, int64_t character_id);
 
@@ -681,20 +823,34 @@ private:
 
     void send_beacon_pickup_response(int nPawnId, int nDeviceId, int nInventoryId, int nEquipSlotValueId, int nItemProfileId);
     void send_beacon_remove_response(int nPawnId, int nInventoryId);
+    void send_quest_kismet(int quest_id, int link, int requirement_id);
     void send_quest_accept_response(int nQuestId);
     void send_quest_complete_response(int nQuestId);
     void send_quest_abandon_response(int nQuestId);
+    // Turn-in tail: spend Collect items, complete, pay XP/credits + reward
+    // table, restate items. Caller has checked the requirements.
+    void finish_quest(int64_t character_id, int quest_id, int pawn_id, int reward_item_id = 0);
+    void received_item_line(int item_id, int count, const char* reason);
+    void level_lines_if_up();
+    int64_t level_seen_char_ = 0;
+    int level_seen_ = 0;
+    // After any quest change: hand out ga_quest_grants follow-ups and finish
+    // active quests with no turn-in volume whose requirements are met.
+    void run_quest_followups(int64_t character_id, int pawn_id);
     // Per-requirement progress ("3 of 10"). nCount is the ABSOLUTE new count.
     void send_quest_requirement_progress_response(int nQuestId, int nRequirementId, int nCount);
+    void send_player_achievements_response();
+    void send_achievement_notice(int nAchievementId);
     // Roll a loot table, grant the components that drop, push the inventory
     // record + r_ItemCount bump + quest progress. See the definition for why
     // all three are required.
     void credit_loot_table(int loot_table_id, int64_t character_id, int pawn_id,
-                           const char* reason);
+                           const char* reason, int chosen_item_id = 0);
     // Re-send every surviving component stack at its current quantity (after a
     // turn-in spends some). Updates existing entries only — depleted stacks go
     // out through send_component_removals instead.
     void send_component_refresh(int nPawnId);
+    void send_salvaged_items(const std::map<int, int>& gained);
     // STATE=2 delete records for stacks that hit zero. Shrinks the client's
     // inventory map, so r_ItemCount must be restated after.
     void send_component_removals(int nPawnId, const std::vector<int>& item_ids);
@@ -719,6 +875,16 @@ private:
     void AppendComponentRecord(std::vector<uint8_t>& response,
                                const Database::ComponentRow& comp);
 
+    // One ON_HAND bag record (13 fields) - shared by the full push and the
+    // Incremental vendor-purchase add.
+    void AppendBagRecord(std::vector<uint8_t>& response, const InventoryRow& row, uint32_t instance_count = 1);
+public:
+    // Incremental add of freshly bought ga_players_inventory rows
+    // (no clear+rebuild - that blanks the bag list) + absolute r_ItemCount.
+    void send_inventory_added(int nPawnId, int64_t character_id, const std::vector<int64_t>& inventory_ids);
+    void send_inventory_removed(int nPawnId, int64_t character_id, const std::vector<int64_t>& inventory_ids);
+private:
+
     // Components are per-user and stackable, so they have no ga_players_inventory
     // row to borrow an inventory id from. Synthetic ids start here — far above
     // any autoincrement row id that table will ever reach.
@@ -729,13 +895,25 @@ private:
     // Character whose quest state has already been replayed this session; 0 =
     // none yet. Guards the once-per-character push in the spawn event.
     int64_t quests_synced_for_character_ = 0;
+    // UPDATE_QUEST_TIMEFRAMES (sentinel, then the real UTC day/week ids) so the
+    // client re-runs its HUD quest-tracker refresh on the freshly built HUD.
+    void send_quest_timeframes_refresh();
+    // Same refresh again after a delay: the client skips the tracker update
+    // while its HUD is still being built / a debounce timer runs.
+    void schedule_quest_tracker_refresh();
+    // QUEST_UPDATE with an empty quest list: marks the client's quest manager
+    // as loaded so the HUD stops waiting and accepts tracker refreshes.
+    void send_quest_list_loaded();
 
 
     void send_character_inventory_response(int nPawnId);
 
     void send_player_skills_response();
+    void send_billboard_content(int key);
+    void send_agent_info(int64_t character_id, bool own, bool log);
 
     void send_agency_get_roster_response();
+    void send_agency_get_directory_response(const PacketView& pkt);
     void handle_agency_create(const PacketView& pkt);
     // Leader disbands the agency (delete it + push the "no agency" reset).
     void handle_agency_disband();
@@ -743,6 +921,13 @@ private:
     // `response` as top-level fields. Returns the number of fields appended (0
     // if the caller is not in an agency). Shared by roster + create responses.
     int append_agency_payload(std::vector<uint8_t>& response);
+    // Agency bank (Social/AgencyBank.cpp)
+    int  append_agency_bank_fields(std::vector<uint8_t>& response, int64_t agency_id, bool with_items);
+    bool agency_bank_due(int64_t agency_id);
+    void handle_agency_bank_packet(uint16_t packet_type, const PacketView& pkt);
+public:
+    static void AgencyTaxPaid(int64_t character_id, int64_t user_id, int64_t tax);
+private:
 
     void handle_agency_invite(const PacketView& pkt);
     // AGENCY_PROMOTE / AGENCY_DEMOTE — target member by PLAYER_ID (= character_id).
@@ -761,9 +946,13 @@ private:
     // agency without asking (kick / someone else's disband).
     static void DeliverAgencyRefresh(int64_t target_user_id);
     void handle_agency_accept();
+    void handle_agency_join(const PacketView& pkt);
     // Push an AGENCY_INVITATION popup to this session.
     // Status/error line for agency actions (MSG_ID template + @@player_name@@).
     void send_agency_message(uint32_t msg_id, const std::string& player_name_token);
+    void handle_agency_application(const PacketView& pkt);
+    void send_agency_application_status();
+    void send_agency_applicants();
     void send_agency_invitation(const std::string& agency_name,
                                 const std::string& inviter_leader_name);
     // Pending agency invites: invited user_id -> agency_id it was invited to.
@@ -821,6 +1010,40 @@ void send_friends_list();
     void send_player_update_client_response();
 
     void send_update_new_mail_count_response();
+    // Mail
+    void handle_mail_packet(uint16_t packet_type, const PacketView& pkt);
+    void handle_auction_packet(uint16_t packet_type, const PacketView& pkt);
+    void send_auction_market_rows(uint16_t packet_type, const std::vector<AuctionService::MarketRow>& rows, uint32_t total);
+    void send_auction_rows(uint16_t packet_type, uint16_t data_set, const std::vector<AuctionService::Listing>& rows,
+                           uint32_t total, bool count_in_first_row);
+    void send_auction_error(uint16_t packet_type, uint32_t msg_id);
+    void send_mail_rows(uint16_t packet_type, const std::vector<MailService::MailRow>& rows);
+    void send_mail_notify(uint32_t msg_id, bool restate_wallet);
+    // Last Agenda Points value restated on the pawn (r_nHZPoints); -1 = none yet.
+    int64_t last_ap_restated_ = -1;
+    std::chrono::steady_clock::time_point last_emote_{};
+    static void DeliverNewMail(int64_t to_character_id);
+    void push_mail_bag_changes(const std::vector<int64_t>& removed, const std::vector<int64_t>& added, bool components,
+                               const std::vector<int>& depleted = {});
+    void send_hex_get_all_zones_response();
+    void send_hex_get_zone_data_response(uint32_t nZoneObjectId);
+    void send_hex_campaign_state(uint32_t zone_id, uint32_t g);
+    void send_strike_force_inventory();
+    bool owns_ava_territory(uint32_t nPosition);
+    void send_hex_full_aca();
+    void send_ava_combat_log(uint32_t zone, const std::string& agency_like, uint32_t outcome, const std::string& from, const std::string& to);
+    int64_t ava_stock_line_at_ = 0;
+    uint32_t ava_zone_asked_ = 0;
+    int64_t ava_zone_asked_at_ = 0;
+    void send_ava_stock_line();
+    void send_ava_campaign_line();
+    void handle_hex_factory_item(uint32_t nPosition, uint32_t nItemId, uint32_t nCount, bool bRemove);
+    void handle_hex_assign_resource(uint32_t nPosition, uint32_t nItemId);
+    void handle_hex_assign_headquarters(uint32_t nPosition);
+    void handle_hex_add_facility(uint32_t nPosition, uint32_t nId);
+    void handle_hex_bid(uint32_t nPosition, uint32_t nAmount, uint32_t nAttackType, bool bCancel);
+    bool ava_bid_blocks_attack(uint32_t nPosition);
+    void handle_hex_attack(uint32_t nZoneObjectId, uint32_t nPosition, bool bDefend);
 
     void send_add_player_character_response();
 
@@ -832,6 +1055,7 @@ void send_friends_list();
 
     void send_match_launch_response();
 
+	void handle_match_join(uint32_t matchQueueId, uint32_t matchFilters);
 	void send_match_join_response(uint32_t matchQueueId, uint32_t matchFilters);
 
 	void send_match_leave_response();
@@ -855,8 +1079,8 @@ void send_friends_list();
 
     // Variant that targets an arbitrary mission instance (used by the
     // continue-in-queue successor flow). task_force selects the team
-    // assignment baked into the GSC_GO_PLAY payload.
-    void send_go_play_to_instance(const struct InstanceInfo& target, int task_force);
+    // assignment baked into the GSC_GO_PLAY payload; title_msg_id != 0 replaces the loading-screen title (FRIENDLY_NAME_MSG_ID).
+    void send_go_play_to_instance(const struct InstanceInfo& target, int task_force, uint32_t title_msg_id = 0);
 
     void send_instance_ready_response();
 
@@ -865,7 +1089,22 @@ void send_friends_list();
     void send_character_list_response();
     void send_character_list_response_mock();
 
-    void send_character_list_queue_response();
+    void send_character_list_queue_response(uint32_t position = 0x11, uint32_t est_minutes = 0x4567,
+                                            uint32_t queue_length = 0x19);
+    // Login queue (config max_online_players). A logged-in
+    // session is "admitted" once it gets its real GSC_CHARACTER_LIST; past the
+    // cap it waits FIFO on the client's own "Server Is Currently Full" panel
+    // (GSC_CHARACTER_LIST with MIN_WAIT_SEC/ACTIVE_POSITION/ENTRY_NUMBER, see
+    // the .cpp) and is admitted automatically when a slot frees.
+    void handle_character_list_request();
+    void login_queue_tick(int ticks_since_send, uint32_t last_pos);
+    void login_queue_forget();
+    bool login_admitted_ = false;
+    static int s_max_online_players_;
+    static inline int s_zone_cap_ = 0;
+    static std::mutex login_queue_mutex_;
+    static std::set<std::string> s_admitted_guids_;
+    static std::deque<std::string> s_login_queue_;
 
     void send_login_response_for(const std::string& response_player_name,
                                  const std::string& response_session_guid,

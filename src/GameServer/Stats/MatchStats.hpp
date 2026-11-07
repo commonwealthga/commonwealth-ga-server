@@ -3,6 +3,7 @@
 #include "src/pch.hpp"
 #include "src/GameServer/Stats/StatsCore.hpp"
 #include <cstdint>
+#include "lib/nlohmann/json.hpp"
 
 // Match stats recording + event emission over IPC. Design:
 // .planning/2026-06-12-match-stats-tracking-design.md. Every entry point
@@ -40,6 +41,11 @@ public:
 
     // LEAVE site (NetConnection__Cleanup, before the pawn is torn down).
     static void OnPlayerLeft(ATgPawn* Pawn, int64_t user_id);
+
+    // The user's current live pawn on this instance, or nullptr.
+    static ATgPawn* LivePawnForUser(int64_t user_id);
+    // The user whose current live pawn this is, or 0.
+    static int64_t UserForPawn(ATgPawn* Pawn);
 
     // Team flip (ChangeTeam cmd / autobalance / ServerChangeTaskForce).
     // Call BEFORE the task force is written so the old stint banks clean.
@@ -158,6 +164,11 @@ public:
 
     // GameEngine__Tick: pending-death flush, objective capture/contest
     // accumulation, capture-moment detection. Self-throttled to 4 Hz.
+    // Host migration: every live player's PRI r_Scores (what the scoreboard
+    // shows) as [{user_id, character_id, task_force, scores[11]}], and the
+    // other side - scoreboard totals carried in from the previous instance.
+    static void AppendLiveScores(nlohmann::json& out);
+    static void SetCarriedScores(const nlohmann::json& players);
     static void Tick();
 
     // BeginEndMission: bank + upsert every user's stints.

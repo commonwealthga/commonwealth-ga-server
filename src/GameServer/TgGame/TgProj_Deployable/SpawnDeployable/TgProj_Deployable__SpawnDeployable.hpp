@@ -166,6 +166,8 @@ public:
 	// between traces is detected as stale instead of read after free.
 	static void RegisterForceField(ATgDeployable* dep);
 	static int  ForceFieldCount();
+	// Live registered force fields (same liveness gate, collision untouched).
+	static void LiveForceFields(std::vector<ATgDeployable*>& out);
 	// Clears bCollideActors on every live registered force field (pruning
 	// stale/bDeleteMe entries) and appends the modified actors to `disabled`.
 	static void DisableForceFieldCollision(std::vector<ATgDeployable*>& disabled);

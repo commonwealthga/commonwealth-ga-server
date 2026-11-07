@@ -3,6 +3,7 @@
 #include "src/pch.hpp"
 #include "src/Utils/HookBase.hpp"
 
+// TgPlayerController.ServerCraftItem(nBlueprintId) - virtual slot +0x6b0 (exec thunk 0x1098dfe0).
 class TgPlayerController__ServerCraftItem : public HookBase<
 	void(__fastcall*)(ATgPlayerController*, void*, int),
 	0x10963a40,

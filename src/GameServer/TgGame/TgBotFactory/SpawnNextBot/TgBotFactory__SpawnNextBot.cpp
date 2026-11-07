@@ -8,6 +8,7 @@
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/GameServer/TgGame/TgPawn/KillCredit/KillCredit.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 #include <cmath>
@@ -98,7 +99,111 @@ void RemoveQueueEntry(ATgBotFactory* f, int idx) {
 	f->m_SpawnQueue.Count = n - 1;
 }
 
+// ---- 0985/0986 open-zone respawns ------------------------------------
+// Open zones (gameplay type 1554: Sonoran Desert, North Sonora) only.
+// Missions keep their scripted spawns untouched.
+//  0985 floor: a replacement for a killed bot is never due before its spawn
+//       group's own respawn time from the game data
+//       (spawn_group_respawn_sec -> FSpawnGroupDetail.nRespawnSeconds).
+//  0986 hold: a due replacement waits while any living player is within
+//       kClearRadius of one of the factory's spawn points, or has a clear
+//       line of sight to one within kSightRadius; re-checked every
+//       kRecheckSeconds until clear, so enemies never pop in on top of or in
+//       view of a player.
+// Not held: friendly NPC factories (task force 2: guards, traders) and
+// scripted event attackers (map_object_config no_kill_reward, the North
+// Sonora gate fight). Per-factory override: map_object_config
+// respawn_clear_radius (uu, 0 = no hold).
+// Radius: 4000 uu = the bot_sight_radius we already give the Dome guards
+// (how far a zone bot picks a target), so a player who could be fighting
+// at a camp keeps it empty; the 8000 uu sight check covers the open
+// desert, where a camp is visible from far away.
+constexpr float kClearRadius   = 4000.0f;
+constexpr float kSightRadius   = 8000.0f;
+constexpr float kRecheckSeconds = 5.0f;
+
+std::map<int, float> g_heldSince;   // factory -> TimeSeconds of the first hold
+
+int ClearRadiusFor(ATgBotFactory* f) {
+	if (!KillCredit::InOpenZone() || !f->bRespawn) return 0;
+	if (f->s_nTaskForce == 2) return 0;
+	const int mid = f->m_nMapObjectId;
+	const int def = MapObjectConfig::GetInt(mid, "no_kill_reward", 0) ? 0 : (int)kClearRadius;
+	return MapObjectConfig::GetInt(mid, "respawn_clear_radius", def);
+}
+
+bool ClearLine(AActor* from, const FVector& start, const FVector& end) {
+	FVector hl, hn; FTraceHitInfo hi; std::memset(&hi, 0, sizeof(hi));
+	return from->Trace(end, start, 0, FVector(0, 0, 0), 0, &hl, &hn, &hi) == nullptr;
+}
+
+// True (and *why filled) when a living player keeps the factory's spawn
+// points busy.
+bool PlayerKeepsSpawnBusy(ATgBotFactory* f, float radius, char* why, size_t whyLen) {
+	AWorldInfo* wi = f->WorldInfo;
+	if (wi == nullptr || f->LocationList.Data == nullptr) return false;
+	const float r2 = radius * radius;
+	const float s  = radius > kSightRadius ? radius : kSightRadius;
+	const float s2 = s * s;
+	for (AController* c = wi->ControllerList; c != nullptr; c = c->NextController) {
+		if (!ObjectClassCache::ClassNameContains((UObject*)c, "PlayerController")) continue;
+		APawn* p = c->Pawn;
+		if (p == nullptr || p->bDeleteMe || p->Health <= 0) continue;
+		FVector eye = p->Location; eye.Z += p->BaseEyeHeight;
+		for (int i = 0; i < f->LocationList.Num(); i++) {
+			ANavigationPoint* n = f->LocationList.Data[i];
+			if (n == nullptr) continue;
+			const float dx = p->Location.X - n->Location.X;
+			const float dy = p->Location.Y - n->Location.Y;
+			const float dz = p->Location.Z - n->Location.Z;
+			const float d2 = dx * dx + dy * dy + dz * dz;
+			if (d2 < r2) {
+				std::snprintf(why, whyLen, "player %.0f uu from loc[%d]", std::sqrt(d2), i);
+				return true;
+			}
+			if (d2 < s2) {
+				FVector tgt = n->Location; tgt.Z += 60.0f;
+				if (ClearLine((AActor*)p, eye, tgt)) {
+					std::snprintf(why, whyLen, "player sees loc[%d] at %.0f uu", i, std::sqrt(d2));
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
 }  // namespace
+
+void TgBotFactory__SpawnNextBot::TagReplacements(ATgBotFactory* f, int firstNew) {
+	if (f == nullptr || ClearRadiusFor(f) <= 0) return;
+	const float now = f->WorldInfo ? f->WorldInfo->TimeSeconds : 0.0f;
+	for (int i = firstNew < 0 ? 0 : firstNew; i < f->m_SpawnQueue.Num(); i++) {
+		FSpawnQueueEntry& e = f->m_SpawnQueue.Data[i];
+		e.bRespawn = 1;   // ours: only BotDied replacements are held
+		const int g = e.nGroupNumber;
+		const int dataSec = (g >= 0 && g < f->m_SpawnGroups.Num())
+			? f->m_SpawnGroups.Data[g].nRespawnSeconds : 0;
+		const float native = e.fSpawnTime - now;
+		if (e.fSpawnTime < now + (float)dataSec) e.fSpawnTime = now + (float)dataSec;
+		const ANavigationPoint* l0 = (f->LocationList.Num() > 0 && f->LocationList.Data)
+			? f->LocationList.Data[0] : nullptr;
+		const APawn* p0 = nullptr;   // first living player, for the log only
+		if (f->WorldInfo) {
+			for (AController* c = f->WorldInfo->ControllerList; c != nullptr; c = c->NextController) {
+				if (c->Pawn == nullptr || c->Pawn->Health <= 0) continue;
+				if (!ObjectClassCache::ClassNameContains((UObject*)c, "PlayerController")) continue;
+				p0 = c->Pawn; break;
+			}
+		}
+		Logger::Log("tgbotfactory",
+			"  [Respawn] factory %d replacement group idx %d due in %.1fs "
+			"(native %.1fs, data %ds) loc0=(%.0f,%.0f,%.0f) p0=(%.0f,%.0f,%.0f)\n",
+			f->m_nMapObjectId, g, e.fSpawnTime - now, native, dataSec,
+			l0 ? l0->Location.X : 0.0f, l0 ? l0->Location.Y : 0.0f, l0 ? l0->Location.Z : 0.0f,
+			p0 ? p0->Location.X : 0.0f, p0 ? p0->Location.Y : 0.0f, p0 ? p0->Location.Z : 0.0f);
+	}
+}
 
 // Retail model: drain the m_SpawnQueue scheduler. Each entry = one pending
 // bot {group INDEX, due time, bRespawn, table}. ResetQueue builds the
@@ -173,6 +278,31 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 		}
 
 		const FSpawnQueueEntry entry = BotFactory->m_SpawnQueue.Data[qIdx];
+
+		// 0986: a due replacement waits while a player is near / in sight.
+		if (entry.bRespawn) {
+			const int radius = ClearRadiusFor(BotFactory);
+			char why[96] = "";
+			if (radius > 0 && PlayerKeepsSpawnBusy(BotFactory, (float)radius, why, sizeof(why))) {
+				BotFactory->m_SpawnQueue.Data[qIdx].fSpawnTime = now + kRecheckSeconds;
+				auto it = g_heldSince.find(mid);
+				if (it == g_heldSince.end()) {
+					g_heldSince[mid] = now;
+					Logger::Log("tgbotfactory",
+						"  [Respawn] factory %d replacement HELD: %s (radius %d, recheck %.0fs)\n",
+						mid, why, radius, kRecheckSeconds);
+				}
+				continue;
+			}
+			auto it = g_heldSince.find(mid);
+			if (it != g_heldSince.end()) {
+				Logger::Log("tgbotfactory",
+					"  [Respawn] factory %d clear after %.0fs held - respawning\n",
+					mid, now - it->second);
+				g_heldSince.erase(it);
+			}
+		}
+
 		const int groupIdx    = entry.nGroupNumber;
 		const int tableId     = entry.nSpawnTableId > 0 ? entry.nSpawnTableId
 		                                                : BotFactory->nSpawnTableId;

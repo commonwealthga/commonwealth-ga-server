@@ -64,7 +64,7 @@ void MarshalChannel__NotifyControlMessage::Call(UMarshalChannel* MarshalChannel,
 	LogCallBegin();
 
 	wchar_t local_410[512] = {0};
-	CMarshal__GetString::CallOriginal(InBunch, edx, GA_T::TEXT_VALUE, local_410);
+	CMarshal__GetString::CallOriginal(InBunch, edx, GA_T::TEXT_VALUE, local_410, 512);
 
 	char tmp[1024];
 	wcstombs(tmp, local_410, sizeof(tmp));
@@ -419,6 +419,8 @@ void MarshalChannel__NotifyControlMessage::HandlePlayerConnected(UNetConnection*
 		if (cinematicFn) {
 			newcontroller->ProcessEvent(cinematicFn, &cinematic, nullptr);
 		}
+		// (seasonal sublevel streaming moved to first SpawnPlayerCharacter: streaming while
+		// the client is still loading the map dropped it back to the login screen)
 		Logger::Log("spawn",
 			"HandlePlayerConnected: cleared client fade/cinematic hud fadeFn=%p cinematicFn=%p pawn=%p viewTarget=%p\n",
 			fadeFn, cinematicFn, newcontroller->Pawn, newcontroller->ViewTarget);

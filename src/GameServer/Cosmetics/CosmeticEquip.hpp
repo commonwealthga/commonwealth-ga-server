@@ -36,6 +36,16 @@ bool ApplyToPawn(ATgPawn* Pawn, int64_t character_id, int item_profile_id,
 // offset (0x1650 vs 0x1784), so the ATgPawn_Character cast is wrong for it.
 bool ApplyItemToBot(ATgPawn* Pawn, int itemId);
 
+// Same gate as ApplyItemToBot, but with an engine equip
+// point so dyes land in their DyeList slot (16 primary .. 20 weapon emissive).
+bool ApplyItemToBotSlot(ATgPawn* Pawn, int itemId, int slot);
+
+// Body of a not-yet-promoted bot before its first cosmetic: gender
+// (852/853), head + hair asm ids, bare head (no helmet). Call BEFORE
+// ApplyItemToBot so the suit mesh is picked for the right gender. Same class
+// gate; false if the pawn is not TgPawn_Character.
+bool SetBotBody(ATgPawn* Pawn, int genderTypeId, int headAsmId, int hairAsmId);
+
 // Clear one cosmetic slot from live assembly and profile storage. Accepts
 // engine slot 6 (Suit), 12 (Helmet), or 16-20 (dyes). Suit/helmet reset their
 // Flair/Mesh fields to -1 (bare — no overlay) and delete the remapped DB row

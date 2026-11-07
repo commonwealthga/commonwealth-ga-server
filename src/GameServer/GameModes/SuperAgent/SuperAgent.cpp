@@ -1496,7 +1496,8 @@ static void FireGlobalAlarm(const Escape::AlarmWave* wave) {
 			alarmFlagSaved.push_back({ f, savedFlag });
 			f->bSpawnOnAlarm = 0;
 		}
-		TgGame__ActivateAlarm::Call(s_Game, nullptr, s_AlarmOriginator, s_AlarmId, 0, 0, 0);
+		FString sTypeCode;
+		TgGame__ActivateAlarm::Call(s_Game, nullptr, s_AlarmOriginator, s_AlarmId, &sTypeCode);
 		for (auto& r : alarmFlagSaved) if (r.first) r.first->bSpawnOnAlarm = r.second;
 	}
 
@@ -1743,8 +1744,9 @@ static void ProcessPendingMarches(float now) {
 
 void Alarm() {
 	if (!s_Game || !s_AlarmOriginator) { Log("Adds::Alarm: no game/originator\n"); return; }
-	// Empty FString (Data/Count/Max = 0) avoids the FString allocator hazard.
-	TgGame__ActivateAlarm::Call(s_Game, nullptr, s_AlarmOriginator, s_AlarmId, 0, 0, 0);
+	// Empty FString (Data == nullptr) avoids the FString allocator hazard.
+	FString sTypeCode;
+	TgGame__ActivateAlarm::Call(s_Game, nullptr, s_AlarmOriginator, s_AlarmId, &sTypeCode);
 	Log("Adds::Alarm: fired alarmId=%d\n", s_AlarmId);
 }
 

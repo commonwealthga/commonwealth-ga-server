@@ -1,5 +1,12 @@
+#include <mutex>
+#include "src/ControlServer/Constants/GameTypes.h"
+#include "src/Shared/VendorCurrency.hpp"
 #include "src/ControlServer/Database/Database.hpp"
+#include "src/ControlServer/EconParity/EconParity.hpp"
+#include "src/ControlServer/PvpParity/PvpParity.hpp"
+#include "src/Shared/EconRules2.hpp"
 #include "src/ControlServer/Logger.hpp"
+#include "src/ControlServer/Config/EventCalendar.hpp"
 #include "sqlite3.h"
 #include <string>
 #include <vector>
@@ -11,6 +18,7 @@
 #include <random>
 #include <utility>
 #include <set>
+#include <functional>
 
 // Bumped on every ga_friends mutation; starts at 1 so a fresh ChatSession
 // cache (epoch 0) always loads on first use.
@@ -940,6 +948,61 @@ void Database::Init() {
 			}
 		}
 
+		// Original mission level gates (GA 1.35, Steam news 4110,
+		// 2010-07-22): level_min = queue requirement, reward_level_max = last
+		// level that still gets mission-end rewards. Cards get the final
+		// build's descriptions that state the requirement. Seeded only when
+		// the column is new, so later operator edits survive.
+		const bool reward_cap_col_fresh =
+			(sqlite3_exec(db,
+				"ALTER TABLE ga_queues ADD COLUMN reward_level_max INTEGER NOT NULL DEFAULT 200;",
+				nullptr, nullptr, &err) == SQLITE_OK);
+		if (err) { sqlite3_free(err); err = nullptr; }
+		if (reward_cap_col_fresh) {
+			const char* kLevelGateSeed[] = {
+				"UPDATE ga_queues SET reward_level_max = 19 WHERE name IN ('medium','desert_pve_medium');",
+				"UPDATE ga_queues SET level_min = 18, reward_level_max = 29, desc_msg_id = 55458 "
+				"  WHERE name IN ('high','desert_pve_high');",
+				"UPDATE ga_queues SET level_min = 25, desc_msg_id = 55460 WHERE name IN ('max','desert_pve_max');",
+				"UPDATE ga_queues SET level_min = 30, desc_msg_id = 55464 WHERE name IN ('umax','desert_pve_umax');",
+				"UPDATE ga_queues SET level_min = 18, reward_level_max = 29 WHERE name = 'double_agent_high';",
+				"UPDATE ga_queues SET level_min = 25 WHERE name = 'double_agent_max';",
+				"UPDATE ga_queues SET level_min = 30 WHERE name = 'double_agent_umax';",
+				"UPDATE ga_queues SET level_min = 20, reward_level_max = 29, desc_msg_id = 55466 "
+				"  WHERE name IN ('solo_medium','solo_desert_pve_medium');",
+				"UPDATE ga_queues SET level_min = 30, desc_msg_id = 55470 WHERE name IN ('solo_high','solo_desert_pve_high');",
+				"UPDATE ga_queues SET level_min = 40, desc_msg_id = 55474 WHERE name IN ('solo_max','solo_desert_pve_max');",
+				"UPDATE ga_queues SET level_min = 40 WHERE name IN ('solo_umax','solo_desert_pve_umax');",
+				"UPDATE ga_queues SET level_min = 30 WHERE name IN ('sr','desert_raids');",
+				"UPDATE ga_queues SET level_min = 40 WHERE name = 'ddr';",
+				"UPDATE ga_queues SET level_min = 10 WHERE name = 'merc';",
+			};
+			for (const char* sql : kLevelGateSeed) {
+				if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+					Logger::Log("db", "Level gate seed failed: %s\n", err ? err : "?");
+					sqlite3_free(err); err = nullptr;
+				}
+			}
+		}
+
+		// Optional pop rule: fresh matches need N distinct classes
+		// (ga_queues.min_distinct_classes, 0 = off on every queue).
+		sqlite3_exec(db,
+			"ALTER TABLE ga_queues ADD COLUMN min_distinct_classes INTEGER NOT NULL DEFAULT 0;",
+			nullptr, nullptr, &err);
+		if (err) { sqlite3_free(err); err = nullptr; }
+
+		// Optional class limit per side (ga_queues.max_class_per_side, 0 = off).
+		// Seeded once with the column: merc = 3 (retail 1.39 Merc PvP rule).
+		err = nullptr;
+		if (sqlite3_exec(db,
+			"ALTER TABLE ga_queues ADD COLUMN max_class_per_side INTEGER NOT NULL DEFAULT 0;",
+			nullptr, nullptr, &err) == SQLITE_OK) {
+			sqlite3_exec(db, "UPDATE ga_queues SET max_class_per_side = 3 WHERE name = 'merc';",
+				nullptr, nullptr, nullptr);
+		}
+		if (err) { sqlite3_free(err); err = nullptr; }
+
 		// One-time per-archetype team config. Guarded by a marker row so it
 		// runs EXACTLY ONCE on first deploy and never stomps later operator
 		// edits to team_policy / team_side_policy. (We can't gate on
@@ -1690,9 +1753,9 @@ void Database::Init() {
 		// queue reorg at the end of Init (rows = real difficulty, location =
 		// map pool) — it must stay retired or it re-shuffles every boot.
 		result = sqlite3_exec(db,
-			"UPDATE ga_queues SET desc_msg_id = 27673 WHERE queue_id = 4 AND desc_msg_id = 41459;"
-			"UPDATE ga_queues SET desc_msg_id = 27674 WHERE queue_id = 5 AND desc_msg_id = 55458;"
-			"UPDATE ga_queues SET desc_msg_id = 34212 WHERE queue_id = 6 AND desc_msg_id = 55460;",
+			// Queues 5/6 keep the "(Requires Level 18/25)" blurbs
+			// again - the level gates are applied (reward_level_max seed).
+			"UPDATE ga_queues SET desc_msg_id = 27673 WHERE queue_id = 4 AND desc_msg_id = 41459;",
 			// "UPDATE ga_queues SET location_value_id = 1483 WHERE queue_id = 4 AND location_value_id = 1477;"
 			// "UPDATE ga_queues SET location_value_id = 1478 WHERE queue_id = 5 AND location_value_id = 1477;"
 			// "UPDATE ga_queues SET marshal_difficulty_value_id = 1029 "
@@ -1878,6 +1941,10 @@ void Database::Init() {
 		const char* kInventoryColumnAlters[] = {
 			"ALTER TABLE ga_players_inventory ADD COLUMN item_id INTEGER NOT NULL DEFAULT 0;",
 			"ALTER TABLE ga_players_inventory ADD COLUMN stock_n INTEGER NOT NULL DEFAULT 0;",
+			// What a vendor pays back for this row (0 = not sellable:
+			// seeded starter kit, which the next login would re-create).
+			"ALTER TABLE ga_players_inventory ADD COLUMN sell_value INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_players_inventory ADD COLUMN sell_currency INTEGER NOT NULL DEFAULT 0;",
 		};
 		for (const char* sql : kInventoryColumnAlters) {
 			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
@@ -1885,6 +1952,123 @@ void Database::Init() {
 				err = nullptr;
 			}
 		}
+
+		// Bags + components belong to the AGENT (as in the
+		// original game; credits/tokens already live on ga_characters, AP stays
+		// account-wide). Rows keep user_id = owner account while their agent is
+		// the selected one; other agents' rows are parked at user_id =
+		// -character_id (PlayerSessionStore::ActivateAgentPool swaps on select),
+		// so every existing user_id query keeps seeing only the active agent.
+		bool had_active_table = false;
+		{
+			sqlite3_stmt* s = nullptr;
+			if (sqlite3_prepare_v2(db, "SELECT 1 FROM sqlite_master WHERE type='table' AND name='ga_user_active_agent'",
+			        -1, &s, nullptr) == SQLITE_OK) {
+				had_active_table = sqlite3_step(s) == SQLITE_ROW;
+				sqlite3_finalize(s);
+			}
+		}
+		const char* kAgentPoolSchema[] = {
+			"CREATE TABLE IF NOT EXISTS ga_user_components ("
+			"  user_id INTEGER NOT NULL, item_id INTEGER NOT NULL, quantity INTEGER NOT NULL DEFAULT 0,"
+			"  updated_at INTEGER, PRIMARY KEY (user_id, item_id));",
+			"ALTER TABLE ga_players_inventory ADD COLUMN character_id INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_user_components ADD COLUMN character_id INTEGER NOT NULL DEFAULT 0;",
+			"CREATE TABLE IF NOT EXISTS ga_user_active_agent ("
+			"  user_id INTEGER PRIMARY KEY, character_id INTEGER NOT NULL);",
+		};
+		for (const char* sql : kAgentPoolSchema) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				sqlite3_free(err);
+				err = nullptr;
+			}
+		}
+		if (!had_active_table) {
+			// One-time backfill: the shared pool goes to each account's newest
+			// live agent (users with no live agent stay untagged; their next
+			// agent adopts the rows on first select).
+			const char* kBackfill =
+				"INSERT OR REPLACE INTO ga_user_active_agent (user_id, character_id) "
+				"  SELECT user_id, MAX(id) FROM ga_characters WHERE deleted_at = 0 GROUP BY user_id;"
+				"UPDATE ga_players_inventory SET character_id = "
+				"  (SELECT a.character_id FROM ga_user_active_agent a WHERE a.user_id = ga_players_inventory.user_id) "
+				"  WHERE character_id = 0 AND user_id > 0 AND user_id IN (SELECT user_id FROM ga_user_active_agent);"
+				"UPDATE ga_user_components SET character_id = "
+				"  (SELECT a.character_id FROM ga_user_active_agent a WHERE a.user_id = ga_user_components.user_id) "
+				"  WHERE character_id = 0 AND user_id > 0 AND user_id IN (SELECT user_id FROM ga_user_active_agent);";
+			if (sqlite3_exec(db, kBackfill, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "agent pool backfill failed: %s\n", err);
+				sqlite3_free(err);
+				err = nullptr;
+			} else {
+				Logger::Log("db", "agent pool: bags/components now per agent (backfilled to newest live agent)\n");
+			}
+		}
+		// Tag rows with their agent at INSERT time (loot,
+		// vendor, craft, mail, kits insert with character_id 0), so ownership no
+		// longer depends on the next agent select; then tag any old untagged
+		// rows of the active pool. Mail escrow (user_id 0) and parked rows
+		// (negative user_id) are left alone.
+		const char* kAgentTagOnInsert =
+			"CREATE TRIGGER IF NOT EXISTS trg_inv_tag_agent AFTER INSERT ON ga_players_inventory "
+			" WHEN NEW.character_id = 0 AND NEW.user_id > 0 BEGIN "
+			" UPDATE ga_players_inventory SET character_id = COALESCE((SELECT a.character_id FROM ga_user_active_agent a "
+			"  JOIN ga_characters c ON c.id = a.character_id AND c.deleted_at = 0 WHERE a.user_id = NEW.user_id), 0) "
+			"  WHERE id = NEW.id; END;"
+			"CREATE TRIGGER IF NOT EXISTS trg_comp_tag_agent AFTER INSERT ON ga_user_components "
+			" WHEN NEW.character_id = 0 AND NEW.user_id > 0 BEGIN "
+			" UPDATE ga_user_components SET character_id = COALESCE((SELECT a.character_id FROM ga_user_active_agent a "
+			"  JOIN ga_characters c ON c.id = a.character_id AND c.deleted_at = 0 WHERE a.user_id = NEW.user_id), 0) "
+			"  WHERE user_id = NEW.user_id AND item_id = NEW.item_id; END;"
+			"UPDATE ga_players_inventory SET character_id = (SELECT a.character_id FROM ga_user_active_agent a "
+			"  JOIN ga_characters c ON c.id = a.character_id AND c.deleted_at = 0 WHERE a.user_id = ga_players_inventory.user_id) "
+			" WHERE character_id = 0 AND user_id > 0 AND user_id IN (SELECT a.user_id FROM ga_user_active_agent a "
+			"  JOIN ga_characters c ON c.id = a.character_id AND c.deleted_at = 0);"
+			"UPDATE ga_user_components SET character_id = (SELECT a.character_id FROM ga_user_active_agent a "
+			"  JOIN ga_characters c ON c.id = a.character_id AND c.deleted_at = 0 WHERE a.user_id = ga_user_components.user_id) "
+			" WHERE character_id = 0 AND user_id > 0 AND user_id IN (SELECT a.user_id FROM ga_user_active_agent a "
+			"  JOIN ga_characters c ON c.id = a.character_id AND c.deleted_at = 0);";
+		if (sqlite3_exec(db, kAgentTagOnInsert, nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "agent pool tag-on-insert failed: %s\n", err);
+			sqlite3_free(err);
+			err = nullptr;
+		}
+	}
+
+	// An Appearance item that enters the inventory without
+	// allowed_slots (vendor buy, mail, loot) could never be equipped - the
+	// equip_save drops it ("svid=500 not in allowed_slots",
+	// e.g. AP helmet flair 3444). Derive the slot from the item type like
+	// SeedCosmetics does, on insert and once for existing rows. node_seed
+	// copies triggers, so node-hosted missions get it too.
+	{
+		const char* kCosmeticSlotsCase =
+			"(SELECT CASE "
+			"   WHEN i.item_type_value_id = 950 AND i.item_subtype_value_id IN (1006, 1007) THEN '500' "
+			"   WHEN i.item_type_value_id = 950 AND i.item_subtype_value_id = 1008 THEN '202' "
+			"   WHEN i.item_type_value_id = 1612 THEN '1001' "
+			"   WHEN i.item_type_value_id = 1020 THEN '996,997,998,999,1000' "
+			"   ELSE '' END FROM asm_data_set_items i WHERE i.item_id = %s LIMIT 1)";
+		char trig[1024], fill[1024];
+		char c1[640], c2[640];
+		snprintf(c1, sizeof(c1), kCosmeticSlotsCase, "NEW.item_id");
+		snprintf(c2, sizeof(c2), kCosmeticSlotsCase, "ga_players_inventory.item_id");
+		snprintf(trig, sizeof(trig),
+			"CREATE TRIGGER IF NOT EXISTS trg_inv_cosmetic_slots AFTER INSERT ON ga_players_inventory "
+			" WHEN NEW.allowed_slots = '' AND NEW.device_id = 0 AND NEW.item_id > 0 BEGIN "
+			" UPDATE ga_players_inventory SET allowed_slots = COALESCE(%s, '') WHERE id = NEW.id; END;", c1);
+		snprintf(fill, sizeof(fill),
+			"UPDATE ga_players_inventory SET allowed_slots = COALESCE(%s, '') "
+			" WHERE allowed_slots = '' AND device_id = 0 AND item_id > 0;", c2);
+		for (const char* sql : {trig, fill}) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "cosmetic allowed_slots fix failed: %s\n", err);
+				sqlite3_free(err);
+				err = nullptr;
+			}
+		}
+		const int n = sqlite3_changes(db);
+		if (n > 0) Logger::Log("db", "0232: %d appearance row(s) got their allowed_slots\n", n);
 	}
 
 	// Account auth + PvP-verification columns on ga_users. Added unconditionally
@@ -1902,6 +2086,15 @@ void Database::Init() {
 		"ALTER TABLE ga_users ADD COLUMN registered_at INTEGER;",
 		"ALTER TABLE ga_users ADD COLUMN verified_for_pvp INTEGER NOT NULL DEFAULT 0;",
 		"ALTER TABLE ga_users ADD COLUMN admin_notes TEXT;",
+		// Agenda Points (currency 1605, HZPOINT_VALUE) are an
+		// account wallet, earned in play only (PlayerSessionStore::SyncAgendaPoints).
+		"ALTER TABLE ga_users ADD COLUMN agenda_points INTEGER NOT NULL DEFAULT 0;",
+		"ALTER TABLE ga_users ADD COLUMN ap_daily_day INTEGER NOT NULL DEFAULT 0;",
+		"ALTER TABLE ga_users ADD COLUMN ap_daily_streak INTEGER NOT NULL DEFAULT 0;",
+		"ALTER TABLE ga_characters ADD COLUMN ap_level_awarded INTEGER NOT NULL DEFAULT 0;",
+		// Account booster (items 7641/7417/7418/7419, type 1609 -
+		// "Doubles all end-mission rewards"): unix time it runs out (0 = none).
+		"ALTER TABLE ga_users ADD COLUMN booster_until INTEGER NOT NULL DEFAULT 0;",
 	};
 	for (const char* sql : kUserAuthColumnAlters) {
 		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
@@ -1952,6 +2145,11 @@ void Database::Init() {
 		"  PRIMARY KEY (user_id, class_name, instance_id));"
 		"CREATE TABLE IF NOT EXISTS ga_mmr_processed ("
 		"  instance_id INTEGER PRIMARY KEY, played_at INTEGER);"
+		// Match results parked by a service (NodeClaims::DeferResults):
+		// skipped by the MMR fold until committed; 'dropped' rows stay out.
+		"CREATE TABLE IF NOT EXISTS ga_instance_result_hold ("
+		"  instance_id INTEGER PRIMARY KEY, winning_task_force INTEGER,"
+		"  held_at INTEGER, state TEXT NOT NULL DEFAULT 'held');"
 		"CREATE TABLE IF NOT EXISTS cs_settings ("
 		"  key TEXT PRIMARY KEY, value TEXT);"
 		"INSERT OR IGNORE INTO cs_settings (key, value)"
@@ -2340,6 +2538,19 @@ void Database::Init() {
 			}
 			Logger::Log("db", "[Database] Applied one-time victory_bonus_lives queue seed\n");
 		}
+		// Desert High/Max/UMax queues (team + solo) were created
+		// after the seed above ran on the live DB and kept 0 (= no Challenge
+		// Bonus) - same 4 as their tier siblings. One-time, only rows still 0.
+		if (sqlite3_exec(db,
+				"INSERT INTO cs_migration_markers (name) VALUES ('victory_bonus_lives_desert_2026_10_29');",
+				nullptr, nullptr, &err) == SQLITE_OK) {
+			sqlite3_exec(db,
+				"UPDATE ga_queues SET victory_bonus_lives=4 WHERE victory_bonus_lives=0 AND name IN "
+				"('desert_pve_high','desert_pve_max','desert_pve_umax',"
+				"'solo_desert_pve_high','solo_desert_pve_max','solo_desert_pve_umax');",
+				nullptr, nullptr, nullptr);
+			Logger::Log("db", "[Database] desert queues victory_bonus_lives -> 4\n");
+		} else if (err) { sqlite3_free(err); err = nullptr; }
 	}
 
 	// Agencies + alliances (design 2026-07-18-enable-agencies). UNCONDITIONAL +
@@ -2402,6 +2613,20 @@ void Database::Init() {
 			Logger::Log("db", "Failed to ensure agency schema: %s\n", err ? err : "?");
 			if (err) { sqlite3_free(err); err = nullptr; }
 		}
+	}
+	// Squads mirrored for the game instances (open-zone shared kill
+	// credit, KillCredit::Eligible in the DLL). TeamService is in-memory, so the
+	// table is rebuilt by SyncSquadMembers and emptied at startup.
+	result = sqlite3_exec(db,
+		"CREATE TABLE IF NOT EXISTS ga_squad_members ("
+		"  character_id INTEGER PRIMARY KEY,"
+		"  squad_id     INTEGER NOT NULL"
+		");"
+		"DELETE FROM ga_squad_members;",
+		nullptr, nullptr, &err);
+	if (result != SQLITE_OK) {
+		Logger::Log("db", "Failed to ensure squad schema: %s\n", err ? err : "?");
+		if (err) { sqlite3_free(err); err = nullptr; }
 	}
 	// Map recency weighting (2026-07-19): per-queue CSV of weight divisors,
 	// most recent pick first (e.g. '25,5'); NULL/empty = off. Consumed by
@@ -2609,6 +2834,60 @@ void Database::Init() {
 		}
 	}
 
+	// Seasonal win-reward pick-one tables (9101 Thanksgiving
+	// birds, 9102 Christmas 12-Drops flair, 9103 Valentine's hearts trail);
+	// the calendar windows point at them with "win_loot_table".
+	{
+		static const char* kWinSeed[] = {
+			"INSERT OR IGNORE INTO asm_data_set_loot_tables (id, loot_table_id, name_msg_translated) VALUES "
+			"(9101, 9101, '_Seasonal - Thanksgiving'), (9102, 9102, '_Seasonal - Christmas'), (9103, 9103, '_Seasonal - Valentines');",
+			"INSERT OR IGNORE INTO asm_data_set_loot_table_items (id, loot_table_id, loot_table_item_id, item_id, sub_loot_table_id, quantity, drop_chance, sort_order) VALUES "
+			"(910101, 9101, 910101, 7038, 0, 1, 50, 0), (910102, 9101, 910102, 7039, 0, 1, 30, 1), (910103, 9101, 910103, 7040, 0, 1, 20, 2),"
+			"(910201, 9102, 910201, 7050, 0, 1, 10, 0), (910202, 9102, 910202, 7051, 0, 1, 10, 1), (910203, 9102, 910203, 3295, 0, 1, 10, 2),"
+			"(910204, 9102, 910204, 3232, 0, 1, 10, 3), (910205, 9102, 910205, 7056, 0, 1, 8, 4), (910206, 9102, 910206, 3297, 0, 1, 10, 5),"
+			"(910207, 9102, 910207, 7041, 0, 1, 8, 6), (910208, 9102, 910208, 7055, 0, 1, 8, 7), (910209, 9102, 910209, 7057, 0, 1, 5, 8),"
+			"(910210, 9102, 910210, 7058, 0, 1, 3, 9),"
+			"(910301, 9103, 910301, 7505, 0, 1, 100, 0);",
+		};
+		for (const char* q : kWinSeed) {
+			result = sqlite3_exec(db, q, nullptr, nullptr, &err);
+			if (result != SQLITE_OK) { Logger::Log("db", "[Database] win-loot seed failed: %s\n", err ? err : "?"); sqlite3_free(err); err = nullptr; }
+		}
+	}
+
+	// Calendar-gated map pool entries (EventCalendar). The
+	// Halloween raid "Oasis Checkpoint... of DOOM" is only offered in the
+	// "halloween" window and then is the only Sonoran Raid map (Halloween 2010:
+	// it was the only map in the Defense queue). Its bot factories use the
+	// Halloween spawn tables 155-158 from the game data (orange Colony
+	// variants, bots 1590-1594) instead of the plain Oasis_Checkpoint ones.
+	{
+		result = sqlite3_exec(db,
+			"ALTER TABLE ga_map_pool_entries ADD COLUMN event_key TEXT DEFAULT NULL;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { sqlite3_free(err); err = nullptr; }
+		static const char* kEventSeed[] = {
+			"UPDATE ga_map_pool_entries SET event_key = 'halloween' "
+			"WHERE map_name = 'Raid_Halloween_Oasis_P' AND event_key IS NULL "
+			"AND NOT EXISTS (SELECT 1 FROM cs_migration_markers WHERE name = 'event_key_halloween_seed');",
+			"INSERT OR IGNORE INTO cs_migration_markers (name) VALUES ('event_key_halloween_seed');",
+			// Minion factories -> 157, guardians -> 156, spiders -> 158.
+			"UPDATE map_object_config SET value = CASE "
+			"  WHEN map_object_id IN (12601, 13284, 13290) THEN '156' "
+			"  WHEN map_object_id IN (12602, 12603) THEN '158' ELSE '157' END "
+			"WHERE map_name = 'Raid_Halloween_Oasis_P' AND variant_group IS NULL "
+			"AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') "
+			"AND map_object_id IN (12593, 12594, 12595, 12596, 12597, 12598, 13540, "
+			"                      12601, 13284, 13290, 12602, 12603);",
+		};
+		for (const char* sql : kEventSeed) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] event seed step failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+	}
+
 	// Carbon Capture DLC (2026-07-31): launcher pack 'carbon-capture' with the
 	// Rot_10v10_Carbon_Capture1 scramble map in the beta_pvp pool (7), locked
 	// behind dlc_id 2. Game files ship no proper friendly name / loading
@@ -2673,6 +2952,467 @@ void Database::Init() {
 				Logger::Log("db", "[Database] PvE Factory DLC step failed: %s\n", err ? err : "?");
 				if (err) { sqlite3_free(err); err = nullptr; }
 			}
+		}
+	}
+
+	// Consumables (item type 1412) fit the Consume slot = slot value 501
+	// "ES13 (Consumable)", equip point 13. Rows granted before this fix carried
+	// 500 (ES12 Helmet), so equip_save refused them; fix them up (idempotent).
+	{
+		const char* sql =
+			"UPDATE ga_character_devices SET equipped_slot = 13 WHERE equipped_slot = 12 AND inventory_id IN "
+			" (SELECT id FROM ga_players_inventory WHERE allowed_slots IN ('500', '500,501') AND item_id IN "
+			"  (SELECT item_id FROM asm_data_set_items WHERE item_type_value_id = 1412));"
+			"UPDATE ga_players_inventory SET allowed_slots = '501' WHERE allowed_slots IN ('500', '500,501') AND item_id IN "
+			" (SELECT item_id FROM asm_data_set_items WHERE item_type_value_id = 1412);";
+		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] consumable slot fix-up failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+	}
+
+	// Intro mission Inception_ALL (new-agent tutorial). Without a
+	// row the GO_PLAY falls back to the HQ name + loading screen. msg 28725
+	// 'Inception'; res 5207 = HUD_MissionLoads.loading_intromissions_a
+	// (res_type 664, read from the client's assembly.dat). 1553 = PvE mission.
+	// map_game_id 100900 is our own (the original id is not known); one hour.
+	{
+		const char* sql =
+			"INSERT OR IGNORE INTO map_game_info "
+			"(map_game_id, map_name, game_class, gameplay_type_value_id, "
+			" friendly_name_msg_id, entry_background_image_res_id, "
+			" mission_time_secs, is_pvp, overtime_secs, allow_overtime) VALUES"
+			" (100900, 'Inception_ALL', 'TgGame.TgGame_Mission',"
+			"  1553, 28725, 5207, 3600, 0, 0, 0);";
+		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] Inception map_game_info seed failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+	}
+
+	// Intro enemies. The 5 Inception TgBotFactory actors (legacy
+	// obj_bot_factories v14: spawn table 53, task force 2) were never ported
+	// to map_object_config, so the DLL loaded them with spawn table 0 and the
+	// tutorial had no enemies. Same column set as the v62 per-map ports.
+	{
+		const char* sql =
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'Inception_ALL', f.map_object_id, c.col, c.val, NULL, NULL, 1 "
+			"FROM (SELECT 9832 AS map_object_id UNION ALL SELECT 9833 UNION ALL SELECT 11812 "
+			"      UNION ALL SELECT 12627 UNION ALL SELECT 12628) f, "
+			"     (SELECT 's_n_task_force' AS col, '2' AS val UNION ALL SELECT 's_n_team_number', '2' "
+			"      UNION ALL SELECT 'n_spawn_table_id', '53' UNION ALL SELECT 'n_default_spawn_table_id', '53') c "
+			"WHERE NOT EXISTS (SELECT 1 FROM map_object_config m WHERE m.map_name = 'Inception_ALL' "
+			"                  AND m.map_object_id = f.map_object_id AND m.column_name = c.col);";
+		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] Inception bot factory seed failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+	}
+
+	// Intro spawn counts. Table 53 (4 Security Androids /
+	// Sector Workers / Watchers, respawning) was a placeholder guess; the map Kismet
+	// (Inception_3_TEMP) has one android per lesson room: TgBotFactory_2
+	// (11812, "stationary android") is switched on by SeqAct_Toggle_0
+	// "Spawn malfunc bot", the others hold "2nd/3rd Android" + patrols.
+	// The game's own tutorial bots: 1337 Malfunctioning Android, 1322
+	// Training Android (no stock spawn table uses them). One bot per
+	// factory, no respawn (like upstream v112 for missions), 11812 waits for
+	// its Toggle. Tables 10100/10101 at Inception difficulty 1028.
+	{
+		const char* sql =
+			"UPDATE map_object_config SET value = CASE map_object_id WHEN 11812 THEN '10100' ELSE '10101' END "
+			"WHERE map_name = 'Inception_ALL' AND map_object_id IN (9832, 9833, 11812, 12627, 12628) "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '53';"
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'Inception_ALL', c.mid, c.col, c.val, NULL, NULL, 1 "
+			"FROM (SELECT 9832 AS mid, 'b_respawn' AS col, '0' AS val UNION ALL SELECT 9833, 'b_respawn', '0' "
+			"      UNION ALL SELECT 11812, 'b_respawn', '0' UNION ALL SELECT 12627, 'b_respawn', '0' "
+			"      UNION ALL SELECT 12628, 'b_respawn', '0' UNION ALL SELECT 11812, 'b_auto_spawn', '0') c "
+			"WHERE NOT EXISTS (SELECT 1 FROM map_object_config m WHERE m.map_name = 'Inception_ALL' "
+			"                  AND m.map_object_id = c.mid AND m.column_name = c.col);"
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, enemy_bot_id, bot_count, "
+			"   spawn_chance, team_size, multiple_class_flag, bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT t.id, 1028, 0, 1, t.bot, 1, 1.0, 0, 0, 1.0, 0, 0, 0 "
+			"FROM (SELECT 10100 AS id, 1337 AS bot UNION ALL SELECT 10101, 1322) t "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables m WHERE m.bot_spawn_table_id = t.id);";
+		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] Inception spawn count fix failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+	}
+
+	// Intro lessons that fight back. 1322's
+	// Training_Android_AI only patrols; the game's own combat tutorial bot is
+	// 1324 "Training Android" (Training_Android_AI3, 100 HP, shoots enemies in
+	// sight). All four Inception fight factories (9832/9833 + "2nd/3rd Android"
+	// 12627/12628) get table 10102 = 1324 x1 (1322 rooms stood
+	// idle; no tutorial text calls them target practice). The malfunc bot
+	// 1337 (11812, "shoot the android at the door") gets 1324's AI in the DLL
+	// (SpawnBotById).
+	{
+		const char* sql =
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, enemy_bot_id, bot_count, "
+			"   spawn_chance, team_size, multiple_class_flag, bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10102, 1028, 0, 1, 1324, 1, 1.0, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables m WHERE m.bot_spawn_table_id = 10102);"
+			"UPDATE map_object_config SET value = '10102' "
+			"WHERE map_name = 'Inception_ALL' AND map_object_id IN (9832, 9833, 12627, 12628) "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value IN ('53', '10101');";
+		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] Inception combat bots failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+	}
+
+	// Tutorial chapters. Adrenaline_P / Skylark_P /
+	// AgencyZero_P = chapters 2-4 of the original tutorial; their real
+	// map_game ids are the Kismet RequestMission targets (Inception -> 1264,
+	// Adrenaline -> 1271, Skylark -> 1281, Agency Zero -> 1175 Dome City),
+	// names msg 34040 / 59266 / 35005, intro loading screen like Inception.
+	// Enemy spawn config is Hi-Rez backend data (not in the .ut3): every
+	// TgBotFactory in those maps gets the intro combat bot (table 10102 =
+	// 1324 Training Android x1, no respawn), task force 2.
+	{
+		const char* sql =
+			"INSERT OR IGNORE INTO map_game_info "
+			"(map_game_id, map_name, game_class, gameplay_type_value_id, "
+			" friendly_name_msg_id, entry_background_image_res_id, "
+			" mission_time_secs, is_pvp, overtime_secs, allow_overtime) VALUES"
+			" (1264, 'Adrenaline_P', 'TgGame.TgGame_Mission', 1553, 34040, 5207, 3600, 0, 0, 0),"
+			" (1271, 'Skylark_P',    'TgGame.TgGame_Mission', 1553, 59266, 5207, 3600, 0, 0, 0),"
+			" (1281, 'AgencyZero_P', 'TgGame.TgGame_Mission', 1553, 35005, 5207, 3600, 0, 0, 0);"
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT f.map, f.mid, c.col, c.val, NULL, NULL, 1 FROM ("
+			" SELECT 'Adrenaline_P' AS map, value AS mid FROM json_each('[11998,11999,12000,12001,12002,12003,12012,12013,12014,12017,12022,12023,12024,12025,12026,12027,12028,12029,12030,12031]')"
+			" UNION ALL SELECT 'Skylark_P', value FROM json_each('[12064,12065,12066,12067,12068,12069,12071,12074,12184,12185]')"
+			" UNION ALL SELECT 'AgencyZero_P', value FROM json_each('[12133,12134,12135,12136,12137,12138,12168,12169,12170,12172,12173,12174,12176,12177,12228,12701,12702,13891,13892,13896,13899,13900,13992]')"
+			") f, (SELECT 's_n_task_force' AS col, '2' AS val UNION ALL SELECT 's_n_team_number', '2' "
+			"      UNION ALL SELECT 'n_spawn_table_id', '10102' UNION ALL SELECT 'n_default_spawn_table_id', '10102' "
+			"      UNION ALL SELECT 'b_respawn', '0') c "
+			"WHERE NOT EXISTS (SELECT 1 FROM map_object_config m WHERE m.map_name = f.map "
+			"                  AND m.map_object_id = f.mid AND m.column_name = c.col);";
+		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] tutorial chapters seed failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+	}
+
+	// The chapters' own enemies. asm_data_set_bot_spawn_tables
+	// ships tutorial-only tables (Low Security 1028 rows only, intro bots, no
+	// factory refers to them; Inception's own factories use 53): 47 Security
+	// Android x3, 48 Guardian, 49 Alarm Responder x2 (Adrenaline: drones,
+	// alarm squads, Guardian boss); 50 Sector Worker x2 + Watcher, 54 Security
+	// Android x3 + Watcher + Worker, 55 Elite Assassin 1391, 57 Alarm Responder
+	// x3 (Skylark: scanners, rooftop drones, Elite Assassin); 56 Security
+	// Android x3 + Sentinel + Worker + Watcher, 178 Alarm Responder x5 (Agency
+	// Zero: checkpoints, sentinels, teleported alarm squads). Mapped by the
+	// factories' map flags (patrol / bSpawnOnAlarm / Kismet BotDied / boss);
+	// replaces only the earlier stand-in table 10102.
+	{
+		const char* sql =
+			"UPDATE map_object_config SET value = CAST(("
+			" SELECT t FROM (SELECT value AS mid, NULL AS t FROM json_each('[]')"
+			"  UNION ALL SELECT value, 49 FROM json_each('[12000,12003,12017,12024]')"
+			"  UNION ALL SELECT value, 47 FROM json_each('[11998,11999,12001,12002,12012,12013,12014,12022,12023,12025,12026,12027,12028,12029,12030,12031]')"
+			"  UNION ALL SELECT 12071, 55"
+			"  UNION ALL SELECT value, 57 FROM json_each('[12067,12069,13891,13892,13896,13899,13900]')"
+			"  UNION ALL SELECT value, 50 FROM json_each('[12074,12184]')"
+			"  UNION ALL SELECT value, 54 FROM json_each('[12064,12065,12066,12068,12185,12701,12702]')"
+			"  UNION ALL SELECT value, 56 FROM json_each('[12133,12134,12135,12137,12138,12172,12173,12174,12176,12177]')"
+			"  UNION ALL SELECT value, 178 FROM json_each('[12136,12168,12169,12170,12228,13992]')"
+			" ) x WHERE x.mid = map_object_config.map_object_id) AS TEXT) "
+			"WHERE map_name IN ('Adrenaline_P','Skylark_P','AgencyZero_P') "
+			"  AND column_name IN ('n_spawn_table_id','n_default_spawn_table_id') AND value = '10102';";
+		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] tutorial chapter enemies failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+		// 12003 is one of Adrenaline's four bSpawnOnAlarm factories
+		// (with 12000/12017/12024): a tripwire alarm must bring alarm responders,
+		// not a second Guardian (the boss is the TgMissionObjective_Bot's own spawn).
+		// Rewrites databases seeded with the earlier mapping.
+		if (sqlite3_exec(db,
+			"UPDATE map_object_config SET value = '49' WHERE map_name = 'Adrenaline_P' AND map_object_id = 12003 "
+			"AND column_name IN ('n_spawn_table_id','n_default_spawn_table_id') AND value = '48';",
+			nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] tutorial alarm factory 12003 failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+		// The intact ActivateAlarm native only picks a bSpawnOnAlarm
+		// factory whose nPriority == s_nCurrentPriority or -1. Agency Zero's six
+		// alarm factories carry the map default 0 while the chapter runs at phase 1,
+		// so its tripwires spawned nothing. -1 = any phase (SpawnBotById agrees).
+		if (sqlite3_exec(db,
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'AgencyZero_P', value, 'n_priority', '-1', NULL, NULL, 1 FROM json_each('[12136,12168,12169,12170,12228,13992]') f "
+			"WHERE NOT EXISTS (SELECT 1 FROM map_object_config m WHERE m.map_name = 'AgencyZero_P' "
+			"                  AND m.map_object_id = f.value AND m.column_name = 'n_priority');",
+			nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] tutorial Agency Zero alarm priority failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+		// Agency Zero's Medic lesson ("Heal the Operative, then
+		// capture the point", Kismet 'Medic Special' -> Toggle 'Medic NPC') turns
+		// on factory 13896 = the ally the Medic keeps alive. Its BotDied event
+		// fades the screen, despawns the encounter and teleports the player back
+		// to the checkpoint start (fail/retry). It was first seeded with alarm responders
+		// (enemy task force), so every kill = 'Operative died' -> endless reset
+		// The game's own bot for it is 1620 "Gruff" ("Uses
+		// modified Helot AI. Holds off responders while you capture the point.
+		// Calls for healing", Gruff_AI 839) - referenced by no shipped table, so
+		// mod table 10103 = 1620 x1, on the player's task force 1.
+		if (sqlite3_exec(db,
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, enemy_bot_id, bot_count, "
+			"   spawn_chance, team_size, multiple_class_flag, bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10103, 1028, 0, 1, 1620, 1, 1.0, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables m WHERE m.bot_spawn_table_id = 10103);"
+			"UPDATE map_object_config SET value = '10103' WHERE map_name = 'AgencyZero_P' AND map_object_id = 13896 "
+			"  AND column_name IN ('n_spawn_table_id','n_default_spawn_table_id') AND value = '57';"
+			"UPDATE map_object_config SET value = '1' WHERE map_name = 'AgencyZero_P' AND map_object_id = 13896 "
+			"  AND column_name IN ('s_n_task_force','s_n_team_number') AND value = '2';"
+			// The five class-lesson factories (Medic Gruff 13896, robots 13891/13892,
+			// Recon turrets 13899/13900) are only ever Kismet 'Turn On' toggled when the
+			// player reaches them; with the map default bAutoSpawn=1 they all spawned at
+			// load (every class's encounter at once, robots wearing Gruff down before the
+			// player arrives -> BotDied reset). Dormant until Kismet wakes them.
+			// 'The Robots are Coming!' (Kismet Toggle_9, 5 s after the Medic trigger) =
+			// factories 13891/13892, refilled while on. They first had table 57 (3-4
+			// rifle Alarm Responders each, every ~10 s, beside the checkpoint start;
+			// that killed the player within seconds). The comment says robots:
+			// mod table 10104 = Minion Sentinel 1392 (TreadRobot, AgencyZero's own) x1.
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, enemy_bot_id, bot_count, "
+			"   spawn_chance, team_size, multiple_class_flag, bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10104, 1028, 0, 1, 1392, 1, 1.0, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables m WHERE m.bot_spawn_table_id = 10104);"
+			"UPDATE map_object_config SET value = '10104' WHERE map_name = 'AgencyZero_P' AND map_object_id IN (13891,13892) "
+			"  AND column_name IN ('n_spawn_table_id','n_default_spawn_table_id') AND value = '57';"
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'AgencyZero_P', value, 'b_auto_spawn', '0', NULL, NULL, 1 FROM json_each('[13891,13892,13896,13899,13900]') f "
+			"WHERE NOT EXISTS (SELECT 1 FROM map_object_config m WHERE m.map_name = 'AgencyZero_P' "
+			"                  AND m.map_object_id = f.value AND m.column_name = 'b_auto_spawn');",
+			nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] tutorial Agency Zero Gruff failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+		// Agency Zero's Recon lesson (Kismet GetCharClass
+		// 'Infiltrator' -> Toggle 'Spawn Recon Turrets' = factories 13899/13900,
+		// one PathNode each, either side of the capture point). Original text
+		// 66350 "Use Stealth to sneak behind the turrets to destroy them, then
+		// capture the point", VO 68076 "some of Agency Zero's old security turrets
+		// are still around". They were first seeded with table 57 (3-4 Alarm Responders each),
+		// so Recon players got rifle squads instead of turrets. The game's own
+		// tutorial turret is 1619 "Malfunctioning AUTO CANNON" (turret behaviour
+		// 103, "for tutorial purposes", next to Gruff 1620) - in no shipped table,
+		// so mod table 10105 = 1619 x1, enemy task force 2, no respawn.
+		if (sqlite3_exec(db,
+			"INSERT INTO mod_data_set_bot_spawn_tables "
+			"  (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, enemy_bot_id, bot_count, "
+			"   spawn_chance, team_size, multiple_class_flag, bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT 10105, 1028, 0, 1, 1619, 1, 1.0, 0, 0, 1.0, 0, 0, 0 "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables m WHERE m.bot_spawn_table_id = 10105);"
+			"UPDATE map_object_config SET value = '10105' WHERE map_name = 'AgencyZero_P' AND map_object_id IN (13899,13900) "
+			"  AND column_name IN ('n_spawn_table_id','n_default_spawn_table_id') AND value = '57';",
+			nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] tutorial Agency Zero Recon turrets failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+	}
+
+	// North Sonora open-world enemies. The 89 TgBotFactory
+	// actors in DomeNorth_Zone_V2_P never got spawn config (Hi-Rez backend data,
+	// not in the .ut3; upstream has none), so the zone was empty. The game ships
+	// 74 unreferenced open-world spawn tables 179-252 (difficulty 1029, the
+	// Colony set + DN NPC bots Greaves 216 / Robot Rancher 219 / Supply Trader
+	// 223 / Reprogrammed Drone 220). RECONSTRUCTED mapping (not the original):
+	// Colony Eyes on the stationary Kismet "Tower"/"City Eye" factories, short-
+	// respawn wasp/drone tables on their Kismet responder factories, Juggernaut
+	// on the Juggz factory, NPC bots at their NPC spots, Dome City Guards (166)
+	// at the dome gate, the rest by region (spiders at ponds, Corrupted dwellers
+	// at the Dweller camp, Colony base units in the south-east). Same column
+	// set as SD_Zone_P (task force 1). Only inserts missing rows.
+	{
+		const char* sql =
+			"WITH v(mid, tid) AS (VALUES "
+			"(14199,210),(14200,224),(14201,227),(14202,228),(14186,229),(14184,250),(14206,245),(14205,244),"
+			"(14204,239),(14203,201),(14187,202),(14192,190),(14191,197),(14261,207),(14260,207),(14188,212),"
+			"(14189,200),(14090,203),(14097,189),(14183,214),(14077,199),(14085,166),(14086,166),(14087,179),"
+			"(14088,204),(14259,223),(14074,216),(14258,219),(14075,220),(14076,220),(14084,166),(14089,166),"
+			"(14099,166),(14048,209),(14069,217),(14070,240),(14071,184),(14072,213),(14278,206),(14279,194),"
+			"(14104,221),(14105,185),(14106,188),(14262,235),(14263,186),(14265,215),(14248,192),(14269,231),"
+			"(14273,226),(14250,230),(14078,182),(14246,183),(14247,182),(14253,183),(14267,182),(14079,191),"
+			"(14185,233),(14252,251),(14254,232),(14270,198),(14113,194),(14244,211),(14245,234),(14255,222),"
+			"(14256,187),(14257,195),(14276,246),(14277,252),(14101,196),(14102,218),(14103,241),(14219,242),"
+			"(14220,248),(14222,193),(14223,247),(14226,243),(14227,236),(14228,237),(14229,181),(14230,249),"
+			"(14232,238),(14237,209),(14238,234),(14239,252),(14242,246),(14266,191),(14271,211),(14284,243),"
+			"(14285,198)"
+			") "
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'DomeNorth_Zone_V2_P', v.mid, c.col, CASE c.col WHEN 's_n_task_force' THEN '1' WHEN 's_n_team_number' THEN '1' "
+			"       ELSE CAST(v.tid AS TEXT) END, NULL, NULL, 1 "
+			"FROM v, (SELECT 's_n_task_force' AS col UNION ALL SELECT 's_n_team_number' "
+			"         UNION ALL SELECT 'n_spawn_table_id' UNION ALL SELECT 'n_default_spawn_table_id') c "
+			"WHERE NOT EXISTS (SELECT 1 FROM map_object_config m WHERE m.map_name = 'DomeNorth_Zone_V2_P' "
+			"                  AND m.map_object_id = v.mid AND m.column_name = c.col);";
+		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] North Sonora bot factory seed failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+	}
+
+	// North Sonora friendly NPCs. The seed above put every factory on
+	// the bot side (task force / team 1), so Commander Greaves, the Robot
+	// Rancher, the Supply Trader, the reprogrammed drones, the Dome City Guards,
+	// Gruff and the A.R.M. Guards were hostile and could be killed for XP. Zone
+	// players are task force 2 (OpenWorldTravel::kTaskForce); the game's own
+	// DN_Defense maps also put Gruff / A.R.M. Guards on task force 2. Only
+	// rewrites rows still holding the seed value.
+	{
+		const char* sql =
+			"UPDATE map_object_config SET value = '2' "
+			"WHERE map_name = 'DomeNorth_Zone_V2_P' "
+			"  AND map_object_id IN (14074, 14258, 14259, 14075, 14076, 14084, 14085, 14086, 14089, 14099, 14183, 14090, 14097) "
+			"  AND column_name IN ('s_n_task_force', 's_n_team_number') AND value = '1';";
+		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] North Sonora friendly NPC sides failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+	}
+
+	// North Sonora gate, map Kismet: frame "Dome City Guard Logic" makes 14085/14086
+	// guard reinforcements (they die -> 5 s -> "Reinforcements on the way" -> walk
+	// out to action points 89/91), frame "Spider and Drone Gate Spawn" makes
+	// 14087/14088 the attackers ("DC Assault bots", spawn 9000-14000 uu from the door,
+	// walk to action point 81). They were seeded as Colony Wasps by mistake. Rewrites
+	// only the old seed values. Bot factories also carry their task force as coalition.
+	{
+		const char* sql =
+			"UPDATE map_object_config SET value = '166' WHERE map_name = 'DomeNorth_Zone_V2_P' "
+			"  AND ((map_object_id = 14085 AND value = '180') OR (map_object_id = 14086 AND value = '205')) "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id');"
+			"DELETE FROM map_object_config WHERE map_name = 'DomeNorth_Zone_V2_P' "
+			"  AND map_object_id IN (14085, 14086) AND column_name = 'no_kill_reward';"
+			"UPDATE mod_data_set_bot_spawn_tables SET bot_count = 3 "
+			"  WHERE bot_spawn_table_id = 204 AND spawn_group = 1 AND bot_count = 2;"
+			// 14261 is not a Juggernaut spawn: in the map's Kismet it is the Escort Trader event's
+			// "Spawn Adds" factory (touch -> Toggle "Spawn Adds" -> "Androids attack!", despawned with
+			// 14260 by "Despawn Trader and Adds"), so it waits for Kismet and uses 14260's table (the
+			// data has no android table). The Juggernaut table 225 stood on it by our 0068 guess, right on
+			// the world boss lair. SpawnJuggz is a console event on another factory (14189).
+			"UPDATE map_object_config SET value = '207' WHERE map_name = 'DomeNorth_Zone_V2_P' AND map_object_id = 14261 "
+			"  AND column_name IN ('n_spawn_table_id', 'n_default_spawn_table_id') AND value = '225';"
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'DomeNorth_Zone_V2_P', 14261, 'b_auto_spawn', '0', NULL, NULL, 1 WHERE NOT EXISTS "
+			"  (SELECT 1 FROM map_object_config m WHERE m.map_name = 'DomeNorth_Zone_V2_P' AND m.map_object_id = 14261 AND m.column_name = 'b_auto_spawn');"
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT t.map_name, t.map_object_id, 's_e_coalition', t.value, NULL, NULL, 1 "
+			"FROM map_object_config t WHERE t.map_name = 'DomeNorth_Zone_V2_P' AND t.column_name = 's_n_task_force' "
+			"  AND t.map_object_id IN (SELECT map_object_id FROM map_object_config WHERE map_name = 'DomeNorth_Zone_V2_P' AND column_name = 'n_spawn_table_id') "
+			"  AND NOT EXISTS (SELECT 1 FROM map_object_config m WHERE m.map_name = t.map_name "
+			"    AND m.map_object_id = t.map_object_id AND m.column_name = 's_e_coalition');";
+		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] North Sonora gate roles failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+	}
+
+	// North Sonora gate fight (refill + rewards). Colony Drones from the Satellite Uplink
+	// (14087/14088) against the Dome City Guards. Their
+	// tables shipped spawn_group_respawn_sec = 0 (instant refill) and up to 12
+	// alive; override copies (mod table wins per id) refill after 45 s with at
+	// most 10 alive. The four factories give no kill XP / loot (Steam 1.5.1:
+	// the gate NPCs no longer give loot or XP); quest kills still count.
+	// Insert-only.
+	{
+		const char* sql =
+			"INSERT INTO mod_data_set_bot_spawn_tables (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec) "
+			"SELECT v.t, 1029, 0, v.g, v.b, v.n, v.c, 0, 0, 1.0, 0, 0, 45 FROM ("
+			"  SELECT 179 AS t, 1 AS g, 1468 AS b, 2 AS n, 1.0 AS c UNION ALL SELECT 179, 2, 1468, 1, 0.5 "
+			"  UNION ALL SELECT 204, 1, 1468, 3, 1.0 "
+			"  UNION ALL SELECT 180, 1, 1584, 2, 1.0 UNION ALL SELECT 180, 2, 1584, 1, 0.5 "
+			"  UNION ALL SELECT 205, 1, 1584, 2, 1.0) v "
+			"WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables m WHERE m.bot_spawn_table_id = v.t);"
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'DomeNorth_Zone_V2_P', f.id, 'no_kill_reward', '1', NULL, NULL, 1 "
+			"FROM (SELECT 14087 AS id UNION ALL SELECT 14088) f "
+			"WHERE NOT EXISTS (SELECT 1 FROM map_object_config m WHERE m.map_name = 'DomeNorth_Zone_V2_P' "
+			"  AND m.map_object_id = f.id AND m.column_name = 'no_kill_reward');"
+			// Guards (14084/14089/14099) and the four attacker factories see each
+			// other's bots within 4000 uu (DLL BotSight), so the fight runs.
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'DomeNorth_Zone_V2_P', f.id, 'bot_sight_radius', '4000', NULL, NULL, 1 "
+			"FROM (SELECT 14084 AS id UNION ALL SELECT 14089 UNION ALL SELECT 14099 UNION ALL SELECT 14085 "
+			"  UNION ALL SELECT 14086 UNION ALL SELECT 14087 UNION ALL SELECT 14088) f "
+			"WHERE NOT EXISTS (SELECT 1 FROM map_object_config m WHERE m.map_name = 'DomeNorth_Zone_V2_P' "
+			"  AND m.map_object_id = f.id AND m.column_name = 'bot_sight_radius');";
+		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] North Sonora gate fight failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+	}
+
+	// Sonoran Desert open world. 3 of the 37 SD_Zone_P bot
+	// factories never got a spawn table upstream (the rest follow the zone's
+	// tables 91-144). RECONSTRUCTED from position + the unused zone-style
+	// (respawning) tables: 13414 is the always-patrol factory between the
+	// Legion camp factories 13413 (95) / 13496 (106) -> 109 Legion Sergeant +
+	// Grunt; 13519 sits between the southern Colony factories -> 143 Colony
+	// Sand Spider; 13520 is at the west edge next to the Elkas/Legion factories
+	// 13539 (139) / 13544 (141) -> 142 Kanar Scout. Only inserts missing rows.
+	{
+		const char* sql =
+			"WITH v(mid, tid) AS (VALUES (13414,109),(13519,143),(13520,142)) "
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'SD_Zone_P', v.mid, c.col, CAST(v.tid AS TEXT), NULL, NULL, 1 "
+			"FROM v, (SELECT 'n_spawn_table_id' AS col UNION ALL SELECT 'n_default_spawn_table_id') c "
+			"WHERE NOT EXISTS (SELECT 1 FROM map_object_config m WHERE m.map_name = 'SD_Zone_P' "
+			"                  AND m.map_object_id = v.mid AND m.column_name = c.col);";
+		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] Sonoran Desert bot factory seed failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+	}
+
+	// North Sonora hazards. DomeNorth_Zone_V2_P places 18
+	// TgDeviceVolume actors with no device wired (same 0-import gap as the
+	// upstream v84 1P_CPFactory01_P fix). They are the same archetypes the
+	// Colony instance maps configure: 13972/13973 -> 5450 "High Voltage"
+	// (enemy-side pain volume; 17 placements) and 13915 -> 2801
+	// Invulnerable (friendly; 1 placement), copied from 1p_SDColony04_P.
+	// Sides are flipped vs the Colony maps: there players are tf 1 and the
+	// enemy tf 2, in the zones players are tf 2 (OpenWorldTravel::kTaskForce)
+	// and the bots tf 1. Same for the zone's one TgDeployableFactory 13481:
+	// a copy of 1P_SDDweller01_P's 13481 (same map object id) = deployable
+	// 210 Dweller EMP Field Generator, enemy side, auto spawn.
+	// Inserts missing rows, then corrects the team/tf of rows seeded with the
+	// unflipped values.
+	{
+		const char* sql =
+			"WITH v(mid, dev, tm) AS (VALUES (13972,5450,1),(13973,5450,1),(13915,2801,2)), "
+			"c(col) AS (VALUES ('s_n_device_id'),('s_n_team_number'),('s_n_task_force')) "
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'DomeNorth_Zone_V2_P', v.mid, c.col, "
+			"       CAST(CASE c.col WHEN 's_n_device_id' THEN v.dev ELSE v.tm END AS TEXT), NULL, NULL, 1 "
+			"FROM v, c "
+			"WHERE NOT EXISTS (SELECT 1 FROM map_object_config m WHERE m.map_name = 'DomeNorth_Zone_V2_P' "
+			"                  AND m.map_object_id = v.mid AND m.column_name = c.col); "
+			"UPDATE map_object_config SET value = CASE map_object_id WHEN 13915 THEN '2' ELSE '1' END "
+			"WHERE map_name = 'DomeNorth_Zone_V2_P' AND map_object_id IN (13972,13973,13915) "
+			"  AND column_name IN ('s_n_team_number','s_n_task_force') "
+			"  AND value = CASE map_object_id WHEN 13915 THEN '1' ELSE '2' END; "
+			"WITH c(col, val) AS (VALUES ('s_n_selected_object_id','210'),('s_n_task_force','1'), "
+			"                            ('s_n_team_number','1'),('s_b_auto_spawn','1')) "
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) "
+			"SELECT 'DomeNorth_Zone_V2_P', 13481, c.col, c.val, NULL, NULL, 1 FROM c "
+			"WHERE NOT EXISTS (SELECT 1 FROM map_object_config m WHERE m.map_name = 'DomeNorth_Zone_V2_P' "
+			"                  AND m.map_object_id = 13481 AND m.column_name = c.col);";
+		if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] North Sonora device volume seed failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
 		}
 	}
 
@@ -2825,6 +3565,25 @@ void Database::Init() {
 				}
 			}
 			Logger::Log("db", "[Database] Applied one-time VR arena map_game_id 100005 -> 1168\n");
+		}
+
+		// Dome Defense raid = map_game_id 1422 in the game data
+		// (production list, quest 169, achievements 380-393 "Dome Defender",
+		// "Kill All Robots"); upstream registered it as fabricated 100004, so
+		// those never matched. Every boot (the DLL's v63 seed can re-add 100004
+		// on a fresh DB): rename, then drop a leftover duplicate.
+		static const char* kDomeDefenseId[] = {
+			"UPDATE map_game_info SET map_game_id = 1422 "
+			"WHERE map_game_id = 100004 AND map_name = 'Raid_DomeCityDefense_P' "
+			"  AND NOT EXISTS (SELECT 1 FROM map_game_info m2 WHERE m2.map_game_id = 1422);",
+			"DELETE FROM map_game_info WHERE map_game_id = 100004 AND map_name = 'Raid_DomeCityDefense_P' "
+			"  AND EXISTS (SELECT 1 FROM map_game_info m2 WHERE m2.map_game_id = 1422);",
+		};
+		for (const char* sql : kDomeDefenseId) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] Dome Defense map_game_id 1422 step failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
 		}
 
 		// Idempotent — INSERT OR IGNORE never stomps rows the operator edited.
@@ -3030,6 +3789,358 @@ void Database::Init() {
 		}
 	}
 
+	// Missions > Special Ops "Solo" list. The client (QueueManager
+	// filter, GlobalAgenda.exe 0x10929010) lists a PvE queue under Solo only
+	// if MAX_PLAYERS_PER_TEAM <= 1 and under Team only if it is != 1, so the
+	// live game had separate solo queues. Clone the 8 Special Ops queues
+	// (1,4,5,6 Commonwealth Prime; 13-15,17 Sonoran Desert) as queue_id + 20:
+	// one player per party (max_team_size 1 = the existing join-time party
+	// cap), solos grouped into one mission (mixed/ignore),
+	// short pop delay so a second solo can make the same pop. Same rewards
+	// (difficulty) and map pools. INSERT OR IGNORE on the PK.
+	{
+		static const char* kSoloQueues[] = {
+			"DROP TABLE IF EXISTS temp.solo_q;",
+			"CREATE TEMP TABLE solo_q AS SELECT * FROM ga_queues "
+			"WHERE queue_id IN (1, 4, 5, 6, 13, 14, 15, 17) AND max_players_per_team > 1;",
+			"UPDATE temp.solo_q SET queue_id = queue_id + 20, name = 'solo_' || name, "
+			"  max_players_per_team = 1, team_policy = 'mixed', team_side_policy = 'ignore', "
+			"  max_team_size = 1, pop_delay_seconds = MAX(pop_delay_seconds, 15.0);",
+			"INSERT OR IGNORE INTO ga_queues SELECT * FROM temp.solo_q;",
+			"DROP TABLE IF EXISTS temp.solo_q;",
+			// The final game named the solo tiers Adept / Advanced / Expert
+			// (difficulty group 116: 1468-1470, reward multipliers 1.5/2.0/2.5
+			// = Medium/High/Max). Card text only (name/desc msg 55322-55324);
+			// gameplay difficulty + UI grouping key stay. Gated on the cloned text.
+			"UPDATE ga_queues SET name_msg_id = 55322, desc_msg_id = 55322 "
+			"WHERE queue_id IN (24, 37) AND name_msg_id = 27673;",
+			"UPDATE ga_queues SET name_msg_id = 55323, desc_msg_id = 55323 "
+			"WHERE queue_id IN (25, 33) AND name_msg_id = 27674;",
+			"UPDATE ga_queues SET name_msg_id = 55324, desc_msg_id = 55324 "
+			"WHERE queue_id IN (26, 34) AND name_msg_id = 34212;",
+			// The Solo list rows are grouped + labelled by the wire difficulty
+			// (valid_values group 116 text), so advertise the solo values there:
+			// rows read Adept / Advanced / Expert instead of "* Security".
+			// Wire-only (marshal); spawn/rewards keep difficulty_value_id.
+			"UPDATE ga_queues SET marshal_difficulty_value_id = 1468 "
+			"WHERE queue_id IN (24, 37) AND marshal_difficulty_value_id IS NULL;",
+			"UPDATE ga_queues SET marshal_difficulty_value_id = 1469 "
+			"WHERE queue_id IN (25, 33) AND marshal_difficulty_value_id IS NULL;",
+			"UPDATE ga_queues SET marshal_difficulty_value_id = 1470 "
+			"WHERE queue_id IN (26, 34) AND marshal_difficulty_value_id IS NULL;",
+			// Novice (1467, msg 55321): the original's newcomer solo tier, no level
+			// requirement. Cloned from Adept (24 -> 22, 37 -> 36) with the
+			// Medium gameplay difficulty, mission-end rewards up to level 19.
+			"DROP TABLE IF EXISTS temp.solo_n;",
+			"CREATE TEMP TABLE solo_n AS SELECT * FROM ga_queues WHERE queue_id IN (24, 37);",
+			"UPDATE temp.solo_n SET queue_id = CASE queue_id WHEN 24 THEN 22 ELSE 36 END, "
+			"  name = CASE queue_id WHEN 24 THEN 'solo_novice' ELSE 'solo_desert_pve_novice' END, "
+			"  name_msg_id = 55321, desc_msg_id = 55321, marshal_difficulty_value_id = 1467, "
+			"  difficulty_value_id = 1029, level_min = 1, reward_level_max = 19, sort_order = 0;",
+			"INSERT OR IGNORE INTO ga_queues SELECT * FROM temp.solo_n;",
+			"DROP TABLE IF EXISTS temp.solo_n;",
+			// The original had four solo tiers; hide our solo Ultra-Max bonus rows.
+			"UPDATE ga_queues SET enabled = 0 WHERE queue_id IN (21, 35) AND name LIKE 'solo_%umax';",
+			// p0993: the game data has no Novice (1467) rows for any 1P_SD* map
+			// (Novice predates Sandstorm), so Desert Novice is off; Novice = queue 22.
+			"UPDATE ga_queues SET enabled = 0 WHERE queue_id = 36 AND name = 'solo_desert_pve_novice' AND enabled = 1;",
+		};
+		for (const char* sql : kSoloQueues) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] solo queue seed step failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+	}
+
+	// AvA campaign map Attack. HEX_CAPTURE on a territory joins
+	// a hidden queue (enabled = 0: not on the queue list, joined only by TcpSession::
+	// handle_hex_attack) for that facility, whose pool holds the game's HEX_AVA_* maps
+	// (map_game_info rows already seeded upstream). Cloned from merc (2) for the PvP
+	// settings, then: attackers pinned to task force 1, pops with 1 player after 30 s so
+	// a small strike force can still launch, up to 10 per side. INSERT OR IGNORE on PKs.
+	{
+		static const char* kAvaQueues[] = {
+			"INSERT OR IGNORE INTO ga_map_pools (map_pool_id, name) VALUES"
+			" (20, 'ava_lab'), (21, 'ava_factory'), (22, 'ava_mine'),"
+			" (23, 'ava_missile'), (24, 'ava_hq'), (25, 'ava_neutral');",
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode) VALUES"
+			" (20, 'HEX_AVA_Lab1_P', 'TgGame.TgGame_Mission'),"
+			" (20, 'HEX_AVA_Lab2_P', 'TgGame.TgGame_Mission'),"
+			" (20, 'HEX_AVA_Lab3_P', 'TgGame.TgGame_Mission'),"
+			" (20, 'HEX_AVA_Push_Lab1_P', 'TgGame.TgGame_Escort'),"
+			" (20, 'HEX_AVA_2pt_Theft_Lab1', 'TgGame.TgGame_Escort'),"
+			" (21, 'HEX_AVA_Factory1_P', 'TgGame.TgGame_Mission'),"
+			" (21, 'HEX_AVA_Factory2_P', 'TgGame.TgGame_Mission'),"
+			" (21, 'HEX_AVA_Factory3_P', 'TgGame.TgGame_Mission'),"
+			" (21, 'HEX_AVA_Push_Factory1_P', 'TgGame.TgGame_Escort'),"
+			" (21, 'HEX_AVA_2pt_Theft_Factory1_P', 'TgGame.TgGame_Escort'),"
+			" (22, 'HEX_AVA_Plant_P', 'TgGame.TgGame_Mission'),"
+			" (22, 'HEX_AVA_Plant2_P', 'TgGame.TgGame_Mission'),"
+			" (22, 'HEX_AVA_Plant3_P', 'TgGame.TgGame_Mission'),"
+			" (23, 'HEX_AVA_Missile1_P', 'TgGame.TgGame_Mission'),"
+			" (24, 'HEX_AVA_Defense1_P', 'TgGame.TgGame_Ticket'),"
+			" (24, 'HEX_AVA_Defense2_P', 'TgGame.TgGame_Ticket'),"
+			" (25, 'HEX_AVA_Ticket_Neutral', 'TgGame.TgGame_Ticket');",
+			"DROP TABLE IF EXISTS temp.ava_q;",
+			"CREATE TEMP TABLE ava_q AS SELECT * FROM ga_queues WHERE queue_id = 2;",
+			"INSERT INTO temp.ava_q SELECT * FROM temp.ava_q;",
+			"INSERT INTO temp.ava_q SELECT * FROM temp.ava_q;",
+			"INSERT INTO temp.ava_q SELECT * FROM temp.ava_q LIMIT 2;",
+			"UPDATE temp.ava_q SET queue_id = 39 + rowid, map_pool_id = 19 + rowid,"
+			"  name = 'ava_' || CASE rowid WHEN 1 THEN 'lab' WHEN 2 THEN 'factory' WHEN 3 THEN 'mine'"
+			"    WHEN 4 THEN 'missile' WHEN 5 THEN 'hq' ELSE 'neutral' END,"
+			"  enabled = 0, rule_class = NULL, taskforce_policy = 'pinned_1', name_msg_id = 36559,"
+			"  min_players_to_pop = 1, pop_delay_seconds = 30.0, pop_delay_policy = 'fixed',"
+			"  max_players_per_side = 10, max_players_per_team = 10, max_team_size = 10,"
+			"  requires_pvp_verification = 0, late_join_policy = 'open';",
+			"INSERT OR IGNORE INTO ga_queues SELECT * FROM temp.ava_q;",
+			"DROP TABLE IF EXISTS temp.ava_q;",
+		};
+		for (const char* sql : kAvaQueues) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] AvA queue seed step failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+	}
+
+	// AvA results. ga_ava_attacks = the territory each agent
+	// launched an attack on (HEX_CAPTURE), resolved at MISSION_ENDED of an AvA queue;
+	// a win hands the territory to the attacker's agency (or, without one, to the agent
+	// as a one-man "agency" id 0x40000000 + character id). ga_ava_records feeds the
+	// Hall of Legends AvA line.
+	{
+		const char* kAvaResults =
+			"CREATE TABLE IF NOT EXISTS ga_ava_territories ("
+			"  zone_id INTEGER NOT NULL, position INTEGER NOT NULL,"
+			"  owner_agency_id INTEGER NOT NULL, owner_name TEXT NOT NULL,"
+			"  color_r REAL NOT NULL DEFAULT 0.5, color_g REAL NOT NULL DEFAULT 0.5,"
+			"  color_b REAL NOT NULL DEFAULT 0.5, captured_at INTEGER NOT NULL,"
+			"  PRIMARY KEY (zone_id, position));"
+			"CREATE TABLE IF NOT EXISTS ga_ava_attacks ("
+			"  character_id INTEGER PRIMARY KEY, zone_id INTEGER NOT NULL,"
+			"  position INTEGER NOT NULL, queued_at INTEGER NOT NULL);"
+			"CREATE TABLE IF NOT EXISTS ga_ava_records ("
+			"  character_id INTEGER PRIMARY KEY, wins INTEGER NOT NULL DEFAULT 0,"
+			"  losses INTEGER NOT NULL DEFAULT 0, captures INTEGER NOT NULL DEFAULT 0);";
+		if (sqlite3_exec(db, kAvaResults, nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] AvA results schema failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+		// facility production stockpile per owner + per-territory settle mark.
+		sqlite3_exec(db, "ALTER TABLE ga_ava_territories ADD COLUMN settled_at INTEGER NOT NULL DEFAULT 0",
+			nullptr, nullptr, nullptr);  // fails harmlessly when the column exists
+		if (sqlite3_exec(db,
+		        "CREATE TABLE IF NOT EXISTS ga_ava_stock ("
+		        "  owner_agency_id INTEGER PRIMARY KEY, resources REAL NOT NULL DEFAULT 0,"
+		        "  production REAL NOT NULL DEFAULT 0, research REAL NOT NULL DEFAULT 0);",
+		        nullptr, nullptr, &err) != SQLITE_OK) {
+			Logger::Log("db", "[Database] AvA stock schema failed: %s\n", err ? err : "?");
+			if (err) { sqlite3_free(err); err = nullptr; }
+		}
+		// AvA items built in Factories (dropships, siege, facility devices).
+		sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS ga_ava_items (owner_agency_id INTEGER NOT NULL, "
+			"item_id INTEGER NOT NULL, count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (owner_agency_id, item_id));",
+			nullptr, nullptr, nullptr);
+		// Mine resource choice, mined resource items, agency HQ.
+		sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS ga_ava_mine_resources (zone_id INTEGER NOT NULL, "
+			"position INTEGER NOT NULL, owner_agency_id INTEGER NOT NULL, item_id INTEGER NOT NULL, "
+			"PRIMARY KEY (zone_id, position));"
+			"CREATE TABLE IF NOT EXISTS ga_ava_resources (owner_agency_id INTEGER NOT NULL, "
+			"item_id INTEGER NOT NULL, amount REAL NOT NULL DEFAULT 0, PRIMARY KEY (owner_agency_id, item_id));"
+			"CREATE TABLE IF NOT EXISTS ga_ava_hq (owner_agency_id INTEGER PRIMARY KEY, zone_id INTEGER NOT NULL, "
+			"position INTEGER NOT NULL, set_at INTEGER NOT NULL);",
+			nullptr, nullptr, nullptr);
+		// standing (top) territory bid, credits in escrow.
+		sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS ga_ava_bids (zone_id INTEGER NOT NULL, position INTEGER NOT NULL, "
+			"owner_agency_id INTEGER NOT NULL, character_id INTEGER NOT NULL, amount INTEGER NOT NULL, "
+			"attack_type INTEGER NOT NULL DEFAULT 0, placed_at INTEGER NOT NULL, PRIMARY KEY (zone_id, position));",
+			nullptr, nullptr, nullptr);
+		// A won bid may be opened to other agents until open_until; an attack queued
+		// under it records the bid owner (on_behalf_of), which a capture then goes to.
+		sqlite3_exec(db, "ALTER TABLE ga_ava_bids ADD COLUMN open_until INTEGER NOT NULL DEFAULT 0", nullptr, nullptr, nullptr);
+		sqlite3_exec(db, "ALTER TABLE ga_ava_attacks ADD COLUMN on_behalf_of INTEGER NOT NULL DEFAULT 0", nullptr, nullptr, nullptr);
+		// facilities built/upgraded by HEX_ADD_FACILITY; valid while the builder holds the hex.
+		sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS ga_ava_buildings (zone_id INTEGER NOT NULL, position INTEGER NOT NULL, "
+			"owner_agency_id INTEGER NOT NULL, hex_building_id INTEGER NOT NULL, built_at INTEGER NOT NULL, "
+			"PRIMARY KEY (zone_id, position));", nullptr, nullptr, nullptr);
+		// weekly campaign season standings (refreshed on map open; last write = final).
+		sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS ga_ava_seasons (season INTEGER NOT NULL, owner_agency_id INTEGER NOT NULL, "
+			"owner_name TEXT NOT NULL DEFAULT '', territories INTEGER NOT NULL, PRIMARY KEY (season, owner_agency_id));",
+			nullptr, nullptr, nullptr);
+		sqlite3_exec(db, "ALTER TABLE ga_ava_seasons ADD COLUMN zone INTEGER NOT NULL DEFAULT 1;", nullptr, nullptr, nullptr);  // p1140, exists = no-op
+		sqlite3_exec(db, "ALTER TABLE ga_ava_seasons ADD COLUMN networth REAL NOT NULL DEFAULT 0;", nullptr, nullptr, nullptr);  // exists = no-op
+	}
+
+	// Open-world sub-instances. The North Sonora Map Transition
+	// volumes name non-zone maps (night defenses, Colony nodes/lockers); OpenWorldTravel
+	// sends those to a hidden one-map queue (enabled = 0, name 'zone_*') instead of the
+	// shared zone path. Defenses clone desert_raids (16, the queue that already pools
+	// them; squads join together), the 1p Colony maps clone solo_desert_pve_medium (37).
+	// Pops on the first player after 3 s. INSERT OR IGNORE on PKs.
+	{
+		static const char* kZoneQueues[] = {
+			"INSERT OR IGNORE INTO ga_map_pools (map_pool_id, name) VALUES"
+			" (26, 'zone_dn_solar_farm_def'), (27, 'zone_dn_north_outpost_def'),"
+			" (28, 'zone_dn_newtopia_def'), (29, 'zone_dn_colony06'), (30, 'zone_dn_colony04');",
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode) VALUES"
+			" (26, 'DN_Defense_Solar_Farm_P', 'TgGame.TgGame_Defense'),"
+			" (27, 'DN_Defense_NorthOutpost_P', 'TgGame.TgGame_Defense'),"
+			" (28, 'DN_Defense_Newtopia_P', 'TgGame.TgGame_Defense'),"
+			" (29, '1P_SDColony06_P', 'TgGame.TgGame_Mission'),"
+			" (30, '1p_SDColony04_P', 'TgGame.TgGame_Mission');",
+			"DROP TABLE IF EXISTS temp.zone_q;",
+			"CREATE TEMP TABLE zone_q AS SELECT * FROM ga_queues WHERE queue_id = 16;",
+			"INSERT INTO temp.zone_q SELECT * FROM temp.zone_q;",
+			"INSERT INTO temp.zone_q SELECT * FROM temp.zone_q LIMIT 1;",
+			"INSERT INTO temp.zone_q SELECT * FROM ga_queues WHERE queue_id = 37;",
+			"INSERT INTO temp.zone_q SELECT * FROM ga_queues WHERE queue_id = 37;",
+			"UPDATE temp.zone_q SET queue_id = 45 + rowid, map_pool_id = 25 + rowid,"
+			"  name = (SELECT name FROM ga_map_pools WHERE map_pool_id = 25 + temp.zone_q.rowid),"
+			"  enabled = 0, min_players_to_pop = 1, pop_delay_seconds = 3.0, pop_delay_policy = 'fixed',"
+			"  late_join_policy = 'open';",
+			"INSERT OR IGNORE INTO ga_queues SELECT * FROM temp.zone_q;",
+			"DROP TABLE IF EXISTS temp.zone_q;",
+		};
+		for (const char* sql : kZoneQueues) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] zone queue seed step failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+	}
+
+	// The last four zone doors. Retail map_game ids with no
+	// map_game_info row; maps RECONSTRUCTED from the door text + boss tables:
+	//   1405 "Travel to Prison Camp" (Sonoran)  -> 1P_SDDweller03_Portalled_P (base map boss = Legion Jailor)
+	//   1406 "Travel to KOFA" / the Warlord      -> 1P_SDDweller02_Portalled_P (base map boss = The Warlord)
+	//   1470 Underground Waterway Elevator       -> 1P_SDColony05_P ("Terminus Water Station", custom 100015)
+	//   1471 Ruined City Node                    -> 1P_SDColony03_P ("Recursive Colony Nest", custom 100014)
+	// The Portalled maps are copies of the base maps (same object ids) whose spawn
+	// tables lived on Hi-Rez's backend -> clone the base config (base id-0 factory =
+	// 13532 here), new Prison Camp factories 13533-13536 -> 78, bosses -> mod tables
+	// 10110 Jailor / 10111 Warlord (= retail 137/138 moved to Novice so every tier
+	// cascades to them). 1470/1471 reuse the 100015/100014 name + loading art so
+	// either row looks the same. Tunnels clone desert_pve_medium (17, squads),
+	// nodes clone solo_desert_pve_medium (37). Insert-only.
+	{
+		static const char* kZoneDoors[] = {
+			"INSERT OR IGNORE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id) VALUES"
+			" (1405, '1P_SDDweller03_Portalled_P', 'TgGame.TgGame_Mission', 1553, 58078, 6725),"
+			" (1406, '1P_SDDweller02_Portalled_P', 'TgGame.TgGame_Mission', 1553, 58088, 6726);",
+			// "Between Life and Death" (KOFA) timer is 20 min since retail 1.39 (was 15).
+			"UPDATE map_game_info SET mission_time_secs = 1200 WHERE map_game_id = 1406 AND mission_time_secs = 900;",
+			"INSERT OR IGNORE INTO map_game_info (map_game_id, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id)"
+			" SELECT 1470, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id FROM map_game_info WHERE map_game_id = 100015"
+			" UNION ALL"
+			" SELECT 1471, map_name, game_class, gameplay_type_value_id, friendly_name_msg_id, entry_background_image_res_id FROM map_game_info WHERE map_game_id = 100014;",
+			"INSERT INTO mod_data_set_bot_spawn_tables (bot_spawn_table_id, difficulty_value_id, player_profile_id, spawn_group, enemy_bot_id, bot_count, spawn_chance, team_size, multiple_class_flag, bot_balance_multiplier, spawn_group_min, spawn_group_max, spawn_group_respawn_sec)"
+			" SELECT v.t, 1467, 0, 1, v.b, 1, 1.0, 0, 0, 1.0, 0, 0, 0 FROM (SELECT 10110 AS t, 1533 AS b UNION ALL SELECT 10111, 1534) v"
+			" WHERE NOT EXISTS (SELECT 1 FROM mod_data_set_bot_spawn_tables m WHERE m.bot_spawn_table_id = v.t);",
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight)"
+			" SELECT '1P_SDDweller03_Portalled_P', CASE map_object_id WHEN 0 THEN 13532 ELSE map_object_id END, column_name, value, variant_group, variant_id, weight"
+			" FROM map_object_config WHERE map_name = '1P_SDDweller03_P' AND map_object_id <> 13356"
+			" AND NOT EXISTS (SELECT 1 FROM map_object_config m WHERE m.map_name = '1P_SDDweller03_Portalled_P')"
+			" UNION ALL SELECT '1P_SDDweller03_Portalled_P', f.id, c.col, c.val, NULL, NULL, 1"
+			" FROM (SELECT 13533 AS id UNION ALL SELECT 13534 UNION ALL SELECT 13535 UNION ALL SELECT 13536) f,"
+			"  (SELECT 'n_spawn_table_id' AS col, '78' AS val UNION ALL SELECT 'n_default_spawn_table_id', '78'"
+			"   UNION ALL SELECT 'b_respawn', '0' UNION ALL SELECT 's_n_task_force', '2' UNION ALL SELECT 's_n_team_number', '2') c"
+			" WHERE NOT EXISTS (SELECT 1 FROM map_object_config m WHERE m.map_name = '1P_SDDweller03_Portalled_P')"
+			" UNION ALL SELECT '1P_SDDweller03_Portalled_P', 13537, 's_n_spawn_table_id', '10110', NULL, NULL, 1"
+			" WHERE NOT EXISTS (SELECT 1 FROM map_object_config m WHERE m.map_name = '1P_SDDweller03_Portalled_P');",
+			"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight)"
+			" SELECT '1P_SDDweller02_Portalled_P', map_object_id, column_name, CASE WHEN map_object_id = 13288 AND column_name = 's_n_spawn_table_id' THEN '10111' ELSE value END, variant_group, variant_id, weight"
+			" FROM map_object_config WHERE map_name = '1P_SDDweller02_P'"
+			" AND NOT EXISTS (SELECT 1 FROM map_object_config m WHERE m.map_name = '1P_SDDweller02_Portalled_P');",
+			"INSERT OR IGNORE INTO ga_map_pools (map_pool_id, name) VALUES"
+			" (31, 'zone_sd_prison_camp'), (32, 'zone_sd_kofa'), (33, 'zone_dn_colony05'), (34, 'zone_dn_colony03');",
+			"INSERT OR IGNORE INTO ga_map_pool_entries (map_pool_id, map_name, game_mode) VALUES"
+			" (31, '1P_SDDweller03_Portalled_P', 'TgGame.TgGame_Mission'),"
+			" (32, '1P_SDDweller02_Portalled_P', 'TgGame.TgGame_Mission'),"
+			" (33, '1P_SDColony05_P', 'TgGame.TgGame_Mission'),"
+			" (34, '1P_SDColony03_P', 'TgGame.TgGame_Mission');",
+			"DROP TABLE IF EXISTS temp.zone_q2;",
+			"CREATE TEMP TABLE zone_q2 AS SELECT * FROM ga_queues WHERE queue_id = 17;",
+			"INSERT INTO temp.zone_q2 SELECT * FROM ga_queues WHERE queue_id = 17;",
+			"INSERT INTO temp.zone_q2 SELECT * FROM ga_queues WHERE queue_id = 37;",
+			"INSERT INTO temp.zone_q2 SELECT * FROM ga_queues WHERE queue_id = 37;",
+			"UPDATE temp.zone_q2 SET queue_id = 50 + rowid, map_pool_id = 30 + rowid,"
+			"  name = (SELECT name FROM ga_map_pools WHERE map_pool_id = 30 + temp.zone_q2.rowid),"
+			"  enabled = 0, min_players_to_pop = 1, pop_delay_seconds = 3.0, pop_delay_policy = 'fixed',"
+			"  late_join_policy = 'open';",
+			"INSERT OR IGNORE INTO ga_queues SELECT * FROM temp.zone_q2;",
+			"DROP TABLE IF EXISTS temp.zone_q2;",
+		};
+		for (const char* sql : kZoneDoors) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] zone door seed step failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+	}
+
+	// Quest chain repairs (ALL QUESTS item; quest inventory research).
+	//  * ga_quest_grants: quest B is handed out when quest A is completed. The
+	//    client builds NPC offer lists from its own data, so a quest with no (or a
+	//    wrong) giver group can only be given server-side:
+	//      107 -> 137 Investigative Research (no giver group; every pond needs it),
+	//      137 -> 128 (Riverbed pond group 90 lists 107 instead of 128) and
+	//      112/113/115 (their pond volumes 295-297 were never placed in a map).
+	//    These have no requirements; turn-in stays the Environmental Scientist.
+	//  * Door 1471 "Ruined City Node" (quest 136's footsteps) leads to the Bolonov
+	//    map 1P_SDColony02_P - the quest's Kismet credit, exit volume and the
+	//    Missing Expedition agents are there (an earlier guess was 1P_SDColony03_P,
+	//    which stays under 100014). Same name + art as 1437.
+	{
+		static const char* kQuestRepairs[] = {
+			"CREATE TABLE IF NOT EXISTS ga_quest_grants (after_quest_id INTEGER NOT NULL,"
+			" grant_quest_id INTEGER NOT NULL, PRIMARY KEY (after_quest_id, grant_quest_id));",
+			"INSERT OR IGNORE INTO ga_quest_grants (after_quest_id, grant_quest_id) VALUES"
+			" (107, 137), (137, 128), (137, 112), (137, 113), (137, 115);",
+			"UPDATE map_game_info SET map_name = '1P_SDColony02_P', friendly_name_msg_id = 67001,"
+			" entry_background_image_res_id = 8021 WHERE map_game_id = 1471 AND map_name = '1P_SDColony03_P';",
+			"UPDATE ga_map_pool_entries SET map_name = '1P_SDColony02_P'"
+			" WHERE map_pool_id = 34 AND map_name = '1P_SDColony03_P';",
+			"UPDATE ga_map_pools SET name = 'zone_dn_colony02' WHERE map_pool_id = 34 AND name = 'zone_dn_colony03';",
+			"UPDATE ga_queues SET name = 'zone_dn_colony02' WHERE queue_id = 54 AND name = 'zone_dn_colony03';",
+		};
+		for (const char* sql : kQuestRepairs) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				Logger::Log("db", "[Database] quest repair step failed: %s\n", err ? err : "?");
+				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+	}
+
+	// Respawn audit (read-only): a configured TgBotFactory (n_spawn_table_id)
+	// without b_respawn falls back to the baked bRespawn=true -> every kill is
+	// replaced at once (the intro bug). Open zones respawn on purpose. Boss
+	// objectives (s_n_spawn_table_id, TgMissionObjective_Bot) spawn once with
+	// no factory and have no respawn flag, so they are not listed.
+	{
+		sqlite3_stmt* stmt = nullptr;
+		if (sqlite3_prepare_v2(db,
+			"SELECT s.map_name, s.map_object_id FROM map_object_config s"
+			" WHERE s.column_name = 'n_spawn_table_id'"
+			"   AND IFNULL(s.map_name, '') NOT IN ('SD_Zone_P', 'DomeNorth_Zone_V2_P')"
+			"   AND NOT EXISTS (SELECT 1 FROM map_object_config e WHERE e.map_object_id = s.map_object_id"
+			"                   AND e.map_name IS s.map_name AND e.column_name = 'b_respawn')"
+			" GROUP BY s.map_name, s.map_object_id;", -1, &stmt, nullptr) == SQLITE_OK) {
+			int n = 0;
+			while (sqlite3_step(stmt) == SQLITE_ROW) {
+				const unsigned char* m = sqlite3_column_text(stmt, 0);
+				Logger::Log("db", "[Database] WARNING respawn audit: %s factory %d has no b_respawn (falls back to endless respawn)\n",
+					m ? (const char*)m : "(any map)", sqlite3_column_int(stmt, 1));
+				n++;
+			}
+			Logger::Log("db", "[Database] respawn audit: %d mission factories without b_respawn\n", n);
+		}
+		if (stmt) sqlite3_finalize(stmt);
+	}
+
+	PvpParity::Migrate(db);  // PvP arena/scrimmage/Beta Maps queues + map pools
+
 	// NOTE: PlayerSessionStore::Init() is called separately from main.cpp -- not here.
 	Logger::Log("db", "[Database::Init] Schema at version >= 19, WAL mode enabled\n");
 }
@@ -3113,13 +4224,17 @@ void Database::AbandonQuest(int64_t character_id, int quest_id) {
 // asm_data_set_quest_requirements the event matches on. One body, two entry
 // points — so a fix to the counter logic can't reach only half of them.
 //
-// `target_column` is a fixed literal chosen by the two callers below, never
+// `match_sql` is a fixed literal chosen by the callers below, never
 // anything that came off the wire.
+//
+// `match_sql` + `bind` generalise the target match so Complete
+// Mission (1432) can match on map + gameplay type + difficulty; parameters from
+// index 2 on belong to `bind`.
 static std::vector<Database::QuestProgress> CreditStoredRequirements(
-		int64_t character_id, int requirement_type, const char* target_column,
-		int target_id, const char* label) {
+		int64_t character_id, int requirement_type, const std::string& match_sql,
+		const std::function<void(sqlite3_stmt*)>& bind, int target_id, const char* label) {
 	std::vector<Database::QuestProgress> moved;
-	if (character_id <= 0 || target_id <= 0) return moved;
+	if (character_id <= 0) return moved;
 
 	sqlite3* db = Database::GetConnection();
 	if (!db) return moved;
@@ -3137,7 +4252,7 @@ static std::vector<Database::QuestProgress> CreditStoredRequirements(
 		"  ON p.character_id = q.character_id "
 		" AND p.quest_requirement_id = r.quest_requirement_id "
 		"WHERE r.requirement_type_value_id = " + std::to_string(requirement_type) +
-		"  AND r." + target_column + " = ? "
+		"  AND " + match_sql +
 		"  AND COALESCE(p.count, 0) < r.count";
 
 	sqlite3_stmt* stmt = nullptr;
@@ -3147,7 +4262,7 @@ static std::vector<Database::QuestProgress> CreditStoredRequirements(
 		return moved;
 	}
 	sqlite3_bind_int64(stmt, 1, character_id);
-	sqlite3_bind_int(stmt, 2, target_id);
+	bind(stmt);
 
 	while (sqlite3_step(stmt) == SQLITE_ROW) {
 		Database::QuestProgress pr;
@@ -3196,13 +4311,149 @@ static std::vector<Database::QuestProgress> CreditStoredRequirements(
 
 std::vector<Database::QuestProgress> Database::CreditKillQuestRequirements(int64_t character_id,
                                                                           int bot_id) {
-	return CreditStoredRequirements(character_id, 1428, "target_bot_id", bot_id, "Kill");
+	if (bot_id <= 0) return {};
+	return CreditStoredRequirements(character_id, 1428, "r.target_bot_id = ?2",
+		[&](sqlite3_stmt* st) { sqlite3_bind_int(st, 2, bot_id); }, bot_id, "Kill");
 }
 
 std::vector<Database::QuestProgress> Database::CreditVolumeQuestRequirements(int64_t character_id,
                                                                             int ui_volume_id) {
-	return CreditStoredRequirements(character_id, 1431, "target_ui_volume_id", ui_volume_id,
-	                                "Volume");
+	if (ui_volume_id <= 0) return {};
+	return CreditStoredRequirements(character_id, 1431, "r.target_ui_volume_id = ?2",
+		[&](sqlite3_stmt* st) { sqlite3_bind_int(st, 2, ui_volume_id); }, ui_volume_id, "Volume");
+}
+
+// Script Triggered (1617) - map Kismet (TgSeqAct_QuestIncrementReqCount)
+// names the quest + requirement directly; target = the requirement id.
+std::vector<Database::QuestProgress> Database::CreditScriptQuestRequirement(int64_t character_id,
+                                                                           int quest_id, int quest_requirement_id) {
+	if (quest_id <= 0 || quest_requirement_id <= 0) return {};
+	return CreditStoredRequirements(character_id, 1617, "r.quest_id = ?2 AND r.quest_requirement_id = ?3",
+		[&](sqlite3_stmt* st) { sqlite3_bind_int(st, 2, quest_id); sqlite3_bind_int(st, 3, quest_requirement_id); },
+		quest_requirement_id, "Script");
+}
+
+// Every agent still in `instance_id` on the winning task force gets
+// one Complete Mission credit for the map the instance ran.
+std::vector<std::pair<int64_t, std::vector<Database::QuestProgress>>>
+Database::CreditMissionWinForInstance(int64_t instance_id, int winning_task_force,
+                                      int difficulty_value_id) {
+	std::vector<std::pair<int64_t, std::vector<QuestProgress>>> out;
+	sqlite3* db = GetConnection();
+	if (!db || instance_id == 0 || winning_task_force == 0) return out;
+
+	std::string map_name;
+	std::vector<int64_t> chars;
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT i.map_name, p.character_id FROM ga_instances i "
+			"JOIN ga_instance_players p ON p.instance_id = i.instance_id "
+			"WHERE i.instance_id = ? AND p.left_at IS NULL AND p.character_id > 0 "
+			"  AND p.task_force_number = ? GROUP BY p.character_id",
+			-1, &st, nullptr) != SQLITE_OK || !st) return out;
+	sqlite3_bind_int64(st, 1, instance_id);
+	sqlite3_bind_int(st, 2, winning_task_force);
+	while (sqlite3_step(st) == SQLITE_ROW) {
+		map_name = reinterpret_cast<const char*>(sqlite3_column_text(st, 0));
+		chars.push_back(sqlite3_column_int64(st, 1));
+	}
+	sqlite3_finalize(st);
+
+	for (int64_t cid : chars) {
+		auto moved = CreditMissionQuestRequirements(cid, map_name, difficulty_value_id);
+		if (!moved.empty()) out.emplace_back(cid, std::move(moved));
+	}
+	return out;
+}
+
+// Finish PvP Mission (1512) - every agent still in a PvP instance
+// (map_game_info.is_pvp) when it ends gets one credit, win or lose.
+std::vector<std::pair<int64_t, std::vector<Database::QuestProgress>>>
+Database::CreditPvpFinishForInstance(int64_t instance_id) {
+	std::vector<std::pair<int64_t, std::vector<QuestProgress>>> out;
+	sqlite3* db = GetConnection();
+	if (!db || instance_id == 0) return out;
+
+	std::vector<int64_t> chars;
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT p.character_id FROM ga_instances i "
+			"JOIN ga_instance_players p ON p.instance_id = i.instance_id "
+			"WHERE i.instance_id = ? AND p.left_at IS NULL AND p.character_id > 0 "
+			"  AND EXISTS (SELECT 1 FROM map_game_info m "
+			"              WHERE m.map_name = i.map_name COLLATE NOCASE AND m.is_pvp = 1) "
+			"GROUP BY p.character_id",
+			-1, &st, nullptr) != SQLITE_OK || !st) return out;
+	sqlite3_bind_int64(st, 1, instance_id);
+	while (sqlite3_step(st) == SQLITE_ROW) chars.push_back(sqlite3_column_int64(st, 0));
+	sqlite3_finalize(st);
+
+	for (int64_t cid : chars) {
+		auto moved = CreditStoredRequirements(cid, 1512, "1 = 1",
+			[](sqlite3_stmt*) {}, 0, "PvpFinish");
+		if (!moved.empty()) out.emplace_back(cid, std::move(moved));
+	}
+	return out;
+}
+
+// Complete Mission (1432) - one WON mission. A requirement matches when
+// each of its filters is 0 (any) or equal: map_game_id via the map name the
+// instance ran (case-insensitive - map_game_info mixes 1p_/1P_), gameplay type of
+// that map (1543 merc PvP, 1550 PvE defense, 1553 PvE team mission), queue
+// difficulty at least the required one (valid_values sort_order Medium 4 < High 6
+// < Max 8 < Umax 9 - quest 168 "Complete a Sonoran Raid" asks Max, our raid
+// queue 16 runs Umax).
+// Ga_quest_grants follow-ups the character may take now (trigger
+// quest complete, granted quest never taken).
+std::vector<int> Database::PendingQuestGrants(int64_t character_id) {
+	std::vector<int> out;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* s = nullptr;
+	if (!db || character_id <= 0 || sqlite3_prepare_v2(db,
+			"SELECT g.grant_quest_id FROM ga_quest_grants g"
+			" JOIN ga_character_quests a ON a.character_id = ?1 AND a.quest_id = g.after_quest_id AND a.status = 'complete'"
+			" WHERE NOT EXISTS (SELECT 1 FROM ga_character_quests b WHERE b.character_id = ?1 AND b.quest_id = g.grant_quest_id)"
+			" ORDER BY g.grant_quest_id", -1, &s, nullptr) != SQLITE_OK) return out;
+	sqlite3_bind_int64(s, 1, character_id);
+	while (sqlite3_step(s) == SQLITE_ROW) out.push_back(sqlite3_column_int(s, 0));
+	sqlite3_finalize(s);
+	return out;
+}
+
+// Active quests with no turn-in volume (152, 165) - nobody to hand
+// them to, so they finish once their requirements are met.
+std::vector<int> Database::ActiveQuestsWithoutTurnIn(int64_t character_id) {
+	std::vector<int> out;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* s = nullptr;
+	if (!db || character_id <= 0 || sqlite3_prepare_v2(db,
+			"SELECT c.quest_id FROM ga_character_quests c JOIN asm_data_set_quests q ON q.quest_id = c.quest_id"
+			" WHERE c.character_id = ? AND c.status = 'active' AND COALESCE(q.turnin_ui_volume_id, 0) = 0"
+			" ORDER BY c.quest_id", -1, &s, nullptr) != SQLITE_OK) return out;
+	sqlite3_bind_int64(s, 1, character_id);
+	while (sqlite3_step(s) == SQLITE_ROW) out.push_back(sqlite3_column_int(s, 0));
+	sqlite3_finalize(s);
+	return out;
+}
+
+std::vector<Database::QuestProgress> Database::CreditMissionQuestRequirements(
+		int64_t character_id, const std::string& map_name, int difficulty_value_id) {
+	if (map_name.empty()) return {};
+	return CreditStoredRequirements(character_id, 1432,
+		"(r.map_game_id = 0 OR EXISTS (SELECT 1 FROM map_game_info m "
+		"   WHERE m.map_game_id = r.map_game_id AND m.map_name = ?2 COLLATE NOCASE)) "
+		"AND (r.gameplay_type_value_id = 0 OR EXISTS (SELECT 1 FROM map_game_info m "
+		"   WHERE m.map_name = ?2 COLLATE NOCASE "
+		"     AND (m.gameplay_type_value_id = r.gameplay_type_value_id "
+		"       OR (r.gameplay_type_value_id = 1543 AND m.gameplay_type_value_id BETWEEN 1544 AND 1548)))) "
+		"AND (r.difficulty_value_id = 0 OR r.difficulty_value_id = ?3 OR "
+		"     (SELECT sort_order FROM asm_data_set_valid_values WHERE value_id = ?3) >= "
+		"     (SELECT sort_order FROM asm_data_set_valid_values "
+		"       WHERE value_id = r.difficulty_value_id)) ",
+		[&](sqlite3_stmt* st) {
+			sqlite3_bind_text(st, 2, map_name.c_str(), -1, SQLITE_TRANSIENT);
+			sqlite3_bind_int(st, 3, difficulty_value_id);
+		}, difficulty_value_id, "Mission");
 }
 
 // ===========================================================================
@@ -3229,10 +4480,183 @@ int Database::GetQuestRewardLootTableId(int quest_id) {
 		"SELECT COALESCE(loot_table_id, 0) FROM asm_data_set_quests WHERE quest_id = ?", quest_id);
 }
 
+int64_t Database::LookupQuestBaseXp(int quest_id) {  // p0366
+	if (quest_id <= 0) return 0;
+	return LookupIntColumn(
+		"SELECT COALESCE(xp_reward_value, 0) FROM asm_data_set_quests WHERE quest_id = ?", quest_id);
+}
+
+int Database::CharacterLevel(int64_t character_id) {  // p0366
+	sqlite3* db = GetConnection();
+	if (!db || character_id <= 0) return 1;
+	sqlite3_stmt* s = nullptr;
+	int level = 1;
+	if (sqlite3_prepare_v2(db,
+	        "SELECT COALESCE((SELECT MAX(l.level) FROM asm_data_set_xp_levels l WHERE l.xp_value <= c.xp), 1) "
+	        "FROM ga_characters c WHERE c.id = ?", -1, &s, nullptr) == SQLITE_OK) {
+		sqlite3_bind_int64(s, 1, character_id);
+		if (sqlite3_step(s) == SQLITE_ROW) level = sqlite3_column_int(s, 0);
+		sqlite3_finalize(s);
+	}
+	return level;
+}
+
+Database::QuestCashReward Database::AwardQuestXpCredits(int64_t character_id, int quest_id, int xp_percent) {
+	QuestCashReward r;
+	sqlite3* db = GetConnection();
+	if (!db || character_id <= 0 || quest_id <= 0) return r;
+	sqlite3_stmt* s = nullptr;
+	if (sqlite3_prepare_v2(db,
+	        "SELECT COALESCE(xp_reward_value,0), COALESCE(currency_reward_value,0) "
+	        "FROM asm_data_set_quests WHERE quest_id = ?", -1, &s, nullptr) != SQLITE_OK) return r;
+	sqlite3_bind_int(s, 1, quest_id);
+	int64_t xp = 0, credits = 0;
+	if (sqlite3_step(s) == SQLITE_ROW) {
+		xp      = std::max<int64_t>(0, sqlite3_column_int64(s, 0));
+		credits = std::max<int64_t>(0, sqlite3_column_int64(s, 1));
+	}
+	sqlite3_finalize(s);
+	if (xp == 0 && credits == 0) return r;
+	// p0366: percent of the data xp (before the booster), xp only.
+	xp_percent = std::max(0, std::min(300, xp_percent));
+	int64_t extra = xp * (xp_percent - 100) / 100;
+	EconParity::BoosterQuestBonus(character_id, xp, credits);  // booster +50% assignment xp/credits
+
+	int64_t xp_before = 0;
+	if (sqlite3_prepare_v2(db, "SELECT xp FROM ga_characters WHERE id = ?", -1, &s, nullptr) == SQLITE_OK) {
+		sqlite3_bind_int64(s, 1, character_id);
+		if (sqlite3_step(s) == SQLITE_ROW) xp_before = sqlite3_column_int64(s, 0);
+		sqlite3_finalize(s);
+	}
+	if (extra > 0) {
+		// Extra xp stops at the curve top (never turns into credits).
+		int64_t top = 0;
+		if (sqlite3_prepare_v2(db, "SELECT COALESCE(MAX(xp_value), 0) FROM asm_data_set_xp_levels",
+		                       -1, &s, nullptr) == SQLITE_OK) {
+			if (sqlite3_step(s) == SQLITE_ROW) top = sqlite3_column_int64(s, 0);
+			sqlite3_finalize(s);
+		}
+		if (top > 0) extra = std::min(extra, std::max<int64_t>(0, top - (xp_before + xp)));
+	}
+	xp = std::max<int64_t>(0, xp + extra);
+	if (extra > 0) r.bonus_xp = extra;
+	if (sqlite3_prepare_v2(db,
+	        "UPDATE ga_characters SET "
+	        "  xp = xp + ?1, "  // lv50 cap + overflow -> credits = trigger trg_lv50_xp_credits
+	        ""
+	        "  credits = credits + ?2 "
+	        "WHERE id = ?3 AND deleted_at = 0", -1, &s, nullptr) != SQLITE_OK) return r;
+	sqlite3_bind_int64(s, 1, xp);
+	sqlite3_bind_int64(s, 2, credits);
+	sqlite3_bind_int64(s, 3, character_id);
+	const bool ok = sqlite3_step(s) == SQLITE_DONE && sqlite3_changes(db) > 0;
+	sqlite3_finalize(s);
+	if (!ok) { r.bonus_xp = 0; return r; }
+	r.credits = credits;
+	r.xp = xp;
+	if (sqlite3_prepare_v2(db, "SELECT xp FROM ga_characters WHERE id = ?", -1, &s, nullptr) == SQLITE_OK) {
+		sqlite3_bind_int64(s, 1, character_id);
+		if (sqlite3_step(s) == SQLITE_ROW) r.xp = sqlite3_column_int64(s, 0) - xp_before;
+		sqlite3_finalize(s);
+	}
+	return r;
+}
+
+int Database::LookupQuestLevelMin(int quest_id) {
+	if (quest_id <= 0) return 0;
+	return LookupIntColumn(
+		"SELECT COALESCE(level_min, 0) FROM asm_data_set_quests WHERE quest_id = ?", quest_id);
+}
+
+static const int kQuestCooldownDaily = 1631;
+
+uint32_t Database::QuestCompletedTimeframe(int quest_id, int64_t completed_at) {
+	if (completed_at <= 0) return 0;
+	const int cd = LookupIntColumn(
+		"SELECT CASE WHEN repeatable_flag = 1 THEN COALESCE(repeatable_cooldown_type_value_id, 0) ELSE 0 END "
+		"FROM asm_data_set_quests WHERE quest_id = ?", quest_id);
+	return cd == kQuestCooldownDaily ? (uint32_t)(completed_at / 86400 + 1) : 0;
+}
+
+bool Database::ReacceptRepeatableQuest(int64_t character_id, int quest_id, std::string* why) {
+	sqlite3* db = GetConnection();
+	if (!db || quest_id <= 0) return false;
+	int repeatable = 0, cooldown = 0;
+	sqlite3_stmt* s = nullptr;
+	if (sqlite3_prepare_v2(db,
+	        "SELECT COALESCE(repeatable_flag, 0), COALESCE(repeatable_cooldown_type_value_id, 0) "
+	        "FROM asm_data_set_quests WHERE quest_id = ?", -1, &s, nullptr) != SQLITE_OK) return false;
+	sqlite3_bind_int(s, 1, quest_id);
+	if (sqlite3_step(s) == SQLITE_ROW) { repeatable = sqlite3_column_int(s, 0); cooldown = sqlite3_column_int(s, 1); }
+	sqlite3_finalize(s);
+	if (repeatable != 1) { if (why) *why = "not repeatable"; return false; }
+
+	int64_t completed_at = 0;
+	if (sqlite3_prepare_v2(db,
+	        "SELECT COALESCE(completed_at, 0) FROM ga_character_quests "
+	        "WHERE character_id = ? AND quest_id = ? AND status = 'complete'", -1, &s, nullptr) != SQLITE_OK) return false;
+	sqlite3_bind_int64(s, 1, character_id);
+	sqlite3_bind_int(s, 2, quest_id);
+	const bool found = sqlite3_step(s) == SQLITE_ROW;
+	if (found) completed_at = sqlite3_column_int64(s, 0);
+	sqlite3_finalize(s);
+	if (!found) { if (why) *why = "not complete"; return false; }
+	const int64_t now = (int64_t)std::time(nullptr);
+	if (cooldown == kQuestCooldownDaily && completed_at / 86400 >= now / 86400) {
+		if (why) *why = "daily already done today (UTC)"; return false;
+	}
+
+	sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, nullptr);
+	bool ok = true;
+	for (const char* sql : {
+	        "UPDATE ga_character_quests SET status = 'active', accepted_at = strftime('%s','now'), completed_at = NULL "
+	        "WHERE character_id = ?1 AND quest_id = ?2 AND status = 'complete'",
+	        "DELETE FROM ga_character_quest_progress WHERE character_id = ?1 AND quest_id = ?2" }) {
+		if (sqlite3_prepare_v2(db, sql, -1, &s, nullptr) != SQLITE_OK) { ok = false; break; }
+		sqlite3_bind_int64(s, 1, character_id);
+		sqlite3_bind_int(s, 2, quest_id);
+		if (sqlite3_step(s) != SQLITE_DONE) ok = false;
+		sqlite3_finalize(s);
+		if (!ok) break;
+	}
+	sqlite3_exec(db, ok ? "COMMIT" : "ROLLBACK", nullptr, nullptr, nullptr);
+	if (!ok && why) *why = sqlite3_errmsg(db);
+	if (ok) Logger::Log("db", "[Quest] Re-accepted repeatable quest %d for character %lld\n", quest_id, (long long)character_id);
+	return ok;
+}
+
+bool Database::QuestPrerequisitesMet(int64_t character_id, int quest_id, std::string* why) {
+	sqlite3* db = GetConnection();
+	if (!db) return true;
+	sqlite3_stmt* s = nullptr;
+	if (sqlite3_prepare_v2(db,
+	        "SELECT p.prereq_quest_id FROM asm_data_set_quest_prerequisites p "
+	        "WHERE p.quest_id = ?1 AND p.quest_status_type_value_id = 1618 "
+	        "AND NOT EXISTS (SELECT 1 FROM ga_character_quests q WHERE q.character_id = ?2 "
+	        "  AND q.quest_id = p.prereq_quest_id AND q.status = 'complete')",
+	        -1, &s, nullptr) != SQLITE_OK) return true;
+	sqlite3_bind_int(s, 1, quest_id);
+	sqlite3_bind_int64(s, 2, character_id);
+	bool met = true;
+	while (sqlite3_step(s) == SQLITE_ROW) {
+		met = false;
+		if (why) { if (!why->empty()) *why += ","; *why += std::to_string(sqlite3_column_int(s, 0)); }
+	}
+	sqlite3_finalize(s);
+	return met;
+}
+
 int Database::GetBotLootTableId(int bot_id) {
 	if (bot_id <= 0) return 0;
 	return LookupIntColumn(
 		"SELECT COALESCE(loot_table_id, 0) FROM asm_data_set_bots WHERE bot_id = ?", bot_id);
+}
+
+bool Database::IsChestLootTable(int loot_table_id) {
+	if (loot_table_id <= 0) return false;
+	return LookupIntColumn(
+		"SELECT COALESCE(loot_table_type_value_id, 0) FROM asm_data_set_loot_tables WHERE loot_table_id = ?",
+		loot_table_id) == 1413;
 }
 
 namespace {
@@ -3247,15 +4671,78 @@ float Roll100() { return std::uniform_real_distribution<float>(0.0f, 100.0f)(Loo
 
 constexpr int kMaxLootDepth = 4;
 
+std::set<int>& ChoiceTables() { static std::set<int> s; return s; }
+
+// Choice table: the one item_id this grant gives - the requested one if it is
+// on the list, else a random row. 0 = not a choice table / empty list.
+int PickChoiceItem(sqlite3* db, int loot_table_id, int chosen_item_id) {
+	if (!ChoiceTables().count(loot_table_id)) return 0;
+	std::vector<int> items, rowIds;
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db, "SELECT item_id, loot_table_item_id FROM asm_data_set_loot_table_items "
+			"WHERE loot_table_id = ? AND item_id > 0 ORDER BY sort_order, id", -1, &st, nullptr) != SQLITE_OK)
+		return 0;
+	sqlite3_bind_int(st, 1, loot_table_id);
+	while (sqlite3_step(st) == SQLITE_ROW) {
+		items.push_back(sqlite3_column_int(st, 0));
+		rowIds.push_back(sqlite3_column_int(st, 1));
+	}
+	sqlite3_finalize(st);
+	if (items.empty()) return 0;
+	// The pick may name the item or its loot_table_item_id.
+	for (size_t i = 0; i < items.size(); ++i)
+		if (chosen_item_id > 0 && (items[i] == chosen_item_id || rowIds[i] == chosen_item_id)) return items[i];
+	return items[std::uniform_int_distribution<size_t>(0, items.size() - 1)(LootRng())];
+}
+
+// 0959: skill -> class skill trees (skill_group_set ids of the 4 classes, GameTypes.h ClassConfig).
+// A skill in none of them is class-neutral (always OK).
+bool ClassSkillOk(sqlite3* db, int skill, int classSet) {
+	static std::map<int, std::set<int>> sets;
+	static bool loaded = false;
+	static std::mutex mu;
+	std::lock_guard<std::mutex> lk(mu);
+	if (!loaded) {
+		std::set<int> classSets;
+		for (uint32_t p : {680u, 567u, 681u, 679u}) classSets.insert((int)GetClassConfig(p).skillGroupSetId);
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db, "SELECT g.skill_group_set_id, s.skill_id FROM asm_data_set_skill_group_set_groups g "
+				"JOIN asm_data_set_skill_group_skills s ON s.skill_group_id = g.skill_group_id", -1, &st, nullptr) == SQLITE_OK) {
+			while (sqlite3_step(st) == SQLITE_ROW) {
+				const int set = sqlite3_column_int(st, 0);
+				if (classSets.count(set)) sets[sqlite3_column_int(st, 1)].insert(set);
+			}
+			sqlite3_finalize(st);
+			loaded = true;
+		}
+	}
+	const auto it = sets.find(skill);
+	return it == sets.end() || it->second.count(classSet) > 0;
+}
+
 void RollLootInto(sqlite3* db, int loot_table_id, int depth,
-                  std::map<int, int>& out, std::set<int>& visited) {
+                  std::map<int, int>& out, std::set<int>& visited,
+                  std::map<int, int>* bagItems = nullptr, int chosen_item_id = 0,
+                  std::vector<Database::AutoGear>* gear = nullptr, int classSet = 0) {
 	if (loot_table_id <= 0 || depth > kMaxLootDepth) return;
 	if (!visited.insert(loot_table_id).second) return;
+	const int choiceItem = (depth == 0) ? PickChoiceItem(db, loot_table_id, chosen_item_id) : 0;
+	if (choiceItem)
+		Logger::Log("loot", "[Loot] table %d choice: item %d (requested %d)\n",
+			loot_table_id, choiceItem, chosen_item_id);
 
 	sqlite3_stmt* stmt = nullptr;
 	int rc = sqlite3_prepare_v2(db,
 		"SELECT li.item_id, li.sub_loot_table_id, li.quantity, li.drop_chance, "
-		"       COALESCE(i.item_type_value_id, 0) "
+		"       COALESCE(i.item_type_value_id, 0), "
+		"       COALESCE((SELECT m.message LIKE 'Seasonal%' FROM asm_data_set_msg_translations m "
+		"                 WHERE m.msg_id = i.name_msg_id), 0), "
+		"       CASE WHEN COALESCE(li.auto_create_flag, 0) = 1 THEN COALESCE((SELECT b.created_item_id "
+		"            FROM asm_data_set_blueprints b WHERE b.blueprint_id = li.item_id), 0) ELSE 0 END, "
+		"       COALESCE(NULLIF(li.max_quality_value_id, 0), li.quality_value_id, 0), "  /* 0957 */
+		"       COALESCE((SELECT ci.skill_id FROM asm_data_set_blueprints b JOIN asm_data_set_items ci "  /* 0959 */
+		"                 ON ci.item_id = b.created_item_id WHERE COALESCE(li.auto_create_flag, 0) = 1 "
+		"                 AND b.blueprint_id = li.item_id), i.skill_id, 0) "
 		"FROM asm_data_set_loot_table_items li "
 		"LEFT JOIN asm_data_set_items i ON i.item_id = li.item_id "
 		"WHERE li.loot_table_id = ? ORDER BY li.sort_order",
@@ -3273,15 +4760,42 @@ void RollLootInto(sqlite3* db, int loot_table_id, int depth,
 		const int   quantity = sqlite3_column_int(stmt, 2);
 		const float chance   = static_cast<float>(sqlite3_column_double(stmt, 3));
 		const int   itemType = sqlite3_column_int(stmt, 4);
+		const bool  seasonal = sqlite3_column_int(stmt, 5) != 0;
+		const int   created  = sqlite3_column_int(stmt, 6);
+		const int   rowQual  = sqlite3_column_int(stmt, 7);  // 0957
+		const int   skill    = sqlite3_column_int(stmt, 8);  // 0959
 
-		if (chance < 100.0f && Roll100() >= chance) continue;
-		if (subTable > 0) { RollLootInto(db, subTable, depth + 1, out, visited); continue; }
+		if (choiceItem) { if (itemId != choiceItem) continue; }
+		else if (chance < 100.0f && Roll100() >= chance) continue;
+		if (subTable > 0) { RollLootInto(db, subTable, depth + 1, out, visited, bagItems, 0, gear, classSet); continue; }
+		// 0959: one row per class -> only the agent's class row ("1 Class Specific Ranged Weapon")
+		if (classSet > 0 && skill > 0 && !ClassSkillOk(db, skill, classSet)) {
+			Logger::Log("loot", "[Loot] table %d row item %d skill %d: other class (agent skill set %d) - skipped\n",
+				loot_table_id, itemId, skill, classSet);
+			continue;
+		}
 
-		// Only components matter — nothing else has anywhere to go. Blueprints,
-		// appearance items and consumables are rolled (so the odds stay
-		// faithful) and then discarded.
-		if (itemId <= 0 || itemType != 1171) continue;
-		out[itemId] += (quantity > 0 ? quantity : 1);
+		if (itemId <= 0) continue;
+		if (itemType == 1171) { out[itemId] += (quantity > 0 ? quantity : 1); continue; }
+		// Blueprints (686), appearance/flair (950), dyes (1020),
+		// containers (1634) and AvA items (1298) go to the bag as one row per
+		// copy, like a vendor buy. "Seasonal - ..." flair only drops while a
+		// calendar window is open (EventCalendar); DeathDrop (724) is a world
+		// pickup, not an inventory item.
+		// auto_create_flag = 1: the original granted the blueprint already crafted
+		// (no components needed); flag 0 rows give exactly the listed item.
+		if (bagItems && created > 0) {
+			(*bagItems)[created] += (quantity > 0 ? quantity : 1);
+			// 0957: the crafted item carries the row's quality (the reward screen shows max_quality_value_id)
+			if (gear && rowQual > 0)
+				for (int k = 0; k < (quantity > 0 ? quantity : 1); ++k) gear->push_back({created, itemId, rowQual});
+			Logger::Log("loot", "[Loot] table %d auto-create blueprint %d -> item %d quality %d\n", loot_table_id, itemId, created, rowQual);
+			continue;
+		}
+		if (bagItems && (itemType == 686 || itemType == 950 || itemType == 1020 ||
+		                 itemType == 1634 || itemType == 1298) &&
+		    (!seasonal || EventCalendar::AnyActive()))
+			(*bagItems)[itemId] += (quantity > 0 ? quantity : 1);
 	}
 	sqlite3_finalize(stmt);
 }
@@ -3294,6 +4808,486 @@ std::map<int, int> Database::RollLootTableComponents(int loot_table_id) {
 	if (!db || loot_table_id <= 0) return out;
 	std::set<int> visited;
 	RollLootInto(db, loot_table_id, 0, out, visited);
+	return out;
+}
+
+std::map<int, int> Database::RollLootTable(int loot_table_id, std::map<int, int>& bag_items,
+                                           int chosen_item_id, std::vector<AutoGear>* gear,
+                                           uint32_t profile_id) {
+	std::map<int, int> out;
+	sqlite3* db = GetConnection();
+	if (!db || loot_table_id <= 0) return out;
+	std::set<int> visited;
+	const int classSet = profile_id ? (int)GetClassConfig(profile_id).skillGroupSetId : 0;  // 0959
+	RollLootInto(db, loot_table_id, 0, out, visited, &bag_items, chosen_item_id, gear, classSet);
+	return out;
+}
+
+void Database::SetChoiceLootTables(const std::vector<int>& tables) {
+	ChoiceTables() = std::set<int>(tables.begin(), tables.end());
+	Logger::Log("loot", "[Loot] %zu choice reward table(s)\n", ChoiceTables().size());
+}
+
+// Dropped blueprints / flair -> ga_players_inventory, one row per
+// copy, same row shape as Database::VendorPurchase (instance side). Sell value
+// = half the item's credit price from the game tables (none -> 0/-1: not sellable,
+// but still destroyable - 0/0 is reserved for the re-seeded starter kit).
+// Weapons and class devices (item id = device id) become a device
+// row with the equip slot(s) of their category, like the starter kit rows and
+// the instance's VendorPurchase - with device_id 0 a crafted/awarded weapon
+// was a bag entry that could not be equipped.
+std::vector<int64_t> Database::GrantLootItems(int64_t user_id, const std::map<int, int>& items) {
+	std::vector<int64_t> ids;
+	sqlite3* db = GetConnection();
+	if (!db || user_id <= 0 || items.empty()) return ids;
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"INSERT INTO ga_players_inventory "
+			"(user_id, profile_id, device_id, quality, mod_effect_group_ids, oc, allowed_slots, item_id, stock_n, "
+			" sell_value, sell_currency) "
+			"VALUES (?1, 0, CASE WHEN COALESCE((SELECT ref_device_id FROM asm_data_set_items WHERE item_id = ?2), 0) > 0 "
+			"   THEN (SELECT ref_device_id FROM asm_data_set_items WHERE item_id = ?2) "
+			"   WHEN (SELECT slot_used_value_id FROM asm_data_set_devices WHERE device_id = ?2 LIMIT 1) IN (388,389,390,476,806,981) "
+			"   THEN ?2 ELSE 0 END, "
+			" CASE WHEN (SELECT slot_used_value_id FROM asm_data_set_devices WHERE device_id = ?2 LIMIT 1) IN (388,389,390,476,806,981) "
+			"   THEN COALESCE((SELECT quality_value_id FROM asm_data_set_items WHERE item_id = ?2), 0) ELSE 0 END, '', 0, "
+			" CASE (SELECT item_type_value_id FROM asm_data_set_items WHERE item_id = ?2) WHEN 1412 THEN '501' "
+			"   WHEN 1020 THEN '996,997,998,999,1000' "
+			"   ELSE CASE (SELECT slot_used_value_id FROM asm_data_set_devices WHERE device_id = ?2 LIMIT 1) "
+			"     WHEN 389 THEN '221' WHEN 388 THEN '198' WHEN 981 THEN '200' WHEN 806 THEN '201' "
+			"     WHEN 476 THEN '386' WHEN 390 THEN '203,204,385' ELSE '' END END, ?2, "
+			" (SELECT COALESCE(MAX(stock_n), -1) + 1 FROM ga_players_inventory WHERE user_id = ?1 AND item_id = ?2), "
+			" COALESCE((SELECT price / 2 FROM asm_data_set_prices WHERE item_id = ?2 AND currency_type_value_id = 1603 ORDER BY id LIMIT 1), 0), "
+			" CASE WHEN EXISTS (SELECT 1 FROM asm_data_set_prices WHERE item_id = ?2 AND currency_type_value_id = 1603) "
+			"      THEN 1603 ELSE -1 END)",
+			-1, &st, nullptr) != SQLITE_OK || !st) {
+		Logger::Log("loot", "[Loot] bag item insert prepare failed: %s\n", sqlite3_errmsg(db));
+		return ids;
+	}
+	for (const auto& kv : items) {
+		for (int n = 0; n < kv.second && n < 10; ++n) {
+			sqlite3_reset(st);
+			sqlite3_bind_int64(st, 1, user_id);
+			sqlite3_bind_int(st, 2, kv.first);
+			if (sqlite3_step(st) == SQLITE_DONE) ids.push_back(sqlite3_last_insert_rowid(db));
+			else Logger::Log("loot", "[Loot] bag item %d insert failed: %s\n", kv.first, sqlite3_errmsg(db));
+		}
+	}
+	sqlite3_finalize(st);
+	return ids;
+}
+
+namespace {
+// Crafting skill points (no original curve survives): a craft at or near the
+// skill's level teaches 10 points, a trivial one (blueprint 100+ below) 2; cap 300
+// (the highest blueprint requirement is 200).
+constexpr int kCraftSkillGain = 10, kCraftSkillGainTrivial = 2, kCraftSkillMax = 300;
+void EnsureCraftingSkillsTable(sqlite3* db) {
+	static bool done = false;
+	if (done) return;
+	done = sqlite3_exec(db, "CREATE TABLE IF NOT EXISTS ga_character_crafting_skills ("
+	                 "  character_id INTEGER NOT NULL, skill_id INTEGER NOT NULL,"
+	                 "  points INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (character_id, skill_id));",
+	             nullptr, nullptr, nullptr) == SQLITE_OK;
+}
+}
+
+std::vector<std::pair<int, int>> Database::GetCraftingSkills(int64_t character_id) {
+	std::vector<std::pair<int, int>> out;
+	sqlite3* db = GetConnection();
+	if (!db || character_id == 0) return out;
+	EnsureCraftingSkillsTable(db);
+	// Every skill of the Crafting group (138), 0 when never used, in the tab's order.
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT g.skill_id, COALESCE((SELECT points FROM ga_character_crafting_skills c "
+			"  WHERE c.character_id = ?1 AND c.skill_id = g.skill_id), 0) "
+			"FROM asm_data_set_skill_group_skills g WHERE g.skill_group_id = 138 "
+			"GROUP BY g.skill_id ORDER BY MIN(g.sort_order), g.skill_id",
+			-1, &st, nullptr) == SQLITE_OK && st) {
+		sqlite3_bind_int64(st, 1, character_id);
+		while (sqlite3_step(st) == SQLITE_ROW) out.emplace_back(sqlite3_column_int(st, 0), sqlite3_column_int(st, 1));
+	}
+	if (st) sqlite3_finalize(st);
+	return out;
+}
+
+Database::CraftResult Database::CraftItem(int64_t user_id, int64_t character_id, int blueprint_ref) {
+	CraftResult r;
+	sqlite3* db = GetConnection();
+	if (!db || user_id <= 0 || blueprint_ref <= 0) { r.reason = "no account"; return r; }
+	auto scalar = [&](const char* sql, int64_t a, int64_t b) -> int64_t {
+		sqlite3_stmt* st = nullptr; int64_t v = 0;
+		if (sqlite3_prepare_v2(db, sql, -1, &st, nullptr) == SQLITE_OK && st) {
+			sqlite3_bind_int64(st, 1, a); sqlite3_bind_int64(st, 2, b);
+			if (sqlite3_step(st) == SQLITE_ROW) v = sqlite3_column_int64(st, 0);
+		}
+		if (st) sqlite3_finalize(st);
+		return v;
+	};
+	// The client may send the bag row id or the blueprint item id - accept either,
+	// but only for a blueprint this account owns.
+	const char* kIsBp = "SELECT COUNT(*) FROM asm_data_set_blueprints WHERE blueprint_id = ?1 AND ?2 = ?2";
+	int bp = (int)scalar("SELECT item_id FROM ga_players_inventory WHERE id = ?1 AND user_id = ?2", blueprint_ref, user_id);
+	int64_t bp_row = bp > 0 ? blueprint_ref : 0;
+	if (bp <= 0 || !scalar(kIsBp, bp, 0)) {
+		bp = 0;
+		bp_row = scalar("SELECT id FROM ga_players_inventory WHERE item_id = ?1 AND user_id = ?2 ORDER BY id LIMIT 1",
+		                blueprint_ref, user_id);
+		if (scalar(kIsBp, blueprint_ref, 0) && bp_row > 0) bp = blueprint_ref;
+	}
+	if (bp <= 0) { r.reason = "blueprint not owned"; return r; }
+	r.blueprint_item_id = bp;
+	r.created_item_id = (int)scalar("SELECT created_item_id FROM asm_data_set_blueprints WHERE blueprint_id = ?1 AND ?2 = ?2", bp, 0);
+	if (r.created_item_id <= 0) { r.reason = "blueprint creates nothing"; return r; }
+	const int out_qty = std::clamp((int)scalar("SELECT quantity FROM asm_data_set_blueprints WHERE blueprint_id = ?1 AND ?2 = ?2", bp, 0), 1, 10);
+	const bool single_use = scalar("SELECT COALESCE(destroy_on_use_flag, 0) FROM asm_data_set_blueprints WHERE blueprint_id = ?1 AND ?2 = ?2", bp, 0) != 0;
+	// Skill gate: the blueprint item's crafting skill + minimum points.
+	r.skill_id = (int)scalar("SELECT COALESCE(skill_id, 0) FROM asm_data_set_items WHERE item_id = ?1 AND ?2 = ?2", bp, 0);
+	const int skill_min = (int)scalar("SELECT COALESCE(skill_level_min, 0) FROM asm_data_set_items WHERE item_id = ?1 AND ?2 = ?2", bp, 0);
+	if (r.skill_id > 0) {
+		EnsureCraftingSkillsTable(db);
+		r.skill_points = (int)scalar("SELECT points FROM ga_character_crafting_skills WHERE character_id = ?1 AND skill_id = ?2",
+		                             character_id, r.skill_id);
+		if (r.skill_points < skill_min) {
+			r.reason = "skill " + std::to_string(r.skill_id) + " " + std::to_string(r.skill_points) + "/" + std::to_string(skill_min);
+			return r;
+		}
+	}
+
+	std::vector<std::pair<int, int>> recipe;  // component item_id, quantity
+	{
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db, "SELECT item_id, quantity FROM asm_data_set_blueprint_items WHERE blueprint_id = ?1",
+				-1, &st, nullptr) == SQLITE_OK && st) {
+			sqlite3_bind_int(st, 1, bp);
+			while (sqlite3_step(st) == SQLITE_ROW)
+				recipe.emplace_back(sqlite3_column_int(st, 0), std::max(1, sqlite3_column_int(st, 1)));
+		}
+		if (st) sqlite3_finalize(st);
+	}
+	sqlite3_exec(db, "BEGIN IMMEDIATE;", nullptr, nullptr, nullptr);
+	bool ok = true;
+	for (const auto& c : recipe) {
+		const int have = GetComponentCount(user_id, c.first);
+		if (have < c.second) {
+			ok = false;
+			r.reason = "missing component " + std::to_string(c.first) + " (" + std::to_string(have) + "/" + std::to_string(c.second) + ")";
+			break;
+		}
+	}
+	for (size_t i = 0; ok && i < recipe.size(); ++i) {
+		sqlite3_stmt* st = nullptr;
+		ok = sqlite3_prepare_v2(db,
+				"UPDATE ga_user_components SET quantity = quantity - ?1, updated_at = strftime('%s','now') "
+				"WHERE user_id = ?2 AND item_id = ?3 AND quantity >= ?1", -1, &st, nullptr) == SQLITE_OK && st;
+		if (ok) {
+			sqlite3_bind_int(st, 1, recipe[i].second);
+			sqlite3_bind_int64(st, 2, user_id);
+			sqlite3_bind_int(st, 3, recipe[i].first);
+			ok = sqlite3_step(st) == SQLITE_DONE && sqlite3_changes(db) == 1;
+		}
+		if (st) sqlite3_finalize(st);
+		if (!ok) r.reason = "component spend failed";
+		else if (GetComponentCount(user_id, recipe[i].first) <= 0) r.depleted.push_back(recipe[i].first);
+	}
+	if (ok) {
+		for (int item : r.depleted) {
+			sqlite3_stmt* st = nullptr;
+			if (sqlite3_prepare_v2(db, "DELETE FROM ga_user_components WHERE user_id = ?1 AND item_id = ?2 AND quantity <= 0",
+					-1, &st, nullptr) == SQLITE_OK && st) {
+				sqlite3_bind_int64(st, 1, user_id); sqlite3_bind_int(st, 2, item);
+				sqlite3_step(st);
+			}
+			if (st) sqlite3_finalize(st);
+		}
+		r.inventory_ids = GrantLootItems(user_id, { { r.created_item_id, out_qty } });
+		ok = !r.inventory_ids.empty();
+		if (!ok) r.reason = "item insert failed";
+	}
+	// Single-use blueprints (most weapon/armor ones) are spent; recipes stay.
+	if (ok && single_use) {
+		sqlite3_stmt* st = nullptr;
+		ok = sqlite3_prepare_v2(db, "DELETE FROM ga_players_inventory WHERE id = ?1 AND user_id = ?2 AND item_id = ?3",
+				-1, &st, nullptr) == SQLITE_OK && st;
+		if (ok) {
+			sqlite3_bind_int64(st, 1, bp_row); sqlite3_bind_int64(st, 2, user_id); sqlite3_bind_int(st, 3, bp);
+			ok = sqlite3_step(st) == SQLITE_DONE && sqlite3_changes(db) == 1;
+		}
+		if (st) sqlite3_finalize(st);
+		if (ok) r.spent_blueprint_row = bp_row; else r.reason = "blueprint spend failed";
+	}
+	if (ok && r.skill_id > 0 && character_id != 0 && r.skill_points < kCraftSkillMax) {
+		const int gain = EconRules2::CraftSkillGain(db, skill_min, r.skill_points);  // +1 if difficult enough
+		sqlite3_stmt* st = nullptr;
+		if (sqlite3_prepare_v2(db,
+				"INSERT INTO ga_character_crafting_skills (character_id, skill_id, points) VALUES (?1, ?2, MIN(?3, ?4)) "
+				"ON CONFLICT(character_id, skill_id) DO UPDATE SET points = MIN(points + ?3, ?4)",
+				-1, &st, nullptr) == SQLITE_OK && st) {
+			sqlite3_bind_int64(st, 1, character_id); sqlite3_bind_int(st, 2, r.skill_id);
+			sqlite3_bind_int(st, 3, gain); sqlite3_bind_int(st, 4, kCraftSkillMax);
+			sqlite3_step(st);
+		}
+		if (st) sqlite3_finalize(st);
+		r.skill_gain = std::min(r.skill_points + gain, kCraftSkillMax) - r.skill_points;
+		r.skill_points = std::min(r.skill_points + gain, kCraftSkillMax);
+		{
+			sqlite3_stmt* ns = nullptr;
+			if (sqlite3_prepare_v2(db, "SELECT COALESCE(name_msg_translated,'') FROM asm_data_set_skill_group_skills WHERE skill_id = ?1 AND name_msg_translated <> '' LIMIT 1", -1, &ns, nullptr) == SQLITE_OK && ns) {
+				sqlite3_bind_int(ns, 1, r.skill_id);
+				if (sqlite3_step(ns) == SQLITE_ROW && sqlite3_column_text(ns, 0)) r.skill_name = (const char*)sqlite3_column_text(ns, 0);
+			}
+			sqlite3_finalize(ns);
+		}
+	}
+	if (!ok) r.depleted.clear();
+	sqlite3_exec(db, ok ? "COMMIT;" : "ROLLBACK;", nullptr, nullptr, nullptr);
+	r.ok = ok;
+	return r;
+}
+
+namespace {
+
+// One row of a "pick one" table (drop_chance = weight, the salvage + container
+// tables sum to 100). Returns {item_id, quantity, sub_loot_table_id}.
+struct PickedRow { int item_id = 0; int quantity = 0; int sub_table = 0; int auto_create = 0; int quality = 0; };  // 0959
+PickedRow PickWeightedRow(sqlite3* db, int loot_table_id) {
+	std::vector<std::pair<double, PickedRow>> rows;
+	double total = 0;
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db, "SELECT item_id, quantity, COALESCE(sub_loot_table_id,0), drop_chance, "
+			"COALESCE(auto_create_flag,0), COALESCE(NULLIF(max_quality_value_id,0), quality_value_id, 0) "  /* 0959 */
+			"FROM asm_data_set_loot_table_items WHERE loot_table_id = ?1 ORDER BY sort_order, id",
+			-1, &st, nullptr) == SQLITE_OK && st) {
+		sqlite3_bind_int(st, 1, loot_table_id);
+		while (sqlite3_step(st) == SQLITE_ROW) {
+			const double w = std::max(0.0, sqlite3_column_double(st, 3));
+			PickedRow r{ sqlite3_column_int(st, 0), std::max(1, sqlite3_column_int(st, 1)), sqlite3_column_int(st, 2),
+			             sqlite3_column_int(st, 4), sqlite3_column_int(st, 5) };  // 0959
+			if (r.item_id <= 0 && r.sub_table <= 0) continue;
+			rows.emplace_back(w, r);
+			total += w;
+		}
+	}
+	if (st) sqlite3_finalize(st);
+	if (rows.empty()) return {};
+	// Every chance 0 (the container sub-tables, e.g. 537 NDZone Consumable Drops) = equal odds.
+	if (total <= 0) { for (auto& r : rows) r.first = 1.0; total = (double)rows.size(); }
+	double x = Roll100() / 100.0 * total;
+	for (const auto& r : rows) { if (r.first > 0 && x < r.first) return r.second; x -= r.first; }
+	for (auto it = rows.rbegin(); it != rows.rend(); ++it) if (it->first > 0) return it->second;
+	return {};
+}
+
+// Bag row the account owns and no agent has equipped -> item id, item type,
+// quality (row quality when set above Common, else the item's own), bundle table.
+// Gear rows (item_id 0, device_id > 0) count too: the client's Salvage button is for crafted gear whose
+// blueprint sits in salvage loot group 16 (tables 308-310 by quality) - salvage_group says so.
+struct BagRowInfo { bool found = false; int equipped = 0; int item_id = 0; int item_type = 0; int quality = 0; int bundle = 0;
+	int device_id = 0; bool salvage_group = false; };
+BagRowInfo ReadBagRow(sqlite3* db, int64_t user_id, int64_t inventory_id) {
+	BagRowInfo b;
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT p.item_id, COALESCE(i.item_type_value_id,0), "
+			"  CASE WHEN p.quality IN (1162,1163,1164) THEN p.quality ELSE COALESCE(i.quality_value_id,0) END, "
+			"  COALESCE(i.bundle_loot_table_id,0), "
+			"  (SELECT COUNT(*) FROM ga_character_devices d JOIN ga_characters c ON c.id = d.character_id "
+			"   WHERE d.inventory_id = p.id AND c.user_id = p.user_id), "
+			"  p.device_id, EXISTS(SELECT 1 FROM asm_data_set_blueprints b "
+			"   WHERE p.device_id > 0 AND b.created_item_id = p.device_id AND b.loot_table_group_id = 16) "
+			"FROM ga_players_inventory p LEFT JOIN asm_data_set_items i ON i.item_id = p.item_id "
+			"WHERE p.id = ?1 AND p.user_id = ?2 AND (p.item_id > 0 OR p.device_id > 0)",
+			-1, &st, nullptr) == SQLITE_OK && st) {
+		sqlite3_bind_int64(st, 1, inventory_id);
+		sqlite3_bind_int64(st, 2, user_id);
+		if (sqlite3_step(st) == SQLITE_ROW) {
+			b.found = true;
+			b.item_id = sqlite3_column_int(st, 0); b.item_type = sqlite3_column_int(st, 1);
+			b.quality = sqlite3_column_int(st, 2); b.bundle = sqlite3_column_int(st, 3);
+			b.equipped = sqlite3_column_int(st, 4);
+			b.device_id = sqlite3_column_int(st, 5); b.salvage_group = sqlite3_column_int(st, 6) != 0;
+		}
+	}
+	if (st) sqlite3_finalize(st);
+	return b;
+}
+
+bool DeleteBagRow(sqlite3* db, int64_t user_id, int64_t inventory_id) {
+	sqlite3_stmt* st = nullptr;
+	bool ok = sqlite3_prepare_v2(db, "DELETE FROM ga_players_inventory WHERE id = ?1 AND user_id = ?2 AND (item_id > 0 OR device_id > 0)",
+			-1, &st, nullptr) == SQLITE_OK && st;
+	if (ok) {
+		sqlite3_bind_int64(st, 1, inventory_id); sqlite3_bind_int64(st, 2, user_id);
+		ok = sqlite3_step(st) == SQLITE_DONE && sqlite3_changes(db) == 1;
+	}
+	if (st) sqlite3_finalize(st);
+	return ok;
+}
+
+}  // namespace
+
+Database::BagUseResult Database::SalvageItem(int64_t user_id, int64_t inventory_id) {
+	BagUseResult r;
+	sqlite3* db = GetConnection();
+	if (!db || user_id <= 0 || inventory_id <= 0) { r.reason = "no account"; return r; }
+	sqlite3_exec(db, "BEGIN IMMEDIATE;", nullptr, nullptr, nullptr);
+	const BagRowInfo b = ReadBagRow(db, user_id, inventory_id);
+	r.item_id = b.item_id;
+	r.loot_table_id = b.quality == 1164 ? 308 : b.quality == 1163 ? 309 : b.quality == 1162 ? 310 : 0;
+	// Not salvageable: currencies / account upgrades + boosters / virtual / components.
+	static const std::set<int> kNoSalvage = { 1171, 1450, 1597, 1602, 1609, 1628 };
+	if (!b.found)                          r.reason = "not in this account's bag";
+	else if (b.equipped > 0)               r.reason = "equipped";
+	else if (kNoSalvage.count(b.item_type)) r.reason = "item type " + std::to_string(b.item_type) + " cannot be salvaged";
+	else if (b.item_id <= 0 && !b.salvage_group) r.reason = "device " + std::to_string(b.device_id) + " has no salvage blueprint";
+	else if (!r.loot_table_id)             r.reason = "quality " + std::to_string(b.quality) + " has no salvage table";
+	else {
+		const PickedRow p = PickWeightedRow(db, r.loot_table_id);
+		if (p.item_id > 0) r.components[p.item_id] += p.quantity;
+		if (r.components.empty())                     r.reason = "salvage table empty";
+		else if (!DeleteBagRow(db, user_id, inventory_id)) r.reason = "delete failed";
+		else {
+			GrantComponents(user_id, r.components);
+			r.inventory_ids.push_back(inventory_id);
+			r.ok = true;
+		}
+	}
+	sqlite3_exec(db, r.ok ? "COMMIT;" : "ROLLBACK;", nullptr, nullptr, nullptr);
+	return r;
+}
+
+Database::BagUseResult Database::ActivateItem(int64_t user_id, int64_t inventory_id) {
+	BagUseResult r;
+	sqlite3* db = GetConnection();
+	if (!db || user_id <= 0 || inventory_id <= 0) { r.reason = "no account"; return r; }
+	sqlite3_exec(db, "BEGIN IMMEDIATE;", nullptr, nullptr, nullptr);
+	const BagRowInfo b = ReadBagRow(db, user_id, inventory_id);
+	r.item_id = b.item_id;
+	r.loot_table_id = b.bundle;
+	std::map<int, int> bag;
+	if (!b.found)                                 r.reason = "not in this account's bag";
+	else if (b.item_type != 1634 || b.bundle <= 0) r.reason = "item type " + std::to_string(b.item_type) + " has no activate action";
+	else {
+		// One pick from the container (a few tries so a pick that only rolls
+		// unsupported rewards - boosters / AP, not built yet - does not eat it).
+		for (int tries = 0; tries < 8 && r.components.empty() && bag.empty(); ++tries) {
+			PickedRow p = PickWeightedRow(db, b.bundle);
+			for (int depth = 0; p.item_id <= 0 && p.sub_table > 0 && depth < 4; ++depth) p = PickWeightedRow(db, p.sub_table);
+			if (p.item_id <= 0) continue;
+			if (p.auto_create) {  // 0959: finished item, not the blueprint
+				int created = 0;
+				sqlite3_stmt* cb = nullptr;
+				if (sqlite3_prepare_v2(db, "SELECT created_item_id FROM asm_data_set_blueprints WHERE blueprint_id = ?1", -1, &cb, nullptr) == SQLITE_OK && cb) {
+					sqlite3_bind_int(cb, 1, p.item_id);
+					if (sqlite3_step(cb) == SQLITE_ROW) created = sqlite3_column_int(cb, 0);
+				}
+				if (cb) sqlite3_finalize(cb);
+				if (created > 0) {
+					bag[created] += 1;
+					if (p.quality > 0) r.gear.push_back({created, p.item_id, p.quality});
+					continue;
+				}
+			}
+			int t = 0;
+			sqlite3_stmt* st = nullptr;
+			if (sqlite3_prepare_v2(db, "SELECT item_type_value_id FROM asm_data_set_items WHERE item_id = ?1", -1, &st, nullptr) == SQLITE_OK && st) {
+				sqlite3_bind_int(st, 1, p.item_id);
+				if (sqlite3_step(st) == SQLITE_ROW) t = sqlite3_column_int(st, 0);
+			}
+			if (st) sqlite3_finalize(st);
+			if (t == 1171) r.components[p.item_id] += p.quantity;
+			else if (t == 686 || t == 950) bag[p.item_id] += 1;
+		}
+		if (r.components.empty() && bag.empty())          r.reason = "container rolled nothing";
+		else if (!DeleteBagRow(db, user_id, inventory_id)) r.reason = "delete failed";
+		else {
+			if (!r.components.empty()) GrantComponents(user_id, r.components);
+			r.inventory_ids = GrantLootItems(user_id, bag);
+			r.ok = true;
+		}
+	}
+	if (!r.ok) r.components.clear();
+	sqlite3_exec(db, r.ok ? "COMMIT;" : "ROLLBACK;", nullptr, nullptr, nullptr);
+	return r;
+}
+
+std::vector<Database::VendorItem> Database::GetVendorItems(int loot_table_id) {
+	std::vector<VendorItem> out;
+	sqlite3* db = GetConnection();
+	if (!db || loot_table_id <= 0) return out;
+
+	sqlite3_stmt* stmt = nullptr;
+	int rc = sqlite3_prepare_v2(db,
+		"SELECT li.loot_table_item_id, li.item_id, COALESCE(li.auto_create_flag, 0), "
+		"       COALESCE(li.max_quality_value_id, 0), COALESCE(li.sort_order, 0), "
+		"       p.price, p.currency_type_value_id "
+		"FROM asm_data_set_loot_table_items li "
+		"LEFT JOIN asm_data_set_prices p ON p.item_id = li.item_id "
+		"     AND p.currency_type_value_id IN (1603, 1604, 1605) AND p.price > 0 "
+		// The asm capture holds a 2nd, stray price set per item
+		// (ids >= 3541, filed under a cached item id); the item's own list =
+		// the lowest id per currency. Sending both made the vendor show
+		// mixed prices (2 / 4 / 1400 cr for 1000 cr blueprints).
+		"     AND p.id = (SELECT MIN(p2.id) FROM asm_data_set_prices p2 "
+		"                 WHERE p2.item_id = p.item_id AND p2.currency_type_value_id = p.currency_type_value_id) "
+		// Agenda Points only buy what the original sold for AP
+		// alone (boosters, store pets, trails). Anything with a credit or token
+		// price is sold for that currency only (gear = credits).
+		"     AND (p.currency_type_value_id <> 1605 OR NOT EXISTS (SELECT 1 FROM asm_data_set_prices p3 "
+		"          WHERE p3.item_id = p.item_id AND p3.currency_type_value_id IN (1603, 1604) AND p3.price > 0 "
+		"            AND p3.id = (SELECT MIN(p4.id) FROM asm_data_set_prices p4 "
+		"                         WHERE p4.item_id = p3.item_id AND p4.currency_type_value_id = p3.currency_type_value_id)) "
+		// (Shared/VendorCurrency.hpp): ?2 = this vendor's column
+		// currency. A row with no price in it is sold for its original AP price...
+		"          OR NOT EXISTS (SELECT 1 FROM asm_data_set_prices p5 WHERE p5.item_id = p.item_id AND p5.currency_type_value_id = ?2 AND p5.price > 0 AND p5.id = (SELECT MIN(p6.id) FROM asm_data_set_prices p6 WHERE p6.item_id = p5.item_id AND p6.currency_type_value_id = ?2))) "
+		// ...and its other in-game price (unusable in this column) is not sent.
+		"     AND NOT (p.currency_type_value_id IN (1603, 1604) AND p.currency_type_value_id <> ?2 "
+		"              AND NOT EXISTS (SELECT 1 FROM asm_data_set_prices p7 WHERE p7.item_id = p.item_id AND p7.currency_type_value_id = ?2 AND p7.price > 0 AND p7.id = (SELECT MIN(p8.id) FROM asm_data_set_prices p8 WHERE p8.item_id = p7.item_id AND p8.currency_type_value_id = ?2)) "
+		"              AND EXISTS (SELECT 1 FROM asm_data_set_prices p9 WHERE p9.item_id = p.item_id AND p9.currency_type_value_id = 1605 AND p9.price > 0 AND p9.id = (SELECT MIN(p10.id) FROM asm_data_set_prices p10 WHERE p10.item_id = p9.item_id AND p10.currency_type_value_id = 1605))) "
+		"WHERE li.loot_table_id = ?1 AND li.item_id > 0 "
+		// Elite Agent Status (type 1602) is never offered -
+		// every account is Elite; Agenda Point packs (1597) only
+		// had real-money prices - AP is earned in play, so the Upgrade menu's
+		// ADD AGENDA POINTS button (client-forced visible) opens an empty list.
+		"  AND NOT EXISTS (SELECT 1 FROM asm_data_set_items i "
+		// + type 1450 (profile slots 6436-6439 = every profile is free;
+		// Cyber Cuts 6019 / Genolab 6128 = no appearance-change path) - they only took tokens.
+		"                  WHERE i.item_id = li.item_id AND i.item_type_value_id IN (1597, 1602, 1450) AND i.item_id NOT IN (6019, 6128)) "  // Cyber Cuts / Genolab screens need their row
+		"ORDER BY li.sort_order, li.loot_table_item_id",
+		-1, &stmt, nullptr);
+	if (rc != SQLITE_OK || !stmt) {
+		Logger::Log("loot", "[Vendor] prepare failed (table=%d): %s\n",
+			loot_table_id, sqlite3_errmsg(db));
+		return out;
+	}
+	int column = 1603;  // vendor's price column (loot table type)
+	{
+		sqlite3_stmt* tc = nullptr;
+		if (sqlite3_prepare_v2(db, VendorCurrency::kColumnSql, -1, &tc, nullptr) == SQLITE_OK && tc) {
+			sqlite3_bind_int(tc, 1, loot_table_id);
+			if (sqlite3_step(tc) == SQLITE_ROW) column = sqlite3_column_int(tc, 0);
+		}
+		if (tc) sqlite3_finalize(tc);
+	}
+	sqlite3_bind_int(stmt, 1, loot_table_id);
+	sqlite3_bind_int(stmt, 2, column);
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		const int ltiId = sqlite3_column_int(stmt, 0);
+		if (out.empty() || out.back().loot_table_item_id != ltiId) {
+			VendorItem v;
+			v.loot_table_item_id   = ltiId;
+			v.item_id              = sqlite3_column_int(stmt, 1);
+			v.auto_create_flag     = sqlite3_column_int(stmt, 2);
+			v.max_quality_value_id = sqlite3_column_int(stmt, 3);
+			v.sort_order           = sqlite3_column_int(stmt, 4);
+			out.push_back(v);
+		}
+		if (sqlite3_column_type(stmt, 5) != SQLITE_NULL) {
+			out.back().prices.push_back({ sqlite3_column_int(stmt, 5), sqlite3_column_int(stmt, 6) });
+		}
+	}
+	sqlite3_finalize(stmt);
 	return out;
 }
 
@@ -3528,7 +5522,7 @@ std::vector<Database::QuestRequirementRow> Database::GetQuestRequirements(int qu
 	if (sqlite3_prepare_v2(db,
 			"SELECT quest_requirement_id, requirement_type_value_id, count, "
 			"       COALESCE(target_item_id, 0), COALESCE(target_bot_id, 0), "
-			"       COALESCE(target_ui_volume_id, 0) "
+			"       COALESCE(target_ui_volume_id, 0), COALESCE(map_game_id, 0) "
 			"FROM asm_data_set_quest_requirements WHERE quest_id = ?",
 			-1, &stmt, nullptr) != SQLITE_OK || !stmt) {
 		return rows;
@@ -3542,6 +5536,7 @@ std::vector<Database::QuestRequirementRow> Database::GetQuestRequirements(int qu
 		r.target_item_id            = sqlite3_column_int(stmt, 3);
 		r.target_bot_id             = sqlite3_column_int(stmt, 4);
 		r.target_ui_volume_id       = sqlite3_column_int(stmt, 5);
+		r.map_game_id               = sqlite3_column_int(stmt, 6);
 		rows.push_back(r);
 	}
 	sqlite3_finalize(stmt);
@@ -3568,9 +5563,36 @@ bool Database::AreQuestRequirementsMet(int64_t user_id, int64_t character_id, in
 			continue;
 		}
 
-		// Kill (1428) and Interact with Volume (1431) share the counter table.
+		// Complete Mission (1432) is credited on a won mission
+		// (CreditMissionQuestRequirements). A map_game_id with no
+		// map_game_info row can never be played here (none is left now that 1422 has its row)
+		// -> stays satisfied, so quest 169 is no dead end.
+		bool counted = r.requirement_type_value_id == 1432;
+		if (counted && r.map_game_id > 0) {
+			sqlite3* db = GetConnection();
+			sqlite3_stmt* st = nullptr;
+			counted = false;
+			if (db && sqlite3_prepare_v2(db,
+					"SELECT 1 FROM map_game_info WHERE map_game_id = ?",
+					-1, &st, nullptr) == SQLITE_OK && st) {
+				sqlite3_bind_int(st, 1, r.map_game_id);
+				counted = sqlite3_step(st) == SQLITE_ROW;
+				sqlite3_finalize(st);
+			}
+		}
+
+		// Script Triggered (1617) is credited by map Kismet
+		// (CreditScriptQuestRequirement). Req 10 (dev quest 8 "Lrn2play") has no
+		// action in any shipped map -> stays satisfied.
+		if (r.requirement_type_value_id == 1617 && r.quest_requirement_id != 10) counted = true;
+		// Finish PvP Mission (1512) is credited at every PvP mission end
+		// (CreditPvpFinishForInstance).
+		if (r.requirement_type_value_id == 1512) counted = true;
+
+		// Kill (1428), Interact with Volume (1431), Complete Mission (1432) and
+		// Script Triggered (1617) share the counter table.
 		if (r.requirement_type_value_id == 1428 ||
-		    r.requirement_type_value_id == 1431) {
+		    r.requirement_type_value_id == 1431 || counted) {
 			sqlite3* db = GetConnection();
 			int have = 0;
 			if (db) {
@@ -3591,8 +5613,7 @@ bool Database::AreQuestRequirementsMet(int64_t user_id, int64_t character_id, in
 					+ ": " + std::to_string(have) + "/" + std::to_string(need));
 			}
 		}
-		// Every other type (Complete Mission, Finish PVP Mission, Script
-		// Triggered) is unimplemented — treat as satisfied so those quests stay
+		// Every other type is unimplemented — treat as satisfied so those quests stay
 		// completable instead of becoming dead ends.
 	}
 
@@ -3642,9 +5663,36 @@ std::vector<std::pair<int, int>> Database::GetQuestRequirementCounts(int64_t use
 			continue;
 		}
 
-		// Kill (1428) and Interact with Volume (1431) share the counter table.
+		// Complete Mission (1432) is credited on a won mission
+		// (CreditMissionQuestRequirements). A map_game_id with no
+		// map_game_info row can never be played here (none is left now that 1422 has its row)
+		// -> stays satisfied, so quest 169 is no dead end.
+		bool counted = r.requirement_type_value_id == 1432;
+		if (counted && r.map_game_id > 0) {
+			sqlite3* db = GetConnection();
+			sqlite3_stmt* st = nullptr;
+			counted = false;
+			if (db && sqlite3_prepare_v2(db,
+					"SELECT 1 FROM map_game_info WHERE map_game_id = ?",
+					-1, &st, nullptr) == SQLITE_OK && st) {
+				sqlite3_bind_int(st, 1, r.map_game_id);
+				counted = sqlite3_step(st) == SQLITE_ROW;
+				sqlite3_finalize(st);
+			}
+		}
+
+		// Script Triggered (1617) is credited by map Kismet
+		// (CreditScriptQuestRequirement). Req 10 (dev quest 8 "Lrn2play") has no
+		// action in any shipped map -> stays satisfied.
+		if (r.requirement_type_value_id == 1617 && r.quest_requirement_id != 10) counted = true;
+		// Finish PvP Mission (1512) is credited at every PvP mission end
+		// (CreditPvpFinishForInstance).
+		if (r.requirement_type_value_id == 1512) counted = true;
+
+		// Kill (1428), Interact with Volume (1431), Complete Mission (1432) and
+		// Script Triggered (1617) share the counter table.
 		if (r.requirement_type_value_id == 1428 ||
-		    r.requirement_type_value_id == 1431) {
+		    r.requirement_type_value_id == 1431 || counted) {
 			sqlite3* db = GetConnection();
 			if (db) {
 				sqlite3_stmt* stmt = nullptr;
@@ -4823,6 +6871,42 @@ int64_t Database::CreateAgency(const std::string& name,
 	return 0;
 }
 
+std::vector<Database::AgencyDirRow> Database::GetAgencyDirectory(const std::string& name_filter, int limit) {
+	std::vector<AgencyDirRow> out;
+	sqlite3* db = GetConnection();
+	sqlite3_stmt* stmt = nullptr;
+	if (sqlite3_prepare_v2(db,
+			"SELECT a.id, a.name, (SELECT COUNT(*) FROM ga_agency_members m WHERE m.agency_id = a.id), "
+			"       a.recruiting, a.recruiting_text, a.sub_only, "
+			"       COALESCE(al.name, ''), "
+			"       COALESCE((SELECT COUNT(*) FROM ga_alliance_members x WHERE x.alliance_id = am.alliance_id), 0) "
+			"FROM ga_agencies a "
+			"LEFT JOIN ga_alliance_members am ON am.agency_id = a.id "
+			"LEFT JOIN ga_alliances al ON al.id = am.alliance_id "
+			"WHERE a.name LIKE ? ESCAPE '\\' "
+			"ORDER BY a.recruiting DESC, a.name COLLATE NOCASE LIMIT ?",
+			-1, &stmt, nullptr) != SQLITE_OK || !stmt) return out;
+	std::string pat = "%";
+	for (char c : name_filter) { if (c == '%' || c == '_' || c == '\\') pat += '\\'; pat += c; }
+	pat += "%";
+	sqlite3_bind_text(stmt, 1, pat.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int(stmt, 2, limit);
+	auto col_text = [&](int c) {
+		const unsigned char* t = sqlite3_column_text(stmt, c);
+		return t ? std::string(reinterpret_cast<const char*>(t)) : std::string();
+	};
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		AgencyDirRow r;
+		r.id = sqlite3_column_int64(stmt, 0); r.name = col_text(1);
+		r.members = sqlite3_column_int(stmt, 2); r.recruiting = sqlite3_column_int(stmt, 3) != 0;
+		r.recruiting_text = col_text(4); r.sub_only = sqlite3_column_int(stmt, 5) != 0;
+		r.alliance_name = col_text(6); r.alliance_members = sqlite3_column_int(stmt, 7);
+		out.push_back(std::move(r));
+	}
+	sqlite3_finalize(stmt);
+	return out;
+}
+
 std::optional<Database::AgencyInfo> Database::GetAgencyInfo(int64_t agency_id) {
 	if (agency_id <= 0) return std::nullopt;
 	sqlite3* db = GetConnection();
@@ -5457,4 +7541,22 @@ void Database::RemoveAgencyFromAlliance(int64_t agency_id) {
 		sqlite3_finalize(st);
 	}
 	Logger::Log("agency", "[DB] RemoveAgencyFromAlliance agency=%lld\n", (long long)agency_id);
+}
+
+void Database::SyncSquadMembers(const std::vector<std::pair<int64_t, uint64_t>>& rows) {
+	sqlite3* db = GetConnection();
+	sqlite3_exec(db, "BEGIN; DELETE FROM ga_squad_members;", nullptr, nullptr, nullptr);
+	sqlite3_stmt* st = nullptr;
+	if (sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO ga_squad_members (character_id, squad_id) VALUES (?, ?)",
+			-1, &st, nullptr) == SQLITE_OK && st) {
+		for (const auto& r : rows) {
+			if (r.first <= 0) continue;
+			sqlite3_bind_int64(st, 1, r.first);
+			sqlite3_bind_int64(st, 2, (sqlite3_int64)r.second);
+			sqlite3_step(st);
+			sqlite3_reset(st);
+		}
+		sqlite3_finalize(st);
+	}
+	sqlite3_exec(db, "COMMIT;", nullptr, nullptr, nullptr);
 }

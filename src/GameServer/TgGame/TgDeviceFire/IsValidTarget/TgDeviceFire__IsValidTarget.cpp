@@ -1,6 +1,9 @@
 #include "src/GameServer/TgGame/TgDeviceFire/IsValidTarget/TgDeviceFire__IsValidTarget.hpp"
 #include "src/GameServer/TgGame/TgDeviceVolume/setupDevice/TgDeviceVolume__setupDevice.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/Utils/BotSight/BotSight.hpp"
+#include "src/GameServer/WorldGroups/WorldGroups.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include <string>
 
 // GetFullName returns a pointer into a single static buffer; consecutive
@@ -36,8 +39,33 @@ bool __fastcall TgDeviceFire__IsValidTarget::Call(
 
 	bool result = CallOriginal(FireMode, edx, TargetActor, OverrideTargeterType);
 
+	// Opted-in hostile bot pairs (BotSight): enemy-targeting fire modes may
+	// hit the other side's bots (the game puts every AI pawn on one coalition).
+	if (!result && TargetActor && FireMode && FireMode->m_Owner && FireMode->m_Owner->Instigator) {
+		const int tt = OverrideTargeterType ? (int)(uint8_t)OverrideTargeterType : (int)FireMode->m_eTargeterType;
+		if ((tt == 3 || tt == 4) && BotSight::IsHostilePair((AActor*)FireMode->m_Owner->Instigator, TargetActor)) {
+			Logger::Log("tgbotfactory", "[BotSight] hostile bot made a valid target (targeter %d)\n", tt);
+			return true;
+		}
+	}
+
 	// VR heal pad chain diagnostic. A hit here proves the volume's
 	// TimerPop/Touch → CausePainTo → ApplyHit path is reaching the fire mode.
+	// A player's hostile fire at a world-group member (world boss / escort)
+	// is always a valid target (p343: aimed rifle fire left the boss at full HP).
+	if (TargetActor && FireMode && FireMode->m_Owner && FireMode->m_Owner->Instigator
+		&& WorldGroups::IsMember(TargetActor)) {
+		APawn* inst = FireMode->m_Owner->Instigator;
+		const int tt = OverrideTargeterType ? (int)(uint8_t)OverrideTargeterType : (int)FireMode->m_eTargeterType;
+		if (inst->Controller && ObjectClassCache::ClassNameContains((UObject*)inst->Controller, "PlayerController")
+			&& (tt == 3 || tt == 4 || tt == 6)) {
+			static int s_logged = 0;
+			if (s_logged < 40) { ++s_logged;
+				Logger::Log("worldgroups", "[WorldGroups] player fire at member: original=%d targeter=%d\n", (int)result, tt); }
+			if (!result) return true;
+		}
+	}
+
 	if (DomeVrHealPad::IsPadFireMode(FireMode) && Logger::IsChannelEnabled("healpad")) {
 		std::string tgtCls = SafeGetFullName(TargetActor);
 		int physType = -1;

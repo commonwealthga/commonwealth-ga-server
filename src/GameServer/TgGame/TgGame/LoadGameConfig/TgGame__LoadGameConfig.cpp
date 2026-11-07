@@ -96,6 +96,16 @@ void __fastcall TgGame__LoadGameConfig::Call(ATgGame* Game, void* edx) {
 
 	Game->TimeLimit = missionTimeSecs;
 
+	// -maxplayers: raise/lower the join cap (GameInfo.AtCapacity) and grow the
+	// shared net bandwidth pool so each client keeps MaxDynamicBandwidth.
+	if (int cap = Config::GetMaxPlayers(); cap > 0) {
+		Game->MaxPlayersAllowed = cap;
+		Game->MaxPlayers        = cap;
+		const int per_client = Game->MaxDynamicBandwidth > 0 ? Game->MaxDynamicBandwidth : 7000;
+		if (Game->TotalNetBandwidth < cap * per_client) Game->TotalNetBandwidth = cap * per_client;
+		Logger::Log("playercount", "[LoadGameConfig] MaxPlayers=%d TotalNetBandwidth=%d\n", cap, Game->TotalNetBandwidth);
+	}
+
 	// Engine-side GameInfo.GameDifficulty (float, UE3 default 1.0). Read by
 	// UC at TgPawn_Character.uc:754 (wall-jump noise gate, fires only when
 	// > 2.0) and TgInventoryManager.uc:125 (weapon-switch noise volume scales

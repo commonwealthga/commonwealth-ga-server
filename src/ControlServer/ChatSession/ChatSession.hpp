@@ -8,6 +8,8 @@
 #include <sstream>
 #include <iomanip>
 #include <unordered_set>
+#include <optional>
+#include <cstring>
 
 #include "src/ControlServer/Constants/TcpFunctions.h"
 #include "src/ControlServer/Constants/TcpTypes.h"
@@ -15,6 +17,7 @@
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/ChatSession/ChatCommand.hpp"
+#include "lib/nlohmann/json.hpp"
 
 class ChatSession : public std::enable_shared_from_this<ChatSession> {
 public:
@@ -31,17 +34,37 @@ public:
     // Deliver a system chat line to one player's chat session, if they have
     // one. Used by TcpSession (e.g. friends "player not found" feedback).
     static void SystemMessageTo(const std::string& player_name, const std::string& text);
+    // Deliver a prebuilt chat frame to this player's chat socket (false = not connected).
+    static bool DeliverToPlayer(const std::string& player_name, const std::vector<uint8_t>& frame);
 
     // Same, addressed by session guid — the main TCP socket knows guids, not
     // player names.
     static void SystemMessageToGuid(const std::string& session_guid,
                                     const std::string& text);
 
+    // A localised line from the client's message table, by id, on the system channel.
+    // Fields carry the values its text asks for; the client formats and colours it,
+    // plays the sound linked to the id and hands item messages to its ACQUIRED banner
+    // (TgUIReceivedItemScreen, filter 0x11498a80: id in its list + ITEM_ID > 0).
+    struct MsgField {
+        uint16_t type = 0;
+        char kind = 'u';  // 'u' 4-byte int, 'f' 4-byte float, 's' string
+        uint32_t n = 0;
+        std::string s;
+        static MsgField U(uint16_t t, int64_t v) { MsgField f; f.type = t; f.n = (uint32_t)v; return f; }
+        static MsgField F(uint16_t t, int64_t v) { MsgField f; f.type = t; f.kind = 'f'; float x = (float)v; std::memcpy(&f.n, &x, 4); return f; }
+        static MsgField S(uint16_t t, std::string v) { MsgField f; f.type = t; f.kind = 's'; f.s = std::move(v); return f; }
+    };
+    static void SystemMsgIdToGuid(const std::string& session_guid, uint32_t msg_id,
+                                  const std::vector<MsgField>& fields);
+
     // Push a line onto the green Agency channel for every online member of
     // `agency_id`. Used by TcpSession for the join/leave/kick notices; the
     // membership row of the player being announced must already be written
     // (join) or deleted (leave) so the audience matches the new roster.
     static void AgencyMessage(int64_t agency_id, const std::string& text);
+    // Deliver a prebuilt chat frame to every chat session of these accounts.
+    static void DeliverFrameToUsers(const std::vector<int64_t>& user_ids, const std::vector<uint8_t>& frame);
 
     // Send `text` as a chat line on `channel` from the player owning
     // `session_guid`, with the same recipient scoping an ordinary chat message
@@ -55,10 +78,37 @@ public:
     // Names permitted to use -announce. Set once at startup from
     // ControlServerConfig::announcers; empty means the command is disabled.
     static void SetAnnouncers(const std::vector<std::string>& names);
+    // System line shown to each player on join ("" = off).
+    static void SetLoginNotice(const std::string& text);
+    // Global News stand. SendNewsToGuid shows the news file
+    // (title + newest posts) as yellow lines to one player; false when the
+    // file is missing/empty/invalid or the player has no chat session.
+    static void SetNewsFile(const std::string& path);
+    static bool SendNewsToGuid(const std::string& session_guid, std::string* headline = nullptr);
+    // AvA Hall of Legends POI. Top agents from our DB (level,
+    // missions won, enemies killed, PvP kills; zz test accounts skipped) as
+    // yellow lines to one player; empty boards say so.
+    static bool SendHallOfLegendsToGuid(const std::string& session_guid);
+    // Dev/cheat chat commands only when config dev_controls is on.
+    static void SetDevChatCommands(bool enabled);
+    // Player commands (-who / -played): bound player names of all
+    // chat sessions, and seconds since this guid's chat session bound (-1 = none).
+    static std::vector<std::string> OnlinePlayerNames();
+    static std::optional<std::unordered_set<std::string>> ChannelScope(uint32_t channel, const std::string& guid);   // (RecipientsFor)
+    static int64_t SessionSecondsForGuid(const std::string& session_guid);
 
 private:
     asio::ip::tcp::socket socket_;
     asio::steady_timer bind_retry_timer_;
+    // Voice: membership re-check timer + last membership the voip_config
+    // service answered for (see VoiceTick in ChatSession.cpp).
+    asio::steady_timer voice_timer_;
+    std::string voice_key_;
+    bool voice_busy_ = false;
+    bool voice_sent_ = false;
+    unsigned voice_ticks_ = 0;
+    int64_t voice_agency_ = 0;
+    int64_t voice_retry_at_ = 0;
     // Scratch buffer for one async_read_some call. TCP is a byte stream, so a
     // single read can return a partial packet, exactly one packet, or several
     // packets concatenated — appended into `accumulator_` and drained from
@@ -75,6 +125,7 @@ private:
     uint64_t ignore_epoch_ = 0;
     int bind_retry_attempts_ = 0;
     bool announced_join_ = false;
+    int64_t bound_at_ = 0;
     // Single-shot lifecycle guard. Set by TearDown(); checked in every async
     // callback so a session that's already been torn down (e.g. by a write
     // error) is inert if a stale callback fires later. Without this the read
@@ -112,6 +163,8 @@ private:
     bool BindPlayerFromRegistry(const char* reason);
     void ScheduleBindRetry();
     void AnnounceJoinIfNeeded();
+    void VoiceTick();
+    void OnVoiceConfig(const std::optional<nlohmann::json>& decision, const std::string& key);
 
     // -spectate handling. instance_id==0 -> list running (non-home-map)
     // instances the caller may join; instance_id!=0 -> request to join that

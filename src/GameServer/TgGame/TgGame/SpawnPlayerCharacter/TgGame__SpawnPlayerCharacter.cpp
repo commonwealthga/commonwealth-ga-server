@@ -1,7 +1,9 @@
 #include "src/GameServer/TgGame/TgGame/SpawnPlayerCharacter/TgGame__SpawnPlayerCharacter.hpp"
+#include "src/GameServer/TgGame/TgPlayerController/ServerActivateInvItem/TgPlayerController__ServerActivateInvItem.hpp"
 #include "src/GameServer/TgGame/TgGame/SpawnBotById/TgGame__SpawnBotById.hpp"
 #include "src/GameServer/TgGame/TgGame/TgFindPlayerStart/TgGame__TgFindPlayerStart.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
+#include "src/GameServer/TgGame/TgPawn/ServerOnEquipCharDevices/TgPawn__ServerOnEquipCharDevices.hpp"
 #include "src/GameServer/Cosmetics/CosmeticEquip.hpp"
 #include "src/GameServer/Constants/EquipSlot.hpp"
 #include "src/GameServer/Constants/DeviceIds.hpp"
@@ -22,7 +24,13 @@
 #include "src/Utils/CommandLineParser/CommandLineParser.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Database/Database.hpp"
+#include "src/Shared/SlotUnlock.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/IpcClient/IpcClient.hpp"
+#include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
+#include "src/Config/Config.hpp"
+#include "src/GameServer/Tutorial/TutorialSuitUp.hpp"
+#include <unordered_set>
 
 bool TgGame__SpawnPlayerCharacter::bEnemyGearSpawned = true;  // now handled in SpawnBotById
 
@@ -129,6 +137,12 @@ static void RepairSpawnVolumeState(ATgPawn_Character* Pawn) {
 	}
 	if (recalcOmega) {
 		Pawn->eventOmegaVolumePropertiesChanged();
+		// Dome City volumes all ship m_bEnableEquip=0; the hub keeps
+		// equip on (see CityOmegaEquip in UObject__ProcessEvent.cpp).
+		if (Pawn->WorldInfo && Pawn->WorldInfo->Game && Pawn->WorldInfo->Game->Class &&
+		    strcmp(((UObject*)Pawn->WorldInfo->Game->Class)->GetFullName(), "Class TgGame.TgGame_City") == 0) {
+			Pawn->r_bEnableEquip = 1;
+		}
 	}
 	if (recalcModify || recalcOmega) {
 		Pawn->bNetDirty = 1;
@@ -436,6 +450,9 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	newpawn->r_nProfileTypeValueId = classConfig.classTypeValueId;
 	newpawn->r_bDisableAllDevices = 0;
 	newpawn->r_bEnableEquip = 1;
+	// Player slot unlock group -> the client's equip screen
+	// locks slots by level (src/Shared/SlotUnlock.hpp).
+	newpawn->r_nDeviceSlotUnlockGrpId = SlotUnlock::kPlayerUnlockGroupId;
 	newpawn->r_bEnableSkills = 1;
 	newpawn->r_bEnableCrafting = 1;
 	newpawn->r_bIsStealthed = 0;
@@ -507,7 +524,18 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// (engine fields + property descriptors + PRI replicated fields).
 	SyncPawnHealth::Apply(newpawn, hp, hp);
 	newrepplayer->r_nCharacterId = newpawn->s_nCharacterId;
-	newrepplayer->r_nLevel = 50;
+	newrepplayer->r_nLevel = Database::GetCharacterLevel(newpawn->s_nCharacterId);
+	{
+		// Agent Info panel (Credits / Tokens) reads the owning pawn's replicated wallet.
+		const auto wallet = Database::GetCharacterWallet(newpawn->s_nCharacterId);
+		newpawn->r_nCurrency = wallet.credits;
+		newpawn->r_nToken    = wallet.tokens;
+		newpawn->r_nXp       = wallet.xp;
+		// Agenda Points (account wallet) -> vendor AP price checks / AP displays.
+		newpawn->r_nHZPoints = wallet.ap;
+		// Booster panel time left (account booster, ga_users.booster_until).
+		newpawn->r_nBoostTimeRemaining = Database::GetBoosterSecondsLeft(newpawn->s_nCharacterId);
+	}
 	// Scoreboard Agency column — replicated FString on the PRI.
 	SetReplicatedFString(newrepplayer->r_sAgencyName,
 	                     Database::GetAgencyName(newpawn->s_nCharacterId));
@@ -517,19 +545,11 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// newrepplayer->PlayerName = FString(L"Zaxik");
 
 
-	// eventSetPlayerName passes FString to ProcessEvent via memcpy (shallow copy).
-	// ProcessEvent's cleanup calls appFree on the FString::Data (CPF_NeedCtorLink).
-	// If Data was allocated with C++ new[], appFree corrupts the heap.
-	// Null out Data after the memcpy inside eventSetPlayerName copies it,
-	// so the C++ destructor doesn't also delete[] the same pointer.
+	// p0997f: eventSetPlayerName leaves the buffer to its caller, so this
+	// FString's own destructor frees its new[] once.
 	{
 		FString playerNameStr(GClientConnectionsData[(int)PlayerController->Player].PlayerInfo.player_name_w.data());
 		newrepplayer->eventSetPlayerName(playerNameStr);
-		// eventSetPlayerName memcpy'd our FString into its Parms struct.
-		// ProcessEvent already consumed (and potentially freed) the Data.
-		// Null out so ~FString doesn't double-free.
-		playerNameStr.Data = nullptr;
-		playerNameStr.Count = playerNameStr.Max = 0;
 	}
 	// newrepplayer->SetTeam(GTeamsData.Attackers);
 
@@ -781,6 +801,49 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 			if (pri) LogAssemblySnapshot("[post-LoadFromDB PRI ]", pri, pri->r_CustomCharacterAssembly);
 		}
 
+		// In the tutorial map the Kismet hands out gear step by step
+		// (TgPawn__ServerOnEquipCharDevices) - spawn without weapons/jetpack.
+		bool tutorialMap = false;
+		{
+			ATgRepInfo_Game* tgri = (ATgRepInfo_Game*)Game->GameReplicationInfo;
+			tutorialMap = tgri && tgri->r_bIsTutorialMap;
+		}
+		// Tutorial chapters. Original kit progression (wiki
+		// Tutorial missions): 1 Inception = Kismet hands out jetpack + melee;
+		// 2 Adrenaline (weapons cache) adds the ranged weapon, 3 Skylark keeps
+		// it, both still in the Lab Suit (their Kismet SetPlayerMesh 1752/1779);
+		// 4 Agency Zero = full class kit (stealth/turret/heal lessons) in the
+		// agent's own armour, then the drop ship to Dome City.
+		int tutorialChapter = 0;
+		if (tutorialMap) {
+			const std::string m = Config::GetMapNameChar();
+			tutorialChapter = (m == "Adrenaline_P") ? 2 : (m == "Skylark_P") ? 3 : (m == "AgencyZero_P") ? 4 : 1;
+		}
+
+		// Intro Lab Suit. Inception_ALL/2_TEMP Kismet runs
+		// GetCustomCharacterAssemblyValues -> TgSeqAct_SetPlayerMesh "Male Lab
+		// Suit" 1752 / "Female Lab Suit" 1779, whose UC handler
+		// (TgPawn_Character.OnSetPlayerMesh) only writes
+		// r_CustomCharacterAssembly.SuitMeshId. That chain is not reliable
+		// here (pawn spawned outside RestartPlayer, LoadFromDB baseline), so
+		// set the same suit before the first replication bunch. Helmet hidden
+		// so the full body suit shows; the next map respawns from the DB.
+		// Skylark suit-up - Skylark keeps the agent's own look
+		// for its "Suit Up!" room; after it, respawns are in the class kit.
+		const bool skylarkSuited = (tutorialChapter == 3) && TutorialSuitUp::IsSuitedUp(charId);
+		if (tutorialChapter == 3)
+			TutorialSuitUp::SaveOwnLook(charId, newpawn->r_CustomCharacterAssembly, item_profile_id);
+		if (tutorialMap && tutorialChapter <= 3 && !skylarkSuited) {
+			FCustomCharacterAssembly& a = newpawn->r_CustomCharacterAssembly;
+			a.SuitMeshId = (a.nGenderTypeId == 852) ? 1779 : 1752;
+			a.bHideHelmet = 1;
+			a.SuitFlairId = 0;
+			a.bValidCustomAssembly = 1;
+			ATgRepInfo_Player* pri = (ATgRepInfo_Player*)newpawn->PlayerReplicationInfo;
+			if (pri) pri->r_CustomCharacterAssembly = a;
+			LogAssemblySnapshot("[intro lab suit]", newpawn, a);
+		}
+
 		// (1) Player-chosen equipped gear.
 		// v76: filter to device rows only (i.device_id > 0). Cosmetic rows
 		// (item_id > 0, device_id = 0) were already replayed by the
@@ -796,9 +859,22 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 		if (rc == SQLITE_OK && stmt) {
 			sqlite3_bind_int64(stmt, 1, charId);
 			sqlite3_bind_int  (stmt, 2, item_profile_id);
+			const int agentLevel = SlotUnlock::CharacterLevel(db, charId);
 			while (sqlite3_step(stmt) == SQLITE_ROW) {
 				int deviceId    = sqlite3_column_int(stmt, 0);
 				int slot        = sqlite3_column_int(stmt, 1);
+				if (!SlotUnlock::IsEquipPointUnlocked(db, agentLevel, slot)) {
+					Logger::Log("debug",
+						"SpawnPlayerCharacter: char=%lld level=%d slot=%d device=%d locked (slot unlock level) - not equipped\n",
+						charId, agentLevel, slot, deviceId);
+					continue;
+				}
+				if (!SlotUnlock::IsItemUsable(db, agentLevel, deviceId, 0)) {
+					Logger::Log("debug",
+						"SpawnPlayerCharacter: char=%lld level=%d slot=%d device=%d under item level - not equipped\n",
+						charId, agentLevel, slot, deviceId);
+					continue;
+				}
 				int quality     = sqlite3_column_int(stmt, 2);
 				int inventoryId = sqlite3_column_int(stmt, 3);
 
@@ -821,6 +897,14 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 				Logger::Log("debug",
 					"SpawnPlayerCharacter: equip row char=%lld profile=%d slot=%d device=%d inv=%d quality=%d mods=%zu\n",
 					charId, item_profile_id, slot, deviceId, inventoryId, quality, mods.size());
+				const bool chapterKeeps = (tutorialChapter == 4) || skylarkSuited
+					|| ((tutorialChapter == 2 || tutorialChapter == 3) && (slot == 1 || slot == 2 || slot == 5));
+				if (tutorialMap && !chapterKeeps && TgPawn__ServerOnEquipCharDevices::IsTutorialStripSlot(slot)) {
+					Logger::Log("debug",
+						"SpawnPlayerCharacter: tutorial map, slot=%d device=%d left for the tutorial\n",
+						slot, deviceId);
+					continue;
+				}
 				const bool hiddenRestDevice =
 					(slot == 14 && deviceId == GA::DeviceId::RestDevice);
 				if (hiddenRestDevice) {
@@ -863,6 +947,8 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 				"SpawnPlayerCharacter: failed to query ga_character_devices for charId=%lld: %s\n",
 				charId, sqlite3_errmsg(db));
 		}
+
+		if (tutorialMap) TgPawn__ServerOnEquipCharDevices::ReplayTutorialGrants(newpawn);
 
 		// Class-device slot-14 fallback REMOVED. ga_character_devices is now
 		// the single source of truth for equipped state — if the player
@@ -1006,6 +1092,46 @@ ATgPawn_Character* __fastcall TgGame__SpawnPlayerCharacter::Call(ATgGame* Game, 
 	// next replication bunch includes the owner-only movement props. Run it
 	// before the engine's RestartPlayer fallback so we control the ordering.
 	PlayerController->eventPossess(PlayerController->Pawn, 0, 0);
+
+	// Mission checkpoints: PvE maps mark checkpoints with a TgBeaconFactory
+	// exit that Kismet turns on (e.g. 1p_SDColony04 'Toggle Checkpoint'); the
+	// team respawns in the spawn room and the beacon-entrance pad there
+	// teleports to it. Players did not get that far ("respawn at the
+	// beginning"), so a respawn (not the first spawn) in a PvE mission goes
+	// straight through the pad path: UC TgPawn.TriggerBeaconEntrance =
+	// teleport fx + GotoBeacon (Teleport + 3 s invulnerable).
+	{
+		static std::unordered_set<AController*> s_SpawnedOnce;
+		const bool respawn = !s_SpawnedOnce.insert((AController*)PlayerController).second;
+		if (!respawn) {
+			// Stream the instance's seasonal sublevels once the pawn exists (client fully in-map).
+			if (UFunction* lvFn = (UFunction*)ObjectCache::Find("Function Engine.PlayerController.ClientUpdateLevelStreamingStatus")) {
+				for (const std::string& lvName : IpcClient::StreamLevels()) {
+					APlayerController_execClientUpdateLevelStreamingStatus_Parms lp = {};
+					std::string lvBuf = lvName; lp.PackageName = FName((char*)lvBuf.c_str());
+					lp.bNewShouldBeLoaded = 1;
+					lp.bNewShouldBeVisible = 1;
+					PlayerController->ProcessEvent(lvFn, &lp, nullptr);
+					Logger::Log("spawn", "SpawnPlayerCharacter: streamed sublevel %s to client\n", lvName.c_str());
+				}
+			}
+		}
+		if (respawn && TgGame__TgFindPlayerStart::IsPvECheckpointMap(Game) && !Game->bGameEnded) {
+			ATgRepInfo_TaskForce* tf = newrepplayer ? newrepplayer->r_TaskForce : nullptr;
+			ATgTeamBeaconManager* mgr = tf ? tf->r_BeaconManager : nullptr;
+			ATgDeploy_Beacon* beacon = mgr ? mgr->r_Beacon : nullptr;
+			if (beacon != nullptr && beacon->s_DeployFactory != nullptr && beacon->m_bIsDeployed) {
+				Logger::Log("spawn",
+					"SpawnPlayerCharacter: checkpoint respawn charId=%lld -> beacon factory mapObjId=%d (%.0f,%.0f,%.0f)\n",
+					(long long)characterId, beacon->s_DeployFactory->m_nMapObjectId,
+					beacon->Location.X, beacon->Location.Y, beacon->Location.Z);
+				newpawn->eventTriggerBeaconEntrance();
+			}
+		}
+	}
+
+	// The agent's vanity pet follows across map changes / respawns.
+	TgPlayerController__ServerActivateInvItem::SummonSavedVanityPet(newpawn);
 
 	// PlayerController->bGodMode = 1;
 

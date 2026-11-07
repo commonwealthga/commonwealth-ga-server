@@ -4,6 +4,7 @@
 #include "src/GameServer/TgGame/TgProj_Deployable/SpawnDeployable/TgProj_Deployable__SpawnDeployable.hpp"
 #include "src/GameServer/Engine/Actor/SetTimer/Actor__SetTimer.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Reimplementation of the stripped TgProj_Bot::SpawnBot native (0x10a19c10,
@@ -80,9 +81,42 @@ ATgPawn* __fastcall TgProj_Bot__SpawnBot::Call(ATgProj_Bot* pThis, void* edx, FV
 		return nullptr;
 	}
 
+	// NPC hatcher (Sand Spider egg -> Colony Tick 1463, bot-thrown spider
+	// grenades): the pet is an enemy minion, not a player pet.
+	const bool npcHatcher = pawn->r_bIsBot != 0;
+
 	// Bake the thrower's pet buffs (Pet Health / Pet Damage mods & skills) into
-	// the bot's s_Properties — same canonical producer SpawnPet uses.
-	ApplyPlayerModsToPet::Apply(pawn, BotPawn, deviceInstId);
+	// the bot's s_Properties — same canonical producer SpawnPet uses. Player
+	// skills only; an NPC thrower's own buffs are not pet mods.
+	if (!npcHatcher) ApplyPlayerModsToPet::Apply(pawn, BotPawn, deviceInstId);
+
+	// Hatched ticks start with the hatcher's target. Tick AI (behavior
+	// 710) ends in an ungated "No targets, detonate self"; its first think runs
+	// before its own sight picks anyone up, so a targetless hatchling blew up
+	// on the spot instead of crawling at the player ("Blow Up!" chase).
+	if (npcHatcher && BotPawn->Controller &&
+	    ObjectClassCache::ClassNameContains((UObject*)BotPawn->Controller, "TgAIController")) {
+		AActor* target = pawn->r_TargetActor;
+		if (!target && pawn->Controller) target = (AActor*)pawn->Controller->Enemy;
+		APawn* targetPawn = nullptr;
+		if (target) {
+			for (APawn* p = BotPawn->WorldInfo ? BotPawn->WorldInfo->PawnList : nullptr; p; p = p->NextPawn) {
+				if ((AActor*)p == target) {
+					if (!p->bDeleteMe && p->Health > 0) targetPawn = p;
+					break;
+				}
+			}
+		}
+		if (targetPawn) {
+			ATgAIController* ai = (ATgAIController*)BotPawn->Controller;
+			ai->eventSeePlayer(targetPawn);
+			ai->SetTargetActor((AActor*)targetPawn);
+			if (ai->Enemy == nullptr) ai->Enemy = targetPawn;
+		}
+		Logger::Log("pet_spawn",
+			"TgProj_Bot::SpawnBot: NPC hatch botId=%d pet=0x%p hatcher=0x%p target=0x%p\n",
+			botId, BotPawn, pawn, targetPawn);
+	}
 
 	// Team propagation — mirrors TgDeviceFire::SpawnPet (playtested pattern).
 	ATgRepInfo_Player* BotRep  = (ATgRepInfo_Player*)BotPawn->PlayerReplicationInfo;

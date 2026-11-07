@@ -1,6 +1,14 @@
 #include "src/IpcClient/IpcClient.hpp"
+#include "src/GameServer/GameModes/Acquisition/Acquisition.hpp"
+#include "src/GameServer/TgGame/TgGame/TgFindPlayerStart/TgGame__TgFindPlayerStart.hpp"
+#include "src/GameServer/WorldGroups/WorldGroups.hpp"
+#include "src/GameServer/PvpBots/PvpBots.hpp"
+#include "src/GameServer/AvaCargo/AvaCargoDll.hpp"
+#include "src/GameServer/Tutorial/TutorialBotRoster.hpp"
+#include "src/Database/Database.hpp"
 #include "src/Shared/IpcFraming.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/Stats/MissionProgressFeed/MissionProgressFeed.hpp"
 #include "lib/nlohmann/json.hpp"
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
 #include "src/Shared/HexUtils.hpp"
@@ -11,6 +19,7 @@
 #include "src/GameServer/TgGame/TgPlayerActions/Deploy/Deploy.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/PossessPawn/PossessPawn.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/ReturnHomeArea/ReturnHomeArea.hpp"
+#include "src/GameServer/TgGame/TgPawn/ServerOnRequestMission/TgPawn__ServerOnRequestMission.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/TopDown/TopDown.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/Coords/Coords.hpp"
 #include "src/GameServer/TgGame/TgPlayerActions/FullHeal/FullHeal.hpp"
@@ -23,9 +32,14 @@
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/GameServer/Storage/UserPreferences/UserPreferences.hpp"
 #include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
+#include "src/GameServer/TgGame/TgPawn/LevelUpFeedback/LevelUpFeedback.hpp"
 #include "src/Utils/CommandLineParser/CommandLineParser.hpp"
 #include "src/GameServer/IpDrv/NetConnection/Cleanup/NetConnection__Cleanup.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
+#include "src/GameServer/Stats/InstanceRestore/InstanceRestore.hpp"
+#include "src/Config/Config.hpp"
+#include "src/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceived.hpp"
+#include "src/GameServer/TgGame/TgGame/BeginEndMission/TgGame__BeginEndMission.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/Config/Config.hpp"
 
@@ -382,6 +396,39 @@ void IpcClient::SendRequestTravel(const std::string& session_guid, uint32_t map_
         session_guid.c_str(), map_game_id, (long long)instance_id_);
 }
 
+void IpcClient::SendNodeClaim(const char* kind, int64_t user_id, int64_t character_id,
+                              const char* key, int64_t value) {
+    static int64_t seq = 0;
+    static const DWORD t0 = GetTickCount();
+    nlohmann::json msg;
+    msg["type"]         = IpcProtocol::MSG_NODE_CLAIM;
+    msg["instance_id"]  = instance_id_;
+    msg["kind"]         = kind;
+    msg["user_id"]      = user_id;
+    msg["character_id"] = character_id;
+    msg[key]            = value;
+    msg["seq"]          = ++seq;
+    msg["t"]            = (GetTickCount() - t0) / 1000;
+    Send(msg.dump());
+    Logger::Log("standalone", "[NodeClaim] %s char=%lld %s=%lld seq=%lld\n",
+        kind, (long long)character_id, key, (long long)value, (long long)seq);
+}
+
+// Standalone mode: ignore admin/dev-only actions.
+static bool NodeRefuses(const std::string& type, const std::string& action) {
+    if (!Config::GetNodeMode()) return false;
+    if (type == IpcProtocol::MSG_DEV_END_MISSION || type == IpcProtocol::MSG_DEV_TELEPORT ||
+        type == IpcProtocol::MSG_DEV_KILL || type == IpcProtocol::MSG_SPAWN_GROUP ||
+        type == IpcProtocol::MSG_DESPAWN_GROUP || type == IpcProtocol::MSG_PLAY_FX ||
+        type == IpcProtocol::MSG_SET_WORLD_FLAG ||
+        type == IpcProtocol::MSG_PLACE_CHEST || type == IpcProtocol::MSG_RELEASE_CHEST ||
+        type == IpcProtocol::MSG_GROUP_CONTROL) return true;  // TEAM_BOT allowed on nodes
+    if (type != IpcProtocol::MSG_PLAYER_ACTION) return false;
+    static const char* kSafe[] = { "return_home_area", "stuck", "coords", "alert_text", "level_up", "refresh_profile_ui", "camera_fade" };
+    for (const char* a : kSafe) if (action == a) return false;
+    return true;
+}
+
 void IpcClient::SendRequestRebalance() {
     nlohmann::json msg;
     msg["type"]        = IpcProtocol::MSG_REQUEST_REBALANCE;
@@ -485,6 +532,9 @@ void IpcClient::DrainInbound() {
             // control server without the fields keeps today's behaviour.
             bool device_stats  = j.value("device_stats_enabled", true);
             bool effectiveness = j.value("effectiveness_enabled", true);
+            StreamLevels().clear();
+            if (j.contains("stream_levels") && j["stream_levels"].is_array())
+                for (auto& n : j["stream_levels"]) if (n.is_string()) StreamLevels().push_back(n.get<std::string>());
             MatchStats::SetEnabled(stats_enabled);
             MatchStats::SetDeviceStatsEnabled(device_stats);
             MatchStats::SetEffectivenessEnabled(effectiveness);
@@ -554,6 +604,9 @@ void IpcClient::DrainInbound() {
             ack["success"]      = true;
             ack["pawn_id"]      = 0;
             IpcClient::Send(ack.dump());
+        } else if (NodeRefuses(type, j.value("action", ""))) {
+            Logger::Log("standalone", "[Node] refused %s action=%s (node mode)\n",
+                type.c_str(), j.value("action", "").c_str());
         } else if (type == IpcProtocol::MSG_PLAYER_ACTION) {
             std::string guid   = j.value("session_guid", "");
             std::string action = j.value("action", "");
@@ -589,7 +642,11 @@ void IpcClient::DrainInbound() {
 
                 TgPlayerActions::ChangeTeamCmd::Execute(guid, target, is_autobalance);
             } else if (action == "spawn_target") {
-                if (CurrentMatchIsPVP()) {
+                // -spawnpvpbot (pvp_class set) is meant for PvP maps; the
+                // command itself is dev-gated in the control server.
+                const bool pvp_bot = j.contains("args") && j["args"].is_object()
+                    && !j["args"].value("pvp_class", std::string()).empty();
+                if (CurrentMatchIsPVP() && !pvp_bot) {
                     Logger::Log("chat-command",
                         "[ChatCmd][DLL] spawn_target guid=%s: blocked in PvP match; dropping\n",
                         guid.c_str());
@@ -630,7 +687,8 @@ void IpcClient::DrainInbound() {
                     continue;
                 }
 
-                TgPlayerActions::SpawnBotCmd::Execute(guid, bot_id, team, Config::GetDifficultyScalar(difficulty_id),henchman);
+                const std::string pvp_class = j["args"].value("pvp_class", std::string());
+                TgPlayerActions::SpawnBotCmd::Execute(guid, bot_id, team, Config::GetDifficultyScalar(difficulty_id),henchman, pvp_class);
             } else if (action == "deploy_target") {
                 if (CurrentMatchIsPVP()) {
                     Logger::Log("chat-command",
@@ -773,8 +831,33 @@ void IpcClient::DrainInbound() {
                     lift_z = j["args"].value("lift_z", 0.0f);
                 }
                 TgPlayerActions::TopDownCmd::Execute(guid, lift_z);
+            } else if (action == "camera_fade") {
+                // Client camera fade on one player (args on/alpha/time; default
+                // = hold black). Used before a mission exit with no end screen.
+                bool  on    = true;
+                float alpha = 1.0f;
+                float time  = 0.05f;
+                if (j.contains("args") && j["args"].is_object()) {
+                    on    = j["args"].value("on", on);
+                    alpha = j["args"].value("alpha", alpha);
+                    time  = j["args"].value("time", time);
+                }
+                bool done = false;
+                for (auto& kv : GClientConnectionsData) {
+                    if (kv.second.SessionGuid == guid && kv.second.Pawn) {
+                        // Full black = leaving the map: also hold it (re-send) and bring the HUD back.
+                        done = (on && alpha >= 0.99f)
+                            ? TgPawn__ServerOnRequestMission::HoldBlack(kv.second.Pawn->Controller)
+                            : TgPawn__ServerOnRequestMission::SetCameraFade(kv.second.Pawn->Controller, on, alpha, time);
+                        break;
+                    }
+                }
+                Logger::Log("ipc", "[IpcClient] camera_fade guid=%s on=%d alpha=%.2f done=%d\n",
+                    guid.c_str(), (int)on, alpha, (int)done);
             } else if (action == "return_home_area") {
                 TgPlayerActions::ReturnHomeAreaCmd::Execute(guid);
+            } else if (action == "stuck") {
+                TgPlayerActions::ReturnHomeAreaCmd::ExecuteStuck(guid, CurrentMatchIsPVP());
             } else if (action == "alert_text") {
                 // Center-screen toast to ONE player. Generic — any control-server
                 // path that needs to tell a specific player something can use it.
@@ -806,6 +889,33 @@ void IpcClient::DrainInbound() {
                 }
                 Logger::Log("travel", "[IPC] alert_text guid=%s sent=%d text='%s'\n",
                     guid.c_str(), sent, text.c_str());
+            } else if (action == "level_up") {
+                // Level reached by mission-end XP (paid by the control server before
+                // this map loaded): play the level-up feedback once after spawn.
+                const int level = (j.contains("args") && j["args"].is_object()) ? j["args"].value("level", 0) : 0;
+                for (auto& kv : GClientConnectionsData) {
+                    if (kv.second.SessionGuid != guid || kv.second.bClosed || !kv.second.Pawn) continue;
+                    ATgRepInfo_Player* Pri = (ATgRepInfo_Player*)kv.second.Pawn->PlayerReplicationInfo;
+                    if (Pri && level > Pri->r_nLevel) { Pri->r_nLevel = level; Pri->bNetDirty = 1; }
+                    LevelUpFeedback::Announce(kv.second.Pawn, level);
+                    break;
+                }
+            } else if (action == "refresh_wallet") {
+                // Wallet changed in the DB while the agent is in this map (e.g. a
+                // currency grant): re-read it into the pawn's replicated fields.
+                for (auto& kv : GClientConnectionsData) {
+                    ATgPawn_Character* pawn = kv.second.Pawn;
+                    if (kv.second.SessionGuid != guid || kv.second.bClosed || !pawn) continue;
+                    const auto wallet = Database::GetCharacterWallet(pawn->s_nCharacterId);
+                    pawn->r_nCurrency = wallet.credits;
+                    pawn->r_nToken    = wallet.tokens;
+                    pawn->r_nXp       = wallet.xp;
+                    pawn->r_nHZPoints = wallet.ap;
+                    pawn->bNetDirty   = 1;
+                    Logger::Log("vendor", "[Wallet] refresh char=%lld credits=%lld tokens=%lld\n",
+                        (long long)pawn->s_nCharacterId, (long long)wallet.credits, (long long)wallet.tokens);
+                    break;
+                }
             } else if (action == "refresh_profile_ui") {
                 const std::string phase = j.value("phase", "");
                 const int item_profile_id = j.value("item_profile_id", 0);
@@ -839,6 +949,183 @@ void IpcClient::DrainInbound() {
                 SendChatCommandAudit(guid, action.empty() ? "unknown" : action, "ignored",
                     "unknown player action");
             }
+        } else if (type == IpcProtocol::MSG_DEV_END_MISSION) {
+            // Dev shortcut: end the mission now (win = the
+            // attackers / player side, lose = defenders) via the normal flow.
+            ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
+            std::string result = j.value("result", "win");
+            Logger::Log("endmission", "[DEV] DEV_END_MISSION result=%s game=%p\n",
+                result.c_str(), (void*)Game);
+            if (Game) {
+                Game->m_GameWinState = (result == "lose") ? 1 : 2;
+                BeginEndMissionImpl(Game, nullptr, 0.0f);
+            }
+        } else if (type == IpcProtocol::MSG_INSTANCE_RESTORE) {
+            InstanceRestore::SetPending(j.value("progress", nlohmann::json::object()));
+        } else if (type == IpcProtocol::MSG_INSTANCE_SNAPSHOT_REQUEST) {
+            MissionProgressFeed::RequestFinal();
+        } else if (type == IpcProtocol::MSG_CRAFT_RESULT) {
+            // Crafting: answer the client's craft screen like the original
+            // backend did. UTgUICraftScene's message hook (vtable +0x194) finishes the
+            // craft on msg 60195 and reports 41694 ("not sufficient skill") otherwise.
+            const int pawn_id = j.value("pawn_id", 0);
+            const bool ok     = j.value("ok", false);
+            for (auto& kv : GClientConnectionsData) {
+                ATgPawn_Character* pawn = kv.second.Pawn;
+                if (!pawn || (int)pawn->r_nPawnId != pawn_id || !pawn->Controller) continue;
+                UNetConnection* Conn = (UNetConnection*)((APlayerController*)pawn->Controller)->Player;
+                SendAlert::Send(Conn, ok ? 60195 : 41694, /*priority*/ 1, /*type*/ ok ? 1 : 2, 3.0f, nullptr, nullptr);
+                Logger::Log("vendor", "[Craft] CRAFT_RESULT pawn=%d ok=%d -> client msg %d\n", pawn_id, (int)ok, ok ? 60195 : 41694);
+                break;
+            }
+        } else if (type == IpcProtocol::MSG_QUEST_KISMET) {
+            CGameClient__MarshalReceived::FireQuestKismet(j.value("quest_id", 0),
+                j.value("link", -1), j.value("requirement_id", 0));
+        } else if (type == IpcProtocol::MSG_QUEST_REWARD) {
+            // A quest turn-in paid xp/credits into the DB on the control
+            // server; restate the replicated values (same as kill XP) so the HUD XP bar,
+            // credits and a mid-map level-up show at once.
+            const int pawn_id          = j.value("pawn_id", 0);
+            const int64_t character_id = j.value("character_id", (int64_t)0);
+            for (auto& kv : GClientConnectionsData) {
+                ATgPawn_Character* pawn = kv.second.Pawn;
+                if (!pawn || (int)pawn->r_nPawnId != pawn_id || kv.second.bClosed) continue;
+                const auto w = Database::GetCharacterWallet(character_id);
+                pawn->r_nXp       = w.xp;
+                pawn->r_nCurrency = w.credits;
+                ATgRepInfo_Player* Pri = (ATgRepInfo_Player*)pawn->PlayerReplicationInfo;
+                const int level = Database::GetCharacterLevel(character_id);
+                if (Pri && level != Pri->r_nLevel) {
+                    const bool up = level > Pri->r_nLevel && Pri->r_nLevel > 0;
+                    Pri->r_nLevel = level; Pri->bNetDirty = 1;
+                    if (up) LevelUpFeedback::Announce(pawn, level);
+                }
+                Logger::Log("quest", "[QuestReward] pawn=%d char=%lld -> xp=%d credits=%d level=%d\n",
+                    pawn_id, (long long)character_id, w.xp, w.credits, level);
+                break;
+            }
+        } else if (type == IpcProtocol::MSG_MAIL_NOTIFY) {
+            // Mail: the control server moved credits in the DB
+            // (send money / take money) or refused a mail action. Find the
+            // agent by session guid (no pawn id on the TCP side).
+            const std::string guid     = j.value("session_guid", std::string());
+            const int64_t character_id = j.value("character_id", (int64_t)0);
+            const uint32_t msg_id      = j.value("msg_id", 0u);
+            const bool wallet          = j.value("wallet", false);
+            for (auto& kv : GClientConnectionsData) {
+                ATgPawn_Character* pawn = kv.second.Pawn;
+                if (!pawn || kv.second.bClosed || guid.empty() || kv.second.SessionGuid != guid) continue;
+                if (wallet && character_id > 0) {
+                    const auto w = Database::GetCharacterWallet(character_id);
+                    pawn->r_nCurrency = w.credits;
+                    pawn->r_nToken    = w.tokens;
+                    pawn->r_nHZPoints = w.ap;  // AP paid/spent on the control server
+                }
+                if (msg_id != 0 && pawn->Controller) {
+                    UNetConnection* Conn = (UNetConnection*)((APlayerController*)pawn->Controller)->Player;
+                    SendAlert::Send(Conn, (int)msg_id, /*priority*/ 1, /*type*/ 2, 3.0f, nullptr, nullptr);
+                }
+                Logger::Log("mail", "[Mail] MAIL_NOTIFY char=%lld msg=%u wallet=%d\n",
+                    (long long)character_id, msg_id, (int)wallet);
+                break;
+            }
+        } else if (type == IpcProtocol::MSG_PLAYER_EMOTE) {
+            const std::string guid = j.value("session_guid", std::string());
+            const int emote        = j.value("emote", 0);
+            for (auto& kv : GClientConnectionsData) {
+                ATgPawn_Character* pawn = kv.second.Pawn;
+                if (!pawn || kv.second.bClosed || guid.empty() || kv.second.SessionGuid != guid) continue;
+                if (emote > 0 && emote < 0x3B && pawn->Health > 0) pawn->SetEmote(emote, 0);
+                Logger::Log("social", "[Emote] pawn %p emote=%d\n", (void*)pawn, emote);
+                break;
+            }
+        } else if (type == IpcProtocol::MSG_DEV_TELEPORT) {
+            // Dev shortcut: put every player at x/y/z (e.g. next
+            // to a Dome City vendor) instead of walking a test client there.
+            FVector loc;
+            loc.X = j.value("x", 0.0f); loc.Y = j.value("y", 0.0f); loc.Z = j.value("z", 0.0f);
+            FRotator rot = {};
+            rot.Yaw = j.value("yaw", 0);
+            int moved = 0;
+            for (auto& kv : GClientConnectionsData) {
+                ATgPawn_Character* pawn = kv.second.Pawn;
+                if (!pawn) continue;
+                if (Acquisition::DevTeleportCrewed((ATgPawn*)pawn, loc)) { moved++; continue; }  // Crewed robot
+                const bool ok = pawn->SetLocation(loc);
+                if (ok && pawn->Controller) pawn->Controller->ClientSetLocation(pawn->Location, rot);
+                Logger::Log("endmission", "[DEV] DEV_TELEPORT pawn %p ok=%d now %.0f %.0f %.0f\n",
+                    (void*)pawn, (int)ok, pawn->Location.X, pawn->Location.Y, pawn->Location.Z);
+                if (ok) moved++;
+            }
+            Logger::Log("endmission", "[DEV] DEV_TELEPORT %.0f %.0f %.0f -> %d players\n",
+                loc.X, loc.Y, loc.Z, moved);
+        } else if (type == "AVA_CARGO") {  // AvA tech cargo from the control server
+            AvaCargoDll::Spawn(j.dump());
+        } else if (type == IpcProtocol::MSG_SPAWN_GROUP) {
+            WorldGroups::Spawn(j);
+        } else if (type == IpcProtocol::MSG_TEAM_BOT) {
+            // Task-force bots (add / remove / roster), answered with TEAM_ROSTER.
+            const std::string op = j.value("op", std::string());
+            std::string result = op;
+            if (op == "add") {
+                std::string why;
+                const int slot = PvpBots::AddTeamBot(j.value("task_force", 0),
+                    j.value("class", std::string()), j.value("tag", std::string()), &why,
+                    j.value("skill", 0.5f));
+                result = slot ? "added slot " + std::to_string(slot) : "add refused: " + why;
+            } else if (op == "remove") {
+                const int n = PvpBots::RemoveTeamBots(j.value("tag", std::string()),
+                    j.value("slot", 0), j.value("now", false));
+                result = "removed " + std::to_string(n);
+            }
+            PvpBots::ReportRoster(result);
+        } else if (type == IpcProtocol::MSG_DESPAWN_GROUP) {
+            WorldGroups::Despawn(j.value("tag", std::string()));
+        } else if (type == IpcProtocol::MSG_GROUP_STATUS_REQUEST) {
+            WorldGroups::ReportStatus(j.value("tag", std::string()));
+        } else if (type == IpcProtocol::MSG_PLAY_FX) {
+            WorldGroups::PlayFx(j);
+        } else if (type == IpcProtocol::MSG_SET_WORLD_FLAG) {
+            ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
+            ATgRepInfo_Game* GRI = Game ? (ATgRepInfo_Game*)Game->GameReplicationInfo : nullptr;
+            const std::string flag = j.value("flag", std::string());
+            const int value = j.value("value", 0) ? 1 : 0;
+            if (GRI && flag == "defense_alarm") {
+                GRI->r_bDefenseAlarm = value;
+                GRI->bNetDirty = 1;
+                GRI->bForceNetUpdate = 1;
+            }
+            Logger::Log("ipc", "[IPC] SET_WORLD_FLAG %s=%d gri=%p\n", flag.c_str(), value, (void*)GRI);
+        } else if (type == IpcProtocol::MSG_PLACE_CHEST) {
+            WorldGroups::PlaceChest(j);
+        } else if (type == IpcProtocol::MSG_RELEASE_CHEST) {
+            WorldGroups::ReleaseChest(j.value("tag", std::string()));
+        } else if (type == IpcProtocol::MSG_GROUP_CONTROL) {
+            WorldGroups::Control(j);
+        } else if (type == IpcProtocol::MSG_DEV_KILL && j.value("target", std::string()) == "touch") {
+            // Dev activation of a Kismet touch trigger (by the op it leads to)
+            if (j.value("op", std::string()) == "ToggleFactory") TgGame__TgFindPlayerStart::DevToggleFactory(j.value("n", 0));
+            else TutorialBotRoster::FireTouch(j.value("op", std::string()), j.value("n", 1));
+        } else if (type == IpcProtocol::MSG_DEV_KILL && j.value("target", std::string()) == "vehicle_hp") {
+            AvaCargoDll::DevVehicleHealth(j.value("pct", 0), j.value("task_force", 0), j.value("bot_id", 0));  // Dev: AvA vehicle HP / destroy
+        } else if (type == IpcProtocol::MSG_DEV_KILL && j.value("target", std::string()) == "pvpbot_hp") {
+            // Dev - set every PvP bot (optionally one task force) to pct of max HP
+            PvpBots::DevSetHealthPct(j.value("pct", 30), j.value("task_force", 0));
+        } else if (type == IpcProtocol::MSG_DEV_KILL && j.value("target", std::string()) == "bots") {
+            // Dev kill of AI pawns (bot_id / factory filter, 0 = any)
+            TutorialBotRoster::KillBots(j.value("bot_id", 0), j.value("factory", 0));
+        } else if (type == IpcProtocol::MSG_DEV_KILL) {
+            // Dev shortcut: kill every player (normal death path)
+            // to test the death screen / Release Now / wave revive.
+            int killed = 0;
+            for (auto& kv : GClientConnectionsData) {
+                ATgPawn_Character* pawn = kv.second.Pawn;
+                if (!pawn || pawn->Health <= 0) continue;
+                pawn->eventSuicide();
+                Logger::Log("revive", "[DEV] DEV_KILL pawn %p hp now %d\n", (void*)pawn, pawn->Health);
+                killed++;
+            }
+            Logger::Log("revive", "[DEV] DEV_KILL -> %d players\n", killed);
         } else if (type == IpcProtocol::MSG_EMIT_MATCH_EVENT) {
             // Echo an identity-less match event back over MATCH_EVENT so its
             // row lands in ga_match_events in stream order (autobalance

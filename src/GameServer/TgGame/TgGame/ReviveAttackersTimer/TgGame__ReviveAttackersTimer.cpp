@@ -5,6 +5,7 @@
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/TgGame/TgGame/TgFindPlayerStart/TgGame__TgFindPlayerStart.hpp"
 
 // Revives everyone on one side's wave list, then re-arms the wave timer with
 // a freshly computed interval (CalcAttacker/DefenderReviveTime).
@@ -53,6 +54,7 @@ void TgGame__ReviveAttackersTimer::RunWave(ATgGame* Game, bool bAttackers) {
 
 		if (ObjectClassCache::ClassNameContains(Controller, "PlayerController")) {
 			((ATgPlayerController*)Controller)->eventRevive();
+			TgGame__TgFindPlayerStart::CheckpointRespawn(Game, Controller, "wave");
 		} else if (ObjectClassCache::ClassNameContains(Controller, "TgAIController")) {
 			// SDK ATgAIController::eventRevive resolves the empty class-level
 			// Revive; the real body is the Dead-state override.

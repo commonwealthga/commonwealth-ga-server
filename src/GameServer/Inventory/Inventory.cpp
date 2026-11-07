@@ -12,6 +12,7 @@
 #include "src/GameServer/Constants/DeviceIds.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/Database/Database.hpp"
+#include "src/GameServer/Durability/DurabilityGate.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include "src/GameServer/Globals.hpp"
 #include <algorithm>
@@ -152,7 +153,7 @@ bool Inventory::IsHandDevice(int slot) {
 // base. For props the engine doesn't case-handle (e.g. prop 388 protection),
 // ApplyProperty's default branch is just a bNetDirty + OnPropertyChanged
 // ProcessEvent — safe.
-typedef void(__fastcall* InventoryApplyPropertyFn)(ATgPawn*, void* /*edx*/, UTgProperty*);
+typedef void(__fastcall* InventoryApplyPropertyFn)(ATgPawn*, void* /*edx*/, UTgProperty*, int /*flag, native callers pass 0*/);
 static const InventoryApplyPropertyFn InventoryApplyPropertyNative = (InventoryApplyPropertyFn)0x109cc7d0;
 
 // ---------------------------------------------------------------------------
@@ -204,7 +205,7 @@ void Inventory::ApplyDeviceEquipEffects(ATgPawn* Pawn, int deviceId) {
 	if (db == nullptr) return;
 
 	static const char* kSql =
-		"SELECT DISTINCT e.prop_id, e.base_value, e.calc_method_value_id, e.class_res_id "
+		"SELECT DISTINCT e.prop_id, e.base_value, e.calc_method_value_id, e.class_res_id, eg.required_skill_id "
 		"FROM asm_data_set_device_effect_groups deg "
 		"JOIN asm_data_set_effect_groups eg ON eg.effect_group_id = deg.effect_group_id "
 		"JOIN asm_data_set_effects e ON e.effect_group_id = deg.effect_group_id "
@@ -223,6 +224,7 @@ void Inventory::ApplyDeviceEquipEffects(ATgPawn* Pawn, int deviceId) {
 		float baseValue  = (float)sqlite3_column_double(stmt, 1);
 		int   calcMethod = sqlite3_column_int   (stmt, 2);
 		int   classResId = sqlite3_column_int   (stmt, 3);
+		int   reqSkillId = sqlite3_column_int   (stmt, 4);
 
 		// class 157 TgEffectBuff → register in source pawn's buff registry.
 		// devInst=0 (wildcard) so it applies to every outgoing
@@ -233,7 +235,9 @@ void Inventory::ApplyDeviceEquipEffects(ATgPawn* Pawn, int deviceId) {
 			FBuffHeader header{};
 			header.nPropId          = propId;
 			header.nReqCategoryCode = 0;
-			header.nReqSkillId      = 0;
+			// required_skill_id scopes the buff to one device class (e.g. a melee
+			// weapon's +20% vs. mechanical applies to melee attacks only).
+			header.nReqSkillId      = reqSkillId;
 			header.nReqDeviceInstId = 0;
 			TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, header, calcMethod, baseValue,
 			                        /*bRemove=*/0, /*ITEM=*/1);
@@ -283,7 +287,7 @@ void Inventory::ApplyDeviceEquipEffects(ATgPawn* Pawn, int deviceId) {
 		// regular SetProperty path used in skill/armor flows, not by raw
 		// device equip effects, so they're already covered.
 		if (propId == 255 /* POWERPOOL_MAX */) {
-			InventoryApplyPropertyNative(Pawn, /*edx=*/nullptr, prop);
+			InventoryApplyPropertyNative(Pawn, /*edx=*/nullptr, prop, 0);
 		}
 		Logger::Log("inventory",
 			"ApplyDeviceEquipEffects: pawn=0x%p device=%d propId=%d cm=%d base=%.2f  m_fRaw %.2f -> %.2f\n",
@@ -476,7 +480,8 @@ void Inventory::ApplyRolledModEffects(ATgPawn* Pawn, int deviceId, int deviceIns
 // Inventory::Equip — create and equip a device on a pawn
 // ---------------------------------------------------------------------------
 ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, int inventoryId,
-                            const std::vector<int>& mods) {
+                            const std::vector<int>& modsIn) {
+	const std::vector<int> mods = DurabilityGate::Gate(inventoryId, modsIn);  // Worn out = base stats only
 	// --- Null checks ---
 	if (Pawn == nullptr) {
 		Logger::Log("inventory", "Equip: ERROR — Pawn is null\n");
@@ -817,7 +822,7 @@ static void RemoveDeviceEquipEffects_impl(ATgPawn* Pawn, int deviceId) {
 	if (db == nullptr) return;
 
 	static const char* kSql =
-		"SELECT DISTINCT e.prop_id, e.base_value, e.calc_method_value_id, e.class_res_id "
+		"SELECT DISTINCT e.prop_id, e.base_value, e.calc_method_value_id, e.class_res_id, eg.required_skill_id "
 		"FROM asm_data_set_device_effect_groups deg "
 		"JOIN asm_data_set_effect_groups eg ON eg.effect_group_id = deg.effect_group_id "
 		"JOIN asm_data_set_effects e ON e.effect_group_id = deg.effect_group_id "
@@ -836,6 +841,7 @@ static void RemoveDeviceEquipEffects_impl(ATgPawn* Pawn, int deviceId) {
 		float baseValue  = (float)sqlite3_column_double(stmt, 1);
 		int   calcMethod = sqlite3_column_int   (stmt, 2);
 		int   classResId = sqlite3_column_int   (stmt, 3);
+		int   reqSkillId = sqlite3_column_int   (stmt, 4);
 
 		// class 157 — registry reverse via ApplyBuff(bRemove=1). Header MUST
 		// match the Apply side exactly so the entry-lookup hits the same slot.
@@ -843,7 +849,9 @@ static void RemoveDeviceEquipEffects_impl(ATgPawn* Pawn, int deviceId) {
 			FBuffHeader header{};
 			header.nPropId          = propId;
 			header.nReqCategoryCode = 0;
-			header.nReqSkillId      = 0;
+			// required_skill_id scopes the buff to one device class (e.g. a melee
+			// weapon's +20% vs. mechanical applies to melee attacks only).
+			header.nReqSkillId      = reqSkillId;
 			header.nReqDeviceInstId = 0;
 			TgPawn__ApplyBuff::Call(Pawn, /*edx=*/nullptr, header, calcMethod, baseValue,
 			                        /*bRemove=*/1, /*ITEM=*/1);
@@ -875,7 +883,7 @@ static void RemoveDeviceEquipEffects_impl(ATgPawn* Pawn, int deviceId) {
 		// Mirror Apply's narrow scope: only fan out POWERPOOL_MAX. See the
 		// matching block in ApplyDeviceEquipEffects for why this is gated.
 		if (propId == 255 /* POWERPOOL_MAX */) {
-			InventoryApplyPropertyNative(Pawn, /*edx=*/nullptr, prop);
+			InventoryApplyPropertyNative(Pawn, /*edx=*/nullptr, prop, 0);
 		}
 		Logger::Log("inventory",
 			"RemoveDeviceEquipEffects: pawn=0x%p device=%d propId=%d cm=%d base=%.2f  m_fRaw %.2f -> %.2f\n",

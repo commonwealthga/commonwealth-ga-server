@@ -186,7 +186,34 @@ std::string Config::GetDbPath() {
 		return CommandLineParser::WideToUtf8(options.switches[L"dbpath"]);
 	if (!options.switches[L"db_path"].empty())
 		return CommandLineParser::WideToUtf8(options.switches[L"db_path"]);
-	return "server.db";
+	return GetNodeMode() ? "node.db" : "server.db";
+}
+
+int Config::GetMaxPlayers() {
+	static int cached = -1;
+	if (cached < 0) {
+		cached = 0;
+		ParsedOptions options = CommandLineParser::ParseCommandLine();
+		std::wstring val = options.switches[L"maxplayers"];
+		if (!val.empty()) {
+			try {
+				int parsed = std::stoi(CommandLineParser::WideToUtf8(val));
+				if (parsed > 0 && parsed <= 255) cached = parsed;
+			} catch (...) {
+			}
+		}
+	}
+	return cached;
+}
+
+bool Config::GetNodeMode() {
+	static int cached = -1;
+	if (cached < 0) {
+		ParsedOptions options = CommandLineParser::ParseCommandLine();
+		std::wstring val = options.switches[L"node"];
+		cached = (val == L"1" || val == L"true") ? 1 : 0;
+	}
+	return cached == 1;
 }
 
 std::string Config::GetGamePath() {

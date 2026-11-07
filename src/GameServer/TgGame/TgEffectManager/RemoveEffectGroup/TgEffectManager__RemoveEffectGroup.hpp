@@ -12,4 +12,8 @@ public:
 	static inline bool __fastcall CallOriginal(ATgEffectManager* Manager, void* edx, UTgEffectGroup* EffectGroup) {
 		return m_original(Manager, edx, EffectGroup);
 	};
+
+	// Puts back the manager NetPriority that a stealth removal dropped
+	// (see the .cpp). Called every tick of the owning pawn.
+	static void RestoreStealthClearPriority(ATgEffectManager* Manager);
 };

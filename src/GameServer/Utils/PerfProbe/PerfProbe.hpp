@@ -32,6 +32,12 @@ enum Slot {
 	SLOT_BEACON_REAPER,
 	SLOT_ENGINE_TICK,        // CallOriginal: actor ticks + replication + net
 	SLOT_GC,                 // UObject::CollectGarbage — nested INSIDE engine_tick
+	SLOT_LOS_TRACE,          // native TgAIController LOS traces — nested INSIDE engine_tick (p1100)
+	SLOT_REPLICATE,          // ActorChannel::ReplicateActor (p1100e)
+	SLOT_RELEVANT,           // APawn::IsNetRelevantFor (p1100e)
+	SLOT_AI_CTRL,            // AI AController::Tick incl. script/latent (p1100f, zones/hub only)
+	SLOT_AI_PAWN,            // AI APawn::Tick incl. physics (p1100f)
+	SLOT_PC_TICK,            // player controller + pawn ticks (p1100f)
 	SLOT_COUNT
 };
 
@@ -40,6 +46,11 @@ enum Counter {
 	CTR_PROCESS_EVENT = 0,   // UObject::ProcessEvent calls
 	CTR_ACTOR_TICK,          // Actor::Tick calls
 	CTR_IPC_SEND,            // IpcClient::Send calls (queued, not written)
+	CTR_LOS_TRACE,           // TgAIController LOS trace calls (p1100)
+	CTR_LOS_DUP,             // ... of which repeat an earlier call's exact arguments in the same frame
+	CTR_LOS_CTRL,            // distinct AI controllers that traced this frame
+	CTR_REPLICATE,           // ActorChannel::ReplicateActor calls (p1100e)
+	CTR_RELEVANT,            // APawn::IsNetRelevantFor calls (p1100e)
 	CTR_COUNT
 };
 
@@ -55,6 +66,10 @@ bool DeepEnabled();
 // Record one actor's tick duration. No-op unless DeepEnabled(). Takes void*
 // so this header stays free of the SDK — it is included by the hottest TUs.
 void NoteActorTick(void* actor, int64_t ticks);
+// p1100f: one ProcessEvent call; ticks < 0 = nested call (counted, not timed).
+void NoteEvent(void* function, int64_t ticks);
+// p1100g: one ReplicateActor call for an actor (per-class table, perfactors only).
+void NoteRepActor(void* actor, int64_t ticks);
 
 void BeginFrame();
 void EndFrame();
@@ -63,6 +78,7 @@ void AddTicks(Slot slot, int64_t ticks);
 void Count(Counter counter, int n = 1);
 
 int64_t Now();
+int64_t FrameNumber();  // p1100: increments once per GameEngine::Tick
 double  TicksToMs(int64_t ticks);
 
 // RAII timer. `PerfProbe::Scope s(PerfProbe::SLOT_MATCH_STATS);`

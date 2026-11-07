@@ -3,12 +3,28 @@
 #include "src/pch.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
+#include <cstddef>
+// Stack bytes a function's parameters occupy (each rounded to 4). The check
+// in Install() compares the hook's declared original signature with Call():
+// a mismatch makes CallOriginal push a different amount than the original
+// pops, which only some compilers happen to survive.
+template<typename... A> struct HookArgSum {
+	static constexpr std::size_t value = (std::size_t{0} + ... + ((sizeof(A) + 3) & ~std::size_t{3}));
+};
+template<typename T> struct HookArgBytes;
+template<typename R, typename... A> struct HookArgBytes<R(__cdecl*)(A...)>    : HookArgSum<A...> {};
+template<typename R, typename... A> struct HookArgBytes<R(__stdcall*)(A...)>  : HookArgSum<A...> {};
+template<typename R, typename... A> struct HookArgBytes<R(__fastcall*)(A...)> : HookArgSum<A...> {};
+template<typename R, typename... A> struct HookArgBytes<R(__thiscall*)(A...)> : HookArgSum<A...> {};
+
 template<typename FuncSig, uintptr_t Address, typename Derived>
 class HookBase {
 public:
     using Func = FuncSig;
 
     static void Install() {
+        static_assert(HookArgBytes<FuncSig>::value == HookArgBytes<decltype(&Derived::Call)>::value,
+                      "hook signature mismatch: FuncSig and Derived::Call take different argument sizes");
         if (m_original) {
             ::DetourAttach(&(PVOID&)m_original, (PVOID)&Derived::Call);
         }

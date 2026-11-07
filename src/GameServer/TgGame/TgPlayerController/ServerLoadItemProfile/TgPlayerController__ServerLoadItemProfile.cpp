@@ -3,6 +3,7 @@
 #include "src/GameServer/Cosmetics/CosmeticEquip.hpp"
 #include "src/GameServer/Cosmetics/JetpackReload.hpp"
 #include "src/GameServer/Cosmetics/SuitRebuildKick.hpp"
+#include "src/GameServer/Tutorial/TutorialSuitUp.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
 #include "src/GameServer/Storage/PawnSessions/PawnSessions.hpp"
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
@@ -11,6 +12,7 @@
 #include "src/Database/Database.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
+#include "src/Shared/SlotUnlock.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include "lib/nlohmann/json.hpp"
 #include "lib/sqlite3/sqlite3.h"
@@ -21,6 +23,9 @@
 // loop's reuse gate compares it against the live device actor.
 static int LookupGameplayInvIdForSlot(sqlite3* db, int64_t character_id, int item_profile_id, int slot) {
     if (!db) return 0;
+    // A still-locked slot has nothing to keep.
+    if (slot <= 24 && !SlotUnlock::IsEquipPointUnlocked(db, SlotUnlock::CharacterLevel(db, character_id), slot))
+        return 0;
     sqlite3_stmt* st = nullptr;
     int invId = 0;
     if (sqlite3_prepare_v2(db,
@@ -221,6 +226,7 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
         if (sqlite3_prepare_v2(db, sql, -1, &st, nullptr) == SQLITE_OK) {
             sqlite3_bind_int64(st, 1, character_id);
             sqlite3_bind_int  (st, 2, nId);
+            const int agentLevel = SlotUnlock::CharacterLevel(db, character_id);
             while (sqlite3_step(st) == SQLITE_ROW) {
                 const int slot    = sqlite3_column_int(st, 0);
                 const int devId   = sqlite3_column_int(st, 1);
@@ -239,6 +245,18 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
                 // short-circuit would no-op anyway; explicit skip documents
                 // the invariant.
                 if (slot == 14) continue;
+
+                // Level-gated device slots (SlotUnlock.hpp).
+                if (slot <= 24 && !SlotUnlock::IsEquipPointUnlocked(db, agentLevel, slot)) {
+                    Logger::Log("debug", "[LoadItemProfile] char=%lld level=%d slot=%d device=%d locked - not equipped\n",
+                        (long long)character_id, agentLevel, slot, devId);
+                    continue;
+                }
+                if (!SlotUnlock::IsItemUsable(db, agentLevel, devId, itemId)) {
+                    Logger::Log("debug", "[LoadItemProfile] char=%lld level=%d slot=%d device=%d under item level - not equipped\n",
+                        (long long)character_id, agentLevel, slot, devId);
+                    continue;
+                }
 
                 std::vector<int> mods;
                 const char* csv = (const char*)sqlite3_column_text(st, 4);
@@ -375,6 +393,7 @@ void __fastcall TgPlayerController__ServerLoadItemProfile::Call(
         IpcClient::Send(ev.dump());
     }
 
+    TutorialSuitUp::ApplyLabSuit((ATgPawn*)Pawn, "profile switch");
     Logger::Log("loadout",
         "[ServerLoadItemProfile] switch complete %d -> %d\n", oldProfile, nId);
 

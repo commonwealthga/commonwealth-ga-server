@@ -1,5 +1,7 @@
 #include "src/GameServer/TgGame/TgOmegaVolume/Used/TgOmegaVolume__Used.hpp"
 #include "src/Config/Config.hpp"
+#include "src/Database/Database.hpp"
+#include "src/GameServer/TgGame/TgPlayerController/ServerRequestBeaconNetworkHop/TgPlayerController__ServerRequestBeaconNetworkHop.hpp"
 #include "src/GameServer/Storage/ClientConnectionsData/ClientConnectionsData.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
@@ -84,6 +86,26 @@ namespace {
 				"[OmegaVolume] Map Transition ui_volume_id=%d: no session guid for the using player\n",
 				row->ui_volume_id);
 			return;
+		}
+
+		// The volume's quest group gates the door (e.g. Dome City -> Sonoran Desert,
+		// group 47 = quest 15 completed / quest 16 taken). The client only hides its
+		// prompt, so a Use from inside the volume would otherwise always travel.
+		if (row->quest_group_id > 0) {
+			int64_t characterId = 0;
+			for (const auto& kv : GClientConnectionsData) {
+				const ClientConnectionData& cd = kv.second;
+				if (cd.bClosed || cd.SessionGuid != guid) continue;
+				characterId = cd.pPlayerInfo ? cd.pPlayerInfo->selected_character_id
+				                             : cd.PlayerInfo.selected_character_id;
+				break;
+			}
+			if (!Database::MapDoorOpen(characterId, row->ui_volume_id, row->quest_group_id)) {
+				Logger::Log("travel",
+					"[OmegaVolume] Map Transition ui_volume_id=%d refused: char=%lld quest_group=%d not met\n",
+					row->ui_volume_id, (long long)characterId, row->quest_group_id);
+				return;
+			}
 		}
 
 		const uint64_t now = GetTickCount64();
@@ -260,6 +282,12 @@ void __fastcall TgOmegaVolume_Used::Call(ATgOmegaVolume* Volume, void* edx,
 	// "Interact with Volume" quest requirements (e.g. quest 29 "Hitch a Ride",
 	// requirement 30 → ui_volume_id 211 "Hitch's Truck").
 	ReportVolumeUse(row, Volume, UsingPlayer);
+
+	// Beacon Net Node (1638): opens the zone map client-side; remember the Use
+	// so the following ServerRequestBeaconNetworkHop is accepted.
+	if (row && row->volume_type_value_id == 1638) {
+		TgPlayerController__ServerRequestBeaconNetworkHop::NoteBeaconUse(UsingPlayer);
+	}
 
 	// Retail body is intact (not a stub) — chain it. Server-side it bails at
 	// its own Cast_TgHUD(myHUD) null check.

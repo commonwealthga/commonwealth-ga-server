@@ -15,6 +15,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/IpcClient/IpcClient.cpp \
 			  \
 			  $(SRC_DIR)/GameServer/Core/UObject/ProcessEvent/UObject__ProcessEvent.cpp \
+			  $(SRC_DIR)/GameServer/Misc/MoveSpeedWatch/MoveSpeedWatch.cpp \
 			  $(SRC_DIR)/GameServer/Core/FMallocWindows/Free/FMallocWindows__Free.cpp \
 			  $(SRC_DIR)/GameServer/Core/FMallocWindows/Malloc/FMallocWindows__Malloc.cpp \
 			  $(SRC_DIR)/GameServer/Core/FMallocWindows/Realloc/FMallocWindows__Realloc.cpp \
@@ -25,6 +26,11 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Utils/ActorCache/ActorCache.cpp \
 			  $(SRC_DIR)/GameServer/Utils/FireSockets/FireSockets.cpp \
 			  $(SRC_DIR)/GameServer/Utils/PerfProbe/PerfProbe.cpp \
+			  $(SRC_DIR)/GameServer/Utils/PerfKnobs/PerfKnobs.cpp \
+			  $(SRC_DIR)/GameServer/Utils/FramePacing/FramePacing.cpp \
+			  $(SRC_DIR)/GameServer/Utils/ActorTickLod/ActorTickLod.cpp \
+			  $(SRC_DIR)/GameServer/Utils/BotSight/BotSight.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgRepInfo_Game/CheckIsEnemy/TgRepInfo_Game__CheckIsEnemy.cpp \
 			  $(SRC_DIR)/GameServer/Replication/ReplicationDefaults/ReplicationDefaults.cpp \
 			  $(SRC_DIR)/GameServer/Engine/GameEngine/Init/GameEngine__Init.cpp \
 			  $(SRC_DIR)/GameServer/Core/UObject/CollectGarbage/UObject__CollectGarbage.cpp \
@@ -90,6 +96,12 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/Stats/MatchStats.cpp \
 			  $(SRC_DIR)/GameServer/Stats/SpectatorOverlayFeed/SpectatorOverlayFeed.cpp \
 			  $(SRC_DIR)/GameServer/Stats/MissionProgressFeed/MissionProgressFeed.cpp \
+			  $(SRC_DIR)/GameServer/Stats/InstanceRestore/InstanceRestore.cpp \
+			  $(SRC_DIR)/GameServer/Stats/EscortState/EscortState.cpp \
+			  $(SRC_DIR)/GameServer/Stats/PlayerState/PlayerState.cpp \
+			  $(SRC_DIR)/GameServer/Stats/EnemyState/EnemyState.cpp \
+			  $(SRC_DIR)/GameServer/Stats/DeployableState/DeployableState.cpp \
+			  $(SRC_DIR)/GameServer/Stats/PetState/PetState.cpp \
 			  $(SRC_DIR)/GameServer/Stats/DeviceStats.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/ClientConnection/SendMarshal/ClientConnection__SendMarshal.cpp \
 			  $(SRC_DIR)/GameServer/IpDrv/NetConnection/LowLevelSend/NetConnection__LowLevelSend.cpp \
@@ -126,6 +138,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgSeqVar_MapGameId/GetRef/TgSeqVar_MapGameId__GetRef.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgSeqVar_MapGameId/PublishValue/TgSeqVar_MapGameId__PublishValue.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgSeqVar_MapGameId/PopulateValue/TgSeqVar_MapGameId__PopulateValue.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgChestActor/OpenChest/TgChestActor__OpenChest.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/LoadGameConfig/TgGame_Arena__LoadGameConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/FinalizeRoundScore/TgGame_Arena__FinalizeRoundScore.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgGame_Arena/FinalizeGameScore/TgGame_Arena__FinalizeGameScore.cpp \
@@ -156,6 +169,9 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPawn/SetTaskForceNumber/TgPawn__SetTaskForceNumber.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/ChangeTeam/ChangeTeam.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/SpawnBot/SpawnBot.cpp \
+			  $(SRC_DIR)/GameServer/WorldGroups/WorldGroups.cpp \
+			  $(SRC_DIR)/GameServer/WorldGroups/BossMove.cpp \
+			  $(SRC_DIR)/GameServer/WorldGroups/WorldChests.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/Deploy/Deploy.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/PossessPawn/PossessPawn.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerActions/ReturnHomeArea/ReturnHomeArea.cpp \
@@ -176,17 +192,27 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgInventoryManager/NonPersistAddDevice/TgInventoryManager__NonPersistAddDevice.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgInventoryManager/NonPersistRemoveDevice/TgInventoryManager__NonPersistRemoveDevice.cpp \
 			  $(SRC_DIR)/GameServer/Inventory/Inventory.cpp \
+			  $(SRC_DIR)/GameServer/Inventory/ConsumableUse.cpp \
+			  $(SRC_DIR)/GameServer/Combat/FireRules/FireRules.cpp \
 			  $(SRC_DIR)/GameServer/Cosmetics/BrokenSuitSwap.cpp \
 			  $(SRC_DIR)/GameServer/Cosmetics/CosmeticEquip.cpp \
 			  $(SRC_DIR)/GameServer/Cosmetics/JetpackReload.cpp \
 			  $(SRC_DIR)/GameServer/Cosmetics/SuitRebuildKick.cpp \
+			  $(SRC_DIR)/GameServer/Tutorial/TutorialSuitUp.cpp \
+			  $(SRC_DIR)/GameServer/Tutorial/TutorialBotRoster.cpp \
+			  $(SRC_DIR)/GameServer/Tutorial/TutorialChapterEnd.cpp \
+			  $(SRC_DIR)/GameServer/Tutorial/TutorialBoss.cpp \
 			  $(SRC_DIR)/GameServer/Armor/Armor.cpp \
+			  $(SRC_DIR)/GameServer/Durability/DurabilityGate.cpp \
 			  $(SRC_DIR)/GameServer/Constants/DeviceIds.cpp \
 			  $(SRC_DIR)/GameServer/Engine/Actor/GetOptimizedRepList/Actor__GetOptimizedRepListV2.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgActorFactory/LoadObjectConfig/TgActorFactory__LoadObjectConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgDeployableFactory/SpawnObject/TgDeployableFactory__SpawnObject.cpp \
+			  $(SRC_DIR)/GameServer/AvaCargo/AvaCargoDll.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/MissionVO/MissionVO.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/MissionVODirector/MissionVODirector.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/ObjectiveGuide/ObjectiveGuide.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/NewsStand/NewsStand.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamPlayerStart/LoadObjectConfig/TgTeamPlayerStart__LoadObjectConfig.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgTeamPlayerStart/GetRating/TgTeamPlayerStart__GetRating.cpp \
@@ -226,12 +252,17 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgMissionObjective_Proximity/ScoreObjectiveProgress/TgMissionObjective_Proximity__ScoreObjectiveProgress.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerCountVolume/Update/TgPlayerCountVolume__Update.cpp \
 			  $(SRC_DIR)/GameServer/GameModes/SuperAgent/SuperAgent.cpp \
+			  $(SRC_DIR)/GameServer/PvpBots/PvpBots.cpp \
+			  $(SRC_DIR)/GameServer/PvpBots/BotLooks.cpp \
 			  $(SRC_DIR)/GameServer/GameModes/SuperAgent/SuperAgentMission.cpp \
 			  $(SRC_DIR)/GameServer/GameModes/Hardcore/Hardcore.cpp \
 			  $(SRC_DIR)/GameServer/GameModes/CtrPointRotation/CtrPointRotation.cpp \
+			  $(SRC_DIR)/GameServer/GameModes/Acquisition/Acquisition.cpp \
+			  $(SRC_DIR)/GameServer/GameModes/Acquisition/AssertTrace.cpp \
 			  $(SRC_DIR)/GameServer/Maps/CtrRecursiveDoors/CtrRecursiveDoors.cpp \
 			  $(SRC_DIR)/GameServer/Maps/MapAdditions/MapAdditions.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/MarshalReceived/CGameClient__MarshalReceived.cpp \
+			  $(SRC_DIR)/GameServer/Social/InspectRelay.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CGameClient/SendMapRandomSMSettingsMarshal/CGameClient__SendMapRandomSMSettingsMarshal.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetByte/CMarshal__GetByte.cpp \
 			  $(SRC_DIR)/GameServer/Misc/CMarshal/GetInt32t/CMarshal__GetInt32t.cpp \
@@ -446,6 +477,7 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/ServerCombineItems/TgPlayerController__ServerCombineItems.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/ServerCraftItem/TgPlayerController__ServerCraftItem.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/ServerDestroyInvItem/TgPlayerController__ServerDestroyInvItem.cpp \
+			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/ServerCraftItem/TgPlayerController__ServerCraftItem.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/ServerDevGiveXP/TgPlayerController__ServerDevGiveXP.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/ServerGMGiven/TgPlayerController__ServerGMGiven.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/TgPlayerController/ServerLoadItemProfile/TgPlayerController__ServerLoadItemProfile.cpp \
@@ -647,10 +679,18 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/Loadouts/ClassLoadouts.cpp \
 	$(CS_SRC_DIR)/Loadouts/CosmeticLoadouts.cpp \
 	$(CS_SRC_DIR)/Loadouts/ModResolver.cpp \
+	$(CS_SRC_DIR)/Loadouts/StarterOffhands.cpp \
+	$(CS_SRC_DIR)/CombatRating/CombatRating.cpp \
+	$(CS_SRC_DIR)/AvaParity/AvaParity.cpp \
+	$(CS_SRC_DIR)/ServiceAgents/ServiceAgents.cpp \
+	$(CS_SRC_DIR)/AvaShields/AvaShields.cpp \
+	$(CS_SRC_DIR)/AvaZones/AvaZones.cpp \
+	$(CS_SRC_DIR)/AvaCargo/AvaCargo.cpp \
 	$(CS_SRC_DIR)/PlayerSessionStore/PlayerSessionStore.cpp \
 	$(CS_SRC_DIR)/TcpSession/TcpSession.cpp \
 	$(CS_SRC_DIR)/ChatSession/ChatSession.cpp \
 	$(CS_SRC_DIR)/ChatSession/ChatCommand.cpp \
+	$(CS_SRC_DIR)/ChatSession/PlayerCommands.cpp \
 	$(CS_SRC_DIR)/IpcServer/IpcServer.cpp \
 	$(CS_SRC_DIR)/SpectatorOverlay/SpectatorOverlayState.cpp \
 	$(CS_SRC_DIR)/SpectatorOverlay/MissionProgressState.cpp \
@@ -660,7 +700,31 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/InstanceRegistry/InstanceRegistry.cpp \
 	$(CS_SRC_DIR)/InstanceSpawner/InstanceSpawner.cpp \
 	$(CS_SRC_DIR)/OpenWorldTravel/OpenWorldTravel.cpp \
+	$(CS_SRC_DIR)/InstanceAdmission/InstanceAdmission.cpp \
 	$(CS_SRC_DIR)/QuestStore/QuestStore.cpp \
+	$(CS_SRC_DIR)/QuestStore/TurninCheck.cpp \
+	$(CS_SRC_DIR)/MailService/MailService.cpp \
+	$(CS_SRC_DIR)/Social/AgencyBank.cpp \
+	$(CS_SRC_DIR)/Social/AgencyApply.cpp \
+	$(CS_SRC_DIR)/BugReports/BugReports.cpp \
+	$(CS_SRC_DIR)/Social/Friends.cpp \
+	$(CS_SRC_DIR)/Social/ChatChannels.cpp \
+	$(CS_SRC_DIR)/Social/Teams.cpp \
+	$(CS_SRC_DIR)/Social/Inspect.cpp \
+	$(CS_SRC_DIR)/AuctionService/AuctionService.cpp \
+	$(CS_SRC_DIR)/MarketBots/MarketBots.cpp \
+	$(CS_SRC_DIR)/ApRewards/ApRewards.cpp \
+	$(CS_SRC_DIR)/ServiceHooks/ServiceHooks.cpp \
+	$(CS_SRC_DIR)/ExternalInstances/ExternalInstances.cpp \
+	$(CS_SRC_DIR)/InstanceState/InstanceState.cpp \
+	$(CS_SRC_DIR)/NodeClaims/NodeClaims.cpp \
+	$(CS_SRC_DIR)/AchievementService/AchievementService.cpp \
+	$(CS_SRC_DIR)/MissionLoot/MissionLoot.cpp \
+	$(CS_SRC_DIR)/EconParity/EconParity.cpp \
+	$(CS_SRC_DIR)/Durability/Durability.cpp \
+	$(CS_SRC_DIR)/Appearance/Appearance.cpp \
+	$(CS_SRC_DIR)/PvpParity/PvpParity.cpp \
+	$(CS_SRC_DIR)/MatchModeFilter/MatchModeFilter.cpp \
 	$(CS_SRC_DIR)/TeamService/TeamService.cpp \
 	$(CS_SRC_DIR)/MmrService/MmrService.cpp \
 	$(CS_SRC_DIR)/MatchmakingService/MmrSwap.cpp \
@@ -672,6 +736,7 @@ CS_CPP_SOURCES= \
     $(CS_SRC_DIR)/MatchmakingService/SidePlacement.cpp \
     $(CS_SRC_DIR)/MatchmakingService/StrictBalance.cpp \
     $(CS_SRC_DIR)/MatchmakingService/DefenderRotation.cpp \
+    $(CS_SRC_DIR)/MatchmakingService/MatchKey.cpp \
     $(CS_SRC_DIR)/MatchmakingService/FairnessLog.cpp \
     $(CS_SRC_DIR)/MatchmakingService/Rules/CoopMatchRule.cpp \
     $(CS_SRC_DIR)/MatchmakingService/Rules/DoubleAgentRule.cpp \

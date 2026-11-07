@@ -6,6 +6,8 @@
 #include <ctime>
 #include <string>
 #include <vector>
+#include <deque>
+#include <mutex>
 
 // ---------------------------------------------------------------------------
 // Portable, header-only Logger for the control server.
@@ -55,8 +57,40 @@ public:
         vsnprintf(buf, sizeof(buf), Format, args);
         va_end(args);
 
-        fprintf(stderr, "[%s] [%s] %s", GetTime(), Channel, buf);
+        const char* t = GetTime();
+        fprintf(stderr, "[%s] [%s] %s", t, Channel, buf);
         fflush(stderr);
+        Remember(t, Channel, buf);
+    }
+
+    // Last kRecentCap logged lines, kept in memory so a report can carry the
+    // lines that mention one session (Recent). Lines from disabled channels
+    // are not kept.
+    static constexpr size_t kRecentCap = 5000;
+
+    static std::vector<std::string> Recent(const std::vector<std::string>& needles, size_t max) {
+        std::vector<std::string> out;
+        std::lock_guard<std::mutex> lock(RecentMutex());
+        auto& ring = RecentLines();
+        for (auto it = ring.rbegin(); it != ring.rend() && out.size() < max; ++it) {
+            for (const auto& n : needles) {
+                if (!n.empty() && it->find(n) != std::string::npos) { out.push_back(*it); break; }
+            }
+        }
+        return std::vector<std::string>(out.rbegin(), out.rend());
+    }
+
+private:
+    static std::mutex& RecentMutex() { static std::mutex m; return m; }
+    static std::deque<std::string>& RecentLines() { static std::deque<std::string> d; return d; }
+
+    static void Remember(const char* t, const char* channel, const char* text) {
+        std::string line = std::string("[") + t + "] [" + channel + "] " + text;
+        while (!line.empty() && (line.back() == '\n' || line.back() == '\r')) line.pop_back();
+        std::lock_guard<std::mutex> lock(RecentMutex());
+        auto& ring = RecentLines();
+        ring.push_back(std::move(line));
+        if (ring.size() > kRecentCap) ring.pop_front();
     }
 };
 

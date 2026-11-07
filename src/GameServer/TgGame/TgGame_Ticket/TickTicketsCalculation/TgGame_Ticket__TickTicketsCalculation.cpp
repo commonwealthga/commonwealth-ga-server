@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgGame_Ticket/TickTicketsCalculation/TgGame_Ticket__TickTicketsCalculation.hpp"
+#include "src/GameServer/GameModes/Acquisition/Acquisition.hpp"
 #include "src/GameServer/TgGame/TgGame_Ticket/UpdateGameWinState/TgGame_Ticket__UpdateGameWinState.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -36,6 +37,7 @@ static constexpr int kMinOwnedToEarn = 2;
 
 void __fastcall TgGame_Ticket__TickTicketsCalculation::Call(ATgGame_Ticket* Game, void* edx) {
 	if (Game == nullptr) return;
+	if (Acquisition::OnTickTickets(Game)) return;  // DualCTF scores per capture
 
 	ATgRepInfo_Game* GRI = reinterpret_cast<ATgRepInfo_Game*>(Game->GameReplicationInfo);
 	if (GRI == nullptr) return;

@@ -4,10 +4,12 @@
 #include "src/GameServer/Storage/PlayerRegistry/PlayerRegistry.hpp"
 #include "src/GameServer/Inventory/Inventory.hpp"
 #include "src/GameServer/Cosmetics/CosmeticEquip.hpp"
+#include "src/GameServer/Tutorial/TutorialSuitUp.hpp"
 #include "src/GameServer/TgGame/TgPawn/KillDeployables/TgPawn__KillDeployables.hpp"
 #include "src/Database/Database.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcProtocol.hpp"
+#include "src/Shared/SlotUnlock.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include "lib/nlohmann/json.hpp"
 #include <cstdlib>
@@ -149,9 +151,13 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 		// v76: also pull item_id and gate by user_id so the player can't
 		// equip another account's inventory by guessing inv_ids.
 		const int rc = sqlite3_prepare_v2(db,
-			"SELECT device_id, quality, mod_effect_group_ids, item_id "
+			"SELECT device_id, quality, mod_effect_group_ids, item_id, allowed_slots "
 			"FROM ga_players_inventory WHERE id = ? AND user_id = ?",
 			-1, &stmt, nullptr);
+		// The same per-slot gates as the control server's
+		// equip_save (allowed_slots, slot unlock level, item level), so the live
+		// pawn never wields what the DB refuses. A refused slot keeps its device.
+		const int level = SlotUnlock::CharacterLevel(db, character_id);
 		if (rc == SQLITE_OK && stmt) {
 			for (int slot = 1; slot < 0x19; ++slot) {
 				const int invId = DeviceArray.SlotIndices[slot];
@@ -161,6 +167,22 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 				sqlite3_bind_int  (stmt, 1, invId);
 				sqlite3_bind_int64(stmt, 2, user_id);
 				if (sqlite3_step(stmt) != SQLITE_ROW) continue;
+				{
+					const char* allowed = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+					const int svid = SlotUnlock::EquipPointToSvid(slot);
+					const int need = SlotUnlock::RequiredLevelForItem(db,
+						sqlite3_column_int(stmt, 0), sqlite3_column_int(stmt, 3));
+					const char* why = nullptr;
+					if (!SlotUnlock::CsvHas(allowed, svid))                     why = "svid not in allowed_slots";
+					else if (!SlotUnlock::IsEquipPointUnlocked(db, level, slot)) why = "slot locked";
+					else if (level < need)                                        why = "item level";
+					if (why) {
+						Logger::Log(GetLogChannel(),
+							"equip-save: slot %d inv_id %d refused (%s; svid %d, agent lv %d, item lv %d) - slot unchanged\n",
+							slot, invId, why, svid, level, need);
+						continue;
+					}
+				}
 
 				SlotResolution& r = resolved[slot];
 				r.newInvId = invId;
@@ -196,7 +218,38 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 	// "Conservative gate" comment below) because, for players, the Appearance
 	// tab's icon is the only thing that ever writes engine slots 6/12; there's
 	// no separate player-equippable gameplay device sharing that wire slot.
+	// A save that carries NO device at all comes from a client
+	// whose bag was blank (inventory map out of sync) lost
+	// every weapon + jetpack that way - skip the device AND cosmetic clear passes. Melee
+	// and jetpack are required slots: never cleared to nothing.
+	int savedDevices = 0;
+	for (int slot : {1, 2, 3, 5, 7, 8, 9, 10, 13})
+		if (DeviceArray.SlotIndices[slot] != 0) ++savedDevices;
+	if (character_id != 0 && savedDevices == 0) {
+		Logger::Log(GetLogChannel(),
+			"equip-save: no device in the save (client bag not loaded?) - device + cosmetic slots kept for char=%lld\n",
+			(long long)character_id);
+	}
+	// A save that leaves out a weapon/jetpack slot the pawn
+	// still wears comes from an equip screen that only knows part of the
+	// loadout (saves of 1-4 slots each
+	// stripped the rest). The UI never blanks 1/2/3/5, so such a save only
+	// applies what it carries: no device / cosmetic clears, armor per piece.
+	int missingCore = 0;
+	for (int slot : {1, 2, 3, 5})
+		if (DeviceArray.SlotIndices[slot] == 0 && Pawn->m_EquippedDevices[slot] != nullptr) ++missingCore;
+	const bool fullSave = savedDevices > 0 && missingCore == 0;
+	if (character_id != 0 && savedDevices > 0 && !fullSave) {
+		Logger::Log(GetLogChannel(),
+			"equip-save: partial save (%d worn weapon/jetpack slot(s) not sent) - only sent slots applied for char=%lld\n",
+			missingCore, (long long)character_id);
+	}
 	std::set<int> clearedCosmeticSlots;
+	// Tutorial Lab Suit phase - the equip screen knows no suit/helmet/
+	// dyes there; its empty cosmetic slots must not clear the agent's look.
+	const bool labSuit = TutorialSuitUp::InLabSuitPhase(Pawn);
+	if (labSuit) Logger::Log(GetLogChannel(), "equip-save: tutorial Lab Suit phase - cosmetic slots left alone\n");
+	if (fullSave && !labSuit) {
 	if (DeviceArray.SlotIndices[6] == 0) {
 		CosmeticEquip::ClearSlot(Pawn, character_id, itemProfileId, 6);
 		clearedCosmeticSlots.insert(6);
@@ -215,12 +268,14 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 			clearedCosmeticSlots.insert(slot);
 		}
 	}
+	}
 
 	// Explicit device unequip — visible weapon/offhand/etc slots the player
 	// blanked (SlotIndices[slot]==0). Slot 14 (class device, hidden from the
 	// equip screen) always sends 0 and is excluded from this list.
-	if (character_id != 0) {
-		static const int kClearableDeviceSlots[] = {1, 2, 3, 5, 7, 8, 9, 10, 13};
+	if (character_id != 0 && fullSave) {
+		// Primary/secondary (2/3) are replaced, never blanked.
+		static const int kClearableDeviceSlots[] = {7, 8, 9, 10, 13};
 		sqlite3_stmt* delDev = nullptr;
 		sqlite3_prepare_v2(db,
 			"DELETE FROM ga_character_devices "
@@ -301,6 +356,7 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 				++equipped_now;
 			}
 		} else if (r.itemId > 0) {
+			if (labSuit) continue;  // Lab Suit until the Skylark suit-up
 			if (r.clearsCosmetic) {
 				CosmeticEquip::ClearSlot(Pawn, character_id, itemProfileId, slot);
 				touchedCosmetics = true;
@@ -399,8 +455,29 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 		}
 
 		if (anyArmorMisc) {
+			// Full armor wipe only for a full save that drops at most one
+			// worn piece; otherwise replace just the pieces sent (same rule as
+			// the control server's SaveEquippedDevices).
+			int armorOmitted = 0;
+			{
+				sqlite3_stmt* q = nullptr;
+				if (sqlite3_prepare_v2(db,
+				        "SELECT equipped_slot FROM ga_character_devices "
+				        "WHERE character_id = ? AND item_profile_id = ? "
+				        "  AND equipped_slot IN (1130, 1132, 1133, 1136, 1139, 1142, 1143)",
+				        -1, &q, nullptr) == SQLITE_OK && q) {
+					sqlite3_bind_int64(q, 1, character_id);
+					sqlite3_bind_int  (q, 2, itemProfileId);
+					while (sqlite3_step(q) == SQLITE_ROW) {
+						const int idx = sqlite3_column_int(q, 0) - 1128;
+						if (idx >= 0 && idx < 0x19 && DeviceArray.MiscItems[idx] <= 0) ++armorOmitted;
+					}
+					sqlite3_finalize(q);
+				}
+			}
+			const bool armorFullWipe = fullSave && armorOmitted <= 1;
 			sqlite3_stmt* delA = nullptr;
-			if (sqlite3_prepare_v2(db,
+			if (armorFullWipe && sqlite3_prepare_v2(db,
 			    "DELETE FROM ga_character_devices "
 			    "WHERE character_id = ? AND item_profile_id = ? "
 			    "  AND equipped_slot IN (1130, 1132, 1133, 1136, 1139, 1142, 1143)",
@@ -409,6 +486,23 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 				sqlite3_bind_int  (delA, 2, itemProfileId);
 				sqlite3_step(delA);
 				sqlite3_finalize(delA);
+			} else if (!armorFullWipe && sqlite3_prepare_v2(db,
+			    "DELETE FROM ga_character_devices "
+			    "WHERE character_id = ? AND item_profile_id = ? AND equipped_slot = ?",
+			    -1, &delA, nullptr) == SQLITE_OK) {
+				for (int i = 0; i < 0x19; ++i) {
+					if (DeviceArray.MiscItems[i] <= 0) continue;
+					sqlite3_reset(delA);
+					sqlite3_clear_bindings(delA);
+					sqlite3_bind_int64(delA, 1, character_id);
+					sqlite3_bind_int  (delA, 2, itemProfileId);
+					sqlite3_bind_int  (delA, 3, i + 1128);
+					sqlite3_step(delA);
+				}
+				sqlite3_finalize(delA);
+				Logger::Log(GetLogChannel(),
+					"equip-save: armor per-piece update (full=%d, worn pieces not sent=%d)\n",
+					fullSave ? 1 : 0, armorOmitted);
 			}
 
 			sqlite3_stmt* insA = nullptr;
@@ -451,6 +545,8 @@ void __fastcall TgPlayerController__ServerAcceptNewProfileFromEquipScreen::Call(
 			Armor::ApplyDefaultArmor(Pawn);
 		}
 	}
+
+	if (labSuit) TutorialSuitUp::ApplyLabSuit(Pawn, "equip-save");
 
 	nlohmann::json ev;
 	ev["type"]                    = IpcProtocol::MSG_GAME_EVENT;

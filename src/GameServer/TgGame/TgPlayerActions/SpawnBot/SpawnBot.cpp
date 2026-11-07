@@ -10,6 +10,7 @@
 #include "src/GameServer/TgGame/TgPawn/InitializeDefaultProps/TgPawn__InitializeDefaultProps.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
+#include "src/GameServer/PvpBots/PvpBots.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 namespace TgPlayerActions::SpawnBotCmd {
@@ -63,7 +64,8 @@ constexpr float kSpawnFloorBufferUU = 5.0f;
 } // namespace
 
 void Execute(const std::string& session_guid, int bot_id, Team team,
-             DifficultyScalar difficulty_scalar_override, bool henchman) {
+             DifficultyScalar difficulty_scalar_override, bool henchman,
+             const std::string& pvp_class) {
     ATgPawn_Character* Pawn = FindPawnBySessionGuid(session_guid);
     if (!Pawn) {
         Logger::Log("chat-command",
@@ -205,6 +207,21 @@ void Execute(const std::string& session_guid, int bot_id, Team team,
         }
     }
 
+    // -spawnpvpbot: dress the class bot as a player agent. Ends with the
+    // device swaps (UpdateClientDevices), so it runs after the team wiring.
+    if (!pvp_class.empty()) {
+        if (!PvpBots::Dress(Bot, pvp_class,
+                            team == Team::Enemy ? (ATgPawn*)Pawn : nullptr)) {
+            Logger::Log("chat-command",
+                "[ChatCmd][DLL] -spawnpvpbot: unknown class '%s'\n", pvp_class.c_str());
+        } else {
+            // Comes back after death: both sides, at a team start.
+            PvpBots::RegisterRespawn(Bot, bot_id, pvp_class, targetTf, team == Team::Enemy,
+                                     loc, rot, (ATgPawn*)Pawn,
+                                     difficulty_scalar_override);
+        }
+    }
+
     // Mirror SpawnNextBot's post-spawn replication kick.
 		//   Bot->Role = 3;
 		//   Bot->RemoteRole = 1;
@@ -249,6 +266,29 @@ void Execute(const std::string& session_guid, int bot_id, Team team,
         + " tf=" + std::to_string((int)targetTf->r_nTaskForce)
         + " health=" + std::to_string((int)Bot->Health)
         + (henchman ? " henchman" : ""));
+}
+
+ATgPawn* SpawnDressedAt(int bot_id, const FVector& loc, const FRotator& rot,
+                        ATgRepInfo_TaskForce* tf, bool enemySide,
+                        const std::string& pvp_class, ATgPawn* foe,
+                        DifficultyScalar scalar) {
+    ATgGame* Game = (ATgGame*)Globals::Get().GGameInfo;
+    if (!Game || !tf) return nullptr;
+    TgPawn__InitializeDefaultProps::nPendingDifficultyScalarOverride = scalar;
+    TgPawn__InitializeDefaultProps::bPendingEnemyScaling = true;
+    ATgPawn* Bot = TgGame__SpawnBotById::Call(Game, nullptr, bot_id, loc, rot,
+        false, nullptr, /*bIgnoreCollision*/ true, nullptr, false, nullptr, 0.0f);
+    if (!Bot) return nullptr;
+    ATgRepInfo_Player* BotRep = (ATgRepInfo_Player*)Bot->PlayerReplicationInfo;
+    if (BotRep) {
+        BotRep->r_TaskForce = tf;
+        BotRep->Team        = tf;
+        BotRep->SetTeam(tf);
+        Bot->NotifyTeamChanged();
+    }
+    Bot->r_bInitialIsEnemy = enemySide ? 1 : 0;
+    PvpBots::Dress(Bot, pvp_class, foe);  // ends with the device swaps
+    return Bot;
 }
 
 } // namespace TgPlayerActions::SpawnBotCmd

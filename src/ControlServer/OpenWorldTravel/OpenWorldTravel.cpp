@@ -3,6 +3,7 @@
 #include "src/ControlServer/MapGameInfo/MapGameInfo.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/Logger.hpp"
+#include "src/ControlServer/Database/Database.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "lib/nlohmann/json.hpp"
 
@@ -41,6 +42,25 @@ namespace {
     // so say what's actually going on.
     constexpr const char* kUnderConstruction = "Under construction, please come back later.";
     constexpr float       kUnderConstructionDuration = 6.0f;
+
+    // Hidden one-map 'zone_*' queue for a sub-instance map
+    // (night defense, Colony node/locker), seeded in Database::Init. 0 = none.
+    uint32_t ZoneQueueForMap(const std::string& map_name) {
+        sqlite3* db = Database::GetConnection();
+        if (!db) return 0;
+        uint32_t queue_id = 0;
+        sqlite3_stmt* s = nullptr;
+        if (sqlite3_prepare_v2(db,
+                "SELECT q.queue_id FROM ga_queues q JOIN ga_map_pool_entries e"
+                " ON e.map_pool_id = q.map_pool_id"
+                " WHERE q.enabled = 0 AND q.name LIKE 'zone\\_%' ESCAPE '\\'"
+                " AND e.map_name = ?1 AND e.enabled = 1 LIMIT 1", -1, &s, nullptr) == SQLITE_OK) {
+            sqlite3_bind_text(s, 1, map_name.c_str(), -1, SQLITE_TRANSIENT);
+            if (sqlite3_step(s) == SQLITE_ROW) queue_id = (uint32_t)sqlite3_column_int(s, 0);
+            sqlite3_finalize(s);
+        }
+        return queue_id;
+    }
 }
 
 void OpenWorldTravel::SetSpawner(SpawnFn fn) {
@@ -63,6 +83,13 @@ void OpenWorldTravel::Request(const std::string& session_guid, uint32_t map_game
         return;
     }
     if (row->gameplay_type_value_id != MapGameInfo::kGameplayTypeOpenZone) {
+        if (const uint32_t queue_id = ZoneQueueForMap(row->map_name)) {
+            Logger::Log("travel",
+                "[OpenWorldTravel] map_game_id=%u ('%s') is a zone sub-instance -> queue %u (guid=%s)\n",
+                map_game_id, row->map_name.c_str(), queue_id, session_guid.c_str());
+            TcpSession::DeliverZoneQueueJoin(session_guid, queue_id);
+            return;
+        }
         Logger::Log("travel",
             "[OpenWorldTravel] map_game_id=%u ('%s') gameplay_type=%u is not an open zone (%u) — refusing (guid=%s)\n",
             map_game_id, row->map_name.c_str(), row->gameplay_type_value_id,
@@ -135,5 +162,8 @@ void OpenWorldTravel::Request(const std::string& session_guid, uint32_t map_game
     // Poll for READY, then PLAYER_REGISTER + GSC_GO_PLAY. Re-entrant per
     // session: TcpSession drops the request if that session already has a
     // travel poll running, so Use-spam can't stack timers.
-    TcpSession::DeliverOpenWorldTravel(session_guid, row->map_name, kTaskForce);
+    // City maps (Dome) are everyone-friendly = task force 1, like the login/home path;
+    // tf 2 there showed fellow players as enemies (red names).
+    const int tf = (row->game_class == "TgGame.TgGame_City") ? 1 : kTaskForce;
+    TcpSession::DeliverOpenWorldTravel(session_guid, row->map_name, tf);
 }

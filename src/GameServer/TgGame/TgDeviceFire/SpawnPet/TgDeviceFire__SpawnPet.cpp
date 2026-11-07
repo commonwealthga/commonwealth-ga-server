@@ -58,7 +58,6 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 	}
 
 
-	ATgGame* game = reinterpret_cast<ATgGame*>(Globals::Get().GGameInfo);
 
 	// Resolve placement the same way the client's UpdateDeployModeStatus ghost
 	// preview does for pet/turret attack types (0x132 / 0x331): aim-trace with
@@ -113,6 +112,17 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 	// that face a direction the player wasn't looking at.  Zero out pitch/roll
 	// so the turret stands upright.
 	FRotator spawnRot = pawn->Controller ? pawn->Controller->Rotation : pawn->Rotation;
+
+	SpawnAt(pThis, pawn, spawnLocation, spawnRot);
+}
+
+// Everything after placement: spawn the mode's bot at the given spot for its
+// owner and set it up (mods, team, decoy look, life span, turret deploy).
+ATgPawn* TgDeviceFire__SpawnPet::SpawnAt(UTgDeviceFire* pThis, ATgPawn* pawn, FVector spawnLocation, FRotator spawnRot) {
+	if (!pThis || !pawn || !pThis->m_pFireModeSetup.Dummy) return nullptr;
+	ATgDevice* device = (ATgDevice*)pThis->m_Owner;
+	const int petId = *(int*)((char*)pThis->m_pFireModeSetup.Dummy + 0x2C);
+	ATgGame* game = reinterpret_cast<ATgGame*>(Globals::Get().GGameInfo);
 
     FRotator rot;
     rot.Pitch = 0;
@@ -302,16 +312,11 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 			// Nameplate: the client renders "<PlayerName> - Decoy" for r_bIsDecoy
 			// pawns. The decoy bot's PRI defaults to the bot's own name ("Decoy"),
 			// giving "Decoy - Decoy" — replace it with the owner's name so it reads
-			// "<Owner> - Decoy". Mirror SpawnPlayerCharacter's FString handoff:
-			// eventSetPlayerName memcpys our FString into its Parms and ProcessEvent
-			// may free the Data, so pass a COPY and null its Data before scope exit
-			// (never hand it PawnRep's own PlayerName.Data — that would free the
-			// owner's name).
+			// "<Owner> - Decoy". p0997f: eventSetPlayerName leaves the buffer to its
+			// caller, so ownerName's destructor frees this copy once.
 			if (PetRep && PawnRep && PawnRep->PlayerName.Data) {
 				FString ownerName(PawnRep->PlayerName.Data);
 				PetRep->eventSetPlayerName(ownerName);
-				ownerName.Data = nullptr;
-				ownerName.Count = ownerName.Max = 0;
 			}
 
 			PetPawn->bNetDirty       = 1;
@@ -555,5 +560,6 @@ void __fastcall TgDeviceFire__SpawnPet::Call(UTgDeviceFire* pThis, void* edx, BO
 	//   ATgGame* game = (ATgGame*)Globals::Get().GWorld->...;
 	//   game->SpawnBotById(nBotId, pawn->Location, pawn->Rotation,
 	//                      false, nullptr, false, pawn, !bPet, pThis, 0.f);
+	return PetPawn;
 }
 

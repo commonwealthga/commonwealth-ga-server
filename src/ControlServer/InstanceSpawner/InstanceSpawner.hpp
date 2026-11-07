@@ -21,7 +21,8 @@ public:
                        const std::string& game_mode,
                        uint16_t udp_port,
                        int64_t instance_id,
-                       uint32_t difficulty_value_id = 0);
+                       uint32_t difficulty_value_id = 0,
+                       int max_players = 0);
 
     // Terminate the process group for an already-spawned game instance.
     // Sends SIGTERM immediately, then SIGKILL after grace_seconds if the

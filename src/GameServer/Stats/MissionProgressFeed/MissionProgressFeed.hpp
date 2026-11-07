@@ -18,4 +18,8 @@ namespace MissionProgressFeed {
 // (City, OpenWorldPVE/PVP, CTF, DualCTF) are silently skipped.
 void MaybePushSnapshot(AActor* actor);
 
+// INSTANCE_SNAPSHOT_REQUEST (IPC thread): the next game tick pushes a
+// snapshot at once, marked "final": true.
+void RequestFinal();
+
 }  // namespace MissionProgressFeed

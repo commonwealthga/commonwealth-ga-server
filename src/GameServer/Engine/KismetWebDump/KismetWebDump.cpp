@@ -1,4 +1,5 @@
 #include "src/GameServer/Engine/KismetWebDump/KismetWebDump.hpp"
+#include "src/GameServer/Engine/MapDataDumper/MapDataDumper.hpp"
 #include "src/GameServer/Engine/MapDataDumper/Writers/WriterCommon.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Utils/ObjectCache/ObjectCache.hpp"
@@ -458,7 +459,8 @@ void KismetWebDump::TickDelayedDump(float deltaSeconds) {
 	s_dumpElapsed += deltaSeconds;
 	if (s_dumpElapsed < kDumpSettleSeconds) return;
 	s_dumpArmed = false;  // one-shot
-	DumpAll();
+	if (Config::GetDumpKismet()) DumpAll();
+	if (Config::GetDumpMapData()) MapDataDumper::DumpAll();
 }
 
 void KismetWebDump::DumpAll() {

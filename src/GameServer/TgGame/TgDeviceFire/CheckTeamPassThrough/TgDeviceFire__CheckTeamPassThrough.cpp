@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgDeviceFire/CheckTeamPassThrough/TgDeviceFire__CheckTeamPassThrough.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/Utils/BotSight/BotSight.hpp"
 #include <string>
 
 // UObject::GetFullName / GetName both return pointers into a single static
@@ -24,6 +25,16 @@ bool __fastcall TgDeviceFire__CheckTeamPassThrough::Call(
 	bool result = CallOriginal(FireMode, edx, HitActor);
 
 	if (!HitActor) return result;
+
+	// Every AI pawn is on one coalition in the open world, so a bot's shot
+	// passes through another bot. Opted-in hostile bot pairs (BotSight) hit.
+	if (result && FireMode && FireMode->m_Owner && FireMode->m_Owner->Instigator &&
+			BotSight::IsHostilePair((AActor*)FireMode->m_Owner->Instigator, HitActor)) {
+		Logger::Log("tgbotfactory", "[BotSight] shot hits hostile bot (pass-through off)\n");
+		return false;
+	}
+
+	if (!Logger::IsChannelEnabled("combat-trace")) return result;
 
 	// Capture class name BEFORE any other GetFullName call clobbers the buffer.
 	std::string hitClass = SafeGetFullName(HitActor);

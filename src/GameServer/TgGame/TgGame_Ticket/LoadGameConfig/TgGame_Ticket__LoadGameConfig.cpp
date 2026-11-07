@@ -1,4 +1,5 @@
 #include "src/GameServer/TgGame/TgGame_Ticket/LoadGameConfig/TgGame_Ticket__LoadGameConfig.hpp"
+#include "src/GameServer/GameModes/Acquisition/Acquisition.hpp"
 #include "src/GameServer/TgGame/TgGame/LoadGameConfig/TgGame__LoadGameConfig.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -27,6 +28,7 @@ void __fastcall TgGame_Ticket__LoadGameConfig::Call(ATgGame_Ticket* Game, void* 
 	ATgRepInfo_Game* GRI = reinterpret_cast<ATgRepInfo_Game*>(Game->GameReplicationInfo);
 	if (GRI != nullptr) {
 		GRI->r_nPointsToWin = 800;
+		Acquisition::OnLoadGameConfig((ATgGame*)Game);  // DualCTF caps to win
 		Logger::Log(GetLogChannel(), "TgGame_Ticket::LoadGameConfig — r_nPointsToWin=%d tickDelay=%.2f\n",
 			GRI->r_nPointsToWin, Game->m_fTicketTickDelay);
 	}

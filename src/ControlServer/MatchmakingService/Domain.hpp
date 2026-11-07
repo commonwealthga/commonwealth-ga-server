@@ -1,4 +1,5 @@
 #pragma once
+#include "src/ControlServer/Config/EventCalendar.hpp"
 //
 // Matchmaking domain types — PURE. No asio, no DB, no Logger, no singletons.
 // Everything here is plain data + free functions so the rules and placement
@@ -139,6 +140,7 @@ struct MapModeEntry {
     std::optional<int> min_players;  // NULL in DB → unbounded below
     std::optional<int> max_players;  // NULL in DB → unbounded above
     std::optional<int64_t> dlc_id;   // NULL in DB → base game; else required ga_dlc pack
+    std::string event_key;           // "" = always; else only while that calendar window is open
 };
 
 // Legacy (map, game_mode) pair without weight. Returned by pool pickers.
@@ -185,6 +187,7 @@ struct RunningInstance {
 
     AccessMode  access_mode = AccessMode::Open;
     std::vector<uint64_t> owner_party_ids;  // populated when PartyLocked
+    int64_t     started_at  = 0;    // unix secs the instance started (0 = unknown / reserved, treated as new)
 
     int  seats_free() const {
         return max_players > 0 ? std::max(0, max_players - player_count) : -1;  // -1 = unlimited
@@ -295,9 +298,23 @@ struct QueueConfig {
     bool           pair_backfill        = false;
     bool           setup_rebalance      = true;
 
+    // Fresh pops need at least this many distinct classes (profile_id)
+    // among the chosen players; 0 = off. Drop-in to a running instance is
+    // not affected.
+    uint32_t       min_distinct_classes = 0;
+
+    // At most this many players of one class (profile_id) per side; 0 = off.
+    // Enforced on admission as 2x per match (placement splits classes
+    // evenly); a party that would exceed it waits for the next match.
+    uint32_t       max_class_per_side   = 0;
+
     // Fairness rotation group (ga_queues.fairness_scope). Empty = this queue
     // records no fairness events and reads none. 'merc' / 'double_agent'.
     std::string fairness_scope;
+
+    // Last agent level that still gets mission-end rewards (xp/credits/
+    // tokens/AP/loot); quest credit is not affected. 200 = no cap.
+    uint32_t reward_level_max = 200;
 
     // Map-variety knob: per-recency-slot weight divisors, most recent first
     // (ga_queues.map_recency_divisors, CSV). Empty = feature off.
@@ -443,6 +460,16 @@ inline std::vector<QueuedPlayer> FlattenParties(const std::vector<QueuedParty>& 
 inline bool EntryPlayableWith(const MapModeEntry& e, const std::vector<int64_t>& installed) {
     if (!e.dlc_id) return true;
     return std::find(installed.begin(), installed.end(), *e.dlc_id) != installed.end();
+}
+
+// Calendar gating. An entry with an event_key is only offered
+// while its window is open, and while one is open it replaces the entries
+// without a key (the event map takes over the queue, as in the original).
+inline bool EntryInSeason(const MapModeEntry& e, const std::vector<MapModeEntry>& pool) {
+    if (!e.event_key.empty()) return EventCalendar::IsActive(e.event_key);
+    for (const auto& o : pool)
+        if (!o.event_key.empty() && EventCalendar::IsActive(o.event_key)) return false;
+    return true;
 }
 
 // True when EVERY member of the party owns the entry's pack. Parties are

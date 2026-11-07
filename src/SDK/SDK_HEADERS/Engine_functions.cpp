@@ -3788,6 +3788,7 @@ class AActor* AActor::Spawn ( class UClass* SpawnClass, class AActor* SpawnOwner
 		pFnSpawn = (UFunction*) ObjectCache::Find( "Function Engine.Actor.Spawn" );
 
 	AActor_execSpawn_Parms Spawn_Parms;
+	Spawn_Parms.ReturnValue = NULL;  // p0997e: ProcessEvent skips a destroyed actor; never return stack garbage
 	Spawn_Parms.SpawnClass = SpawnClass;
 	Spawn_Parms.SpawnOwner = SpawnOwner;
 	memcpy ( &Spawn_Parms.SpawnTag, &SpawnTag, 0x8 );
@@ -90958,6 +90959,15 @@ void APlayerReplicationInfo::eventSetPlayerName ( struct FString S )
 	memcpy ( &SetPlayerName_Parms.S, &S, 0xC );
 
 	this->ProcessEvent ( pFnSetPlayerName, &SetPlayerName_Parms, NULL );
+
+	// p0997f: Parms.S and S are shallow copies of the caller's FString. ProcessEvent
+	// does not free parameters, and UC copies the text into PlayerName. Neither copy
+	// owns the buffer, so clear them: ~FString here would delete[] it, which faults on
+	// a real Windows heap when the buffer came from GAllocator. The caller frees it once.
+	SetPlayerName_Parms.S.Data = nullptr;
+	SetPlayerName_Parms.S.Count = SetPlayerName_Parms.S.Max = 0;
+	S.Data = nullptr;
+	S.Count = S.Max = 0;
 };
 
 // Function Engine.PlayerReplicationInfo.Timer

@@ -34,6 +34,9 @@ struct SpawnTargetArgs {
     // -spawnhenchman: friend-team spawn additionally marked as a henchman
     // (pawn r_bIsHenchman) with the requesting player as leader (m_pOwner).
     bool henchman = false;
+    // -spawnpvpbot: "assault"/"medic"/"recon"/"robotics" -> the DLL dresses the
+    // class bot like a player agent (PvpBots::Dress). Empty = plain spawn.
+    std::string pvp_class;
 };
 
 // -deployfriend / -deployenemy: drop a deployable in front of the player on
@@ -181,6 +184,15 @@ struct CheatArgs {
 // rather than broadcast to everyone as ordinary chat — but never acted on.
 inline constexpr bool kComponentsDebugEnabled = false;
 
+// -bug <text> / -report <player> <text> — filed as a ga_bug_reports row by
+// BugReports::Submit. Always set when recognized, even with empty text, so the
+// sender gets the usage line.
+struct ReportArgs {
+    std::string kind;    // "bug" or "player"
+    std::string target;  // reported player (kind == "player")
+    std::string text;
+};
+
 struct ParseResult {
     // True if the message was a /-prefixed slash command attempt that we own
     // (currently: "-changeteam", "-spawnfriend", "-spawnenemy", "-possess",
@@ -207,6 +219,12 @@ struct ParseResult {
     std::optional<FxBrowseArgs>     fx_browse;
     std::optional<SetSpawnTableArgs> set_spawn_table;
     std::optional<CheatArgs>         cheat;
+    std::optional<ReportArgs>        report;
+
+    // Player commands (-help -who -played -loc -stuck and the
+    // "not available" names) — see PlayerCommands. name has no leading '-'.
+    struct PlayerCmdArgs { std::string name; std::string rest; };
+    std::optional<PlayerCmdArgs>     player_cmd;
 
     // No-arg toggles. Flag is set when recognized + parsed cleanly.
     bool possess   = false;
@@ -352,6 +370,9 @@ void ExecuteToggleSoloMode(const ToggleSoloModeArgs& args,
 // catalog. DLC-gated queues appear/disappear on the next GET_TICKET_INFO
 // poll. Handled entirely on the control server; no PLAYER_ACTION IPC.
 void ExecuteSetDlc(const SetDlcArgs& args, const std::string& session_guid);
+
+// -stuck: ask the DLL to move the player to a spawn point (PvP refused DLL-side).
+void DispatchStuck(const std::string& session_guid);
 
 // -cheat: toggle hirez cheat modes (zeus,icarus,hades,apollo,athena)
 void DispatchToggleCheatMode(const CheatArgs& args,

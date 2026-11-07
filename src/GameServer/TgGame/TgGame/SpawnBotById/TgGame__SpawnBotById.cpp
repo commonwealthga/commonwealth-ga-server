@@ -16,6 +16,7 @@
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Utils/ActorCache/ActorCache.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/GameServer/Stats/EnemyState/EnemyState.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/Database/Database.hpp"
 // #include "src/Database/SocketCycle/SocketCycle.hpp"  // decommissioned 2026-06-11 (FireSockets)
@@ -588,6 +589,10 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		return nullptr;
 	}
 
+	// Host migration restore: same variant as the carried bot of this factory.
+	if (pFactory != nullptr && pFactory->m_nMapObjectId > 0)
+		nBotId = EnemyState::ChooseBotId(pFactory->m_nMapObjectId, nBotId);
+
 	AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
 
 	ATgAIController* AIController = (ATgAIController*)Game->Spawn(
@@ -875,7 +880,9 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 		const bool botIsTurret = (Bot->Class &&
 			strstr(Bot->Class->GetFullName(), "TgPawn_Turret") != nullptr);
 
-		if (botIsTurret) {
+		if (s_bSpawningVanityPet) {
+			// vanity pet: owner slot is r_CurrentVanityPet, set by the caller
+		} else if (botIsTurret) {
 			ATgPawn* prior = (ATgPawn*)pOwnerPawn->s_Turret;
 			if (prior && prior != Bot && !prior->bDeleteMe) {
 				Logger::Log("pet_spawn",
@@ -893,6 +900,12 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 				: 0;
 			if (packLimit > 1) {
 				EnforceOwnedPetPackLimit(pOwnerPawn, Bot, deviceFire->m_nId, packLimit);
+			} else if (pOwnerPawn->r_bIsBot) {
+				// NPC hatchers (Sand Spider egg -> Colony Tick) keep a
+				// swarm, never one-slot replace: with no fire mode resolved the
+				// one-slot rule suicided every tick as the next egg landed.
+				// Cap = the Sand Spider hatch mode's own prop 154 (20).
+				EnforceOwnedPetPackLimit(pOwnerPawn, Bot, deviceFire ? deviceFire->m_nId : 0, 20);
 			} else {
 				ATgPawn* prior = pOwnerPawn->r_Pet;
 				if (prior && prior != Bot && !prior->bDeleteMe) {
@@ -1102,7 +1115,17 @@ ATgPawn* __fastcall TgGame__SpawnBotById::Call(
 
 	// AIController->m_pBot.Dummy was set up-top before bot Spawn — see the
 	// IsCrewable race comment in the AIController-spawn block.
-	TgAIController__InitBehavior::CallOriginal(AIController, edx, BotConfig, pFactory);
+	// The intro's Malfunctioning Android (1337) ships with behavior
+	// 650 = "GO TO - SPAWN LOCATION" only, so it stood idle. Give it the AI of
+	// the game's own combat tutorial bot 1324 (Training_Android_AI3: target
+	// enemy in sight, ranged attack with slot 198 - 1337 has 3938 there).
+	// Same donor-config trick as SuperAgent SwapBehavior; body/stats stay 1337.
+	void* BehaviorConfig = BotConfig;
+	if (nBotId == 1337 && CAmBot__LoadBotMarshal::m_BotPointers[1324]) {
+		BehaviorConfig = (void*)CAmBot__LoadBotMarshal::m_BotPointers[1324];
+		Logger::Log("tgbotfactory", "SpawnBotById: bot 1337 runs bot 1324's combat AI\n");
+	}
+	TgAIController__InitBehavior::CallOriginal(AIController, edx, BehaviorConfig, pFactory);
 
 	// InitBehavior stamps m_pFactory from its factory arg — undo that when
 	// the CALLER passed none (fallback was team-resolution only; retail

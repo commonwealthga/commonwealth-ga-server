@@ -40,6 +40,35 @@ static int FetchVictoryBonusLives() {
 	return lives;
 }
 
+// Zone map picture (N key). The stock exe has no server-side InitGameRepInfo body,
+// so nothing filled r_MiniMapInfo and the zone map window stayed empty. The client
+// (TgUIMapWidget init 0x10ACD8E0) loads TextureResId and projects the world onto it:
+//   screenX = (Y - MinY) / (MaxY - MinY), screenY = 1 - (X - MinX) / (MaxX - MinX)
+// TextureUL/VL = used part of the texture (normalised). Bounds are fitted to the art
+// (terrain extents + landmarks); only zones with original overhead art are listed. The
+// radar has no picture in the original game and does not use this.
+static void ApplyZoneMapInfo(ATgRepInfo_Game* gamerep, const std::string& mapName) {
+	struct ZoneMap { const char* map; float minX, minY, maxX, maxY; int resId; float ul, vl; };
+	static const ZoneMap zones[] = {
+		// GA_Menu_Mission_Map.OutsideZone_Map.T_DNZone_OverheadMapA
+		{ "DomeNorth_Zone_V2_P", 4155.f, -53085.f, 79399.f, 54761.f, 7868, 1.f, 1.f },
+		// GA_Menu_Assets.Overhead_Maps.zier_Overhead_map_temp (art = top-left 1408x960 of 2048x1024)
+		{ "SD_Zone_P", -72640.f, -83127.f, 2277.f, 46711.f, 6043, 0.6875f, 0.9375f },
+	};
+	for (const ZoneMap& z : zones) {
+		if (mapName != z.map) continue;
+		gamerep->r_MiniMapInfo.MinX = z.minX;
+		gamerep->r_MiniMapInfo.MinY = z.minY;
+		gamerep->r_MiniMapInfo.MaxX = z.maxX;
+		gamerep->r_MiniMapInfo.MaxY = z.maxY;
+		gamerep->r_MiniMapInfo.TextureResId = z.resId;
+		gamerep->r_MiniMapInfo.TextureUL = z.ul;
+		gamerep->r_MiniMapInfo.TextureVL = z.vl;
+		Logger::Log("mission", "[ZoneMap] %s res=%d\n", z.map, z.resId);
+		return;
+	}
+}
+
 void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 	LogCallBegin();
 	// LogToFile("C:\\mylog.txt", "MINE TgGame::InitGameRepInfo START");
@@ -471,6 +500,13 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 		}
 
 		if (GameClassName == "Class TgGame.TgGame_City") {
+			// The client's Agent Profile equip/Appearance screen is read-only unless
+			// pawn.r_bEnableEquip || GRI.r_GameType == GT_CITY || GRI.r_bIsTutorialMap
+			// (UTgUIAgentProfile::IsReadOnlyMode @ 0x114113a0). The hub omega volumes
+			// clear r_bEnableEquip client-side, so the hub must say GT_CITY.
+			Logger::Log("spawn", "City GRI: gameType %d -> 1 (GT_CITY)\n", (int)Game->m_GameType);
+			Game->m_GameType = 1; // GT_CITY
+			gamerep->r_GameType = 1;
 			gamerep->r_bIsRaid = 0;
 			gamerep->r_bIsMission = 0;
 			gamerep->r_bIsPVP = 0;
@@ -483,7 +519,9 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 			gamerep->r_bAllowBuildMorale = 0;
 			gamerep->r_bActiveCombat = 0;
 			gamerep->r_bAllowPlayerRelease = 1;
-			gamerep->r_bDefenseAlarm = 1;
+			// Off in city maps - the client plays the Dome alarm
+			// whenever this replicates as set; SET_WORLD_FLAG turns it on/off.
+			gamerep->r_bDefenseAlarm = 0;
 			gamerep->r_bInOverTime = 0;
 			gamerep->r_nPointsToWin = 0;
 			gamerep->r_nRoundNumber = 0;
@@ -691,6 +729,8 @@ void __fastcall TgGame__InitGameRepInfo::Call(ATgGame* Game, void* edx) {
 				f->m_nMapObjectId, f->s_nSelectedObjectId);
 			TgDeployableFactory__SpawnObject::Call(f, nullptr);
 		}
+
+		ApplyZoneMapInfo(gamerep, mapName);
 
 		MapAdditions::Apply(Game);
 	}

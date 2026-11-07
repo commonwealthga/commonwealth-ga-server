@@ -1,20 +1,30 @@
+#include "src/ControlServer/BugReports/BugReports.hpp"
 #include "src/ControlServer/ChatSession/ChatSession.hpp"
+#include "src/ControlServer/Social/AgencyBank.hpp"
 #include "src/ControlServer/ChatSession/ChatCommand.hpp"
+#include "src/ControlServer/ChatSession/PlayerCommands.hpp"
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/TeamService/TeamService.hpp"
+#include "src/ControlServer/ServiceHooks/ServiceHooks.hpp"
+#include <thread>
 
 #include <algorithm>
 #include <cctype>
 #include <chrono>
 #include <cstdio>
+#include <ctime>
+#include <fstream>
 #include <optional>
 #ifndef _WIN32
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <cerrno>
+#include "src/ControlServer/Social/Friends.hpp"
+#include "src/ControlServer/Social/ChatChannels.hpp"
+#include "src/ControlServer/Social/Teams.hpp"
 #endif
 
 // All chat sessions — safe without mutex since io_context runs single-threaded.
@@ -49,9 +59,24 @@ constexpr uint32_t kSystemChannelId = 11;
 // property, has no channel-name prefix of its own, and renders yellow.
 constexpr uint32_t kAnnounceChannelId = 20;
 
+// Server-pushed per-player feeds (login notice, Global News stand, Hall of
+// Legends) go out on System (11) like the join line: channel-20 lines were
+// never rendered in playtests while channel-11 lines were.
+constexpr uint32_t kFeedChannelId = kSystemChannelId;
+
 // Lowercased names permitted to use -announce. Empty = command disabled.
 // Written once at startup before any session exists, read-only thereafter.
 std::unordered_set<std::string> g_announcers;
+
+// Config login_notice, sent only to the joining player.
+std::string g_login_notice;
+// Global News stand feed file (see SendNewsToGuid).
+std::string g_news_file;
+
+// Upstream's dev/cheat chat commands (-spawnenemy, -cheat, -fullheal,
+// -possess, -topdown, -setspawntable, ...) have no permission check. Off unless the
+// config has dev_controls = true (never on the live server). Written once at startup.
+bool g_dev_chat_commands = false;
 
 std::string ToLowerAscii(std::string s) {
     std::transform(s.begin(), s.end(), s.begin(),
@@ -188,6 +213,53 @@ std::vector<uint8_t> BuildChatConfigFrame(const std::vector<uint32_t>& channels)
     return chunk;
 }
 
+// VOIP_CONFIG (0x0184) frame from a voip_config service decision:
+//   {"host":"..","user":"..","password":"..",
+//    "rows":[{"type":<chat channel 0..15>,"id":<uint, 0 = leave>,"uri":"..","access":<uint>}]}
+// The client starts voice on the first VOIP_CONFIG whose host/user/password are
+// all non-empty, then per row leaves the voice channel of that type if it has a
+// different id and joins `uri` when id != 0.
+// Layout: [2B chunk][2B 0x0184][2B items=4][HOST_NAME s][USER_NAME s][PASSWORD s]
+//         [DATA_SET][2B rows] per row: [2B fields=4][CHAT_CH_TYPE 4B][CHAT_CH_ID 4B][URI_NAME s][VOIP_ACCESS 4B]
+std::vector<uint8_t> BuildVoipConfigFrame(const nlohmann::json& d) {
+    const std::string host = ServiceHooks::ClampString(d, "host", 255);
+    const std::string user = ServiceHooks::ClampString(d, "user", 255);
+    const std::string pass = ServiceHooks::ClampString(d, "password", 255);
+    if (host.empty() || user.empty() || pass.empty()) return {};
+    std::vector<uint8_t> body;
+    auto u16 = [&](uint16_t v) { body.push_back(v & 0xFF); body.push_back(v >> 8); };
+    auto u32 = [&](uint16_t type, uint32_t v) {
+        u16(type);
+        for (int i = 0; i < 4; ++i) body.push_back((v >> (8 * i)) & 0xFF);
+    };
+    auto str = [&](uint16_t type, const std::string& v) {
+        u16(type); u16(static_cast<uint16_t>(v.size()));
+        body.insert(body.end(), v.begin(), v.end());
+    };
+    u16(GA_U::VOIP_CONFIG);
+    u16(4);
+    str(GA_T::HOST_NAME, host);
+    str(GA_T::USER_NAME, user);
+    str(GA_T::PASSWORD, pass);
+    std::vector<nlohmann::json> rows;
+    if (d.contains("rows") && d["rows"].is_array())
+        for (const auto& r : d["rows"]) if (r.is_object() && rows.size() < 16) rows.push_back(r);
+    u16(GA_T::DATA_SET);
+    u16(static_cast<uint16_t>(rows.size()));
+    for (const auto& r : rows) {
+        u16(4);
+        u32(GA_T::CHAT_CH_TYPE, static_cast<uint32_t>(ServiceHooks::ClampInt(r, "type", 0, 0, 15)));
+        u32(GA_T::CHAT_CH_ID, static_cast<uint32_t>(ServiceHooks::ClampInt(r, "id", 0, 0, 0xFFFFFFFFLL)));
+        str(GA_T::URI_NAME, ServiceHooks::ClampString(r, "uri", 511));
+        u32(GA_T::VOIP_ACCESS, static_cast<uint32_t>(ServiceHooks::ClampInt(r, "access", 0, 0, 0xFFFFFFFFLL)));
+    }
+    std::vector<uint8_t> chunk;
+    chunk.push_back(body.size() & 0xFF);
+    chunk.push_back((body.size() >> 8) & 0xFF);
+    chunk.insert(chunk.end(), body.begin(), body.end());
+    return chunk;
+}
+
 // Broadcast a system message (e.g. join/leave announcement) to every active
 // chat session. Doesn't read or modify any per-session state besides
 // write_queue_ via deliver(). `exclude` skips one specific session (used for
@@ -221,6 +293,7 @@ void BroadcastSystemMessage(const std::string& message_text,
 // One roster lookup per message, not per peer.
 std::optional<std::unordered_set<std::string>> RecipientsFor(
         uint32_t channel, const std::string& sender_guid) {
+    if (auto r = Social::Teams::ChatRecipients(channel, sender_guid)) return r;   // raid chat 6 + team chat inside a raid
     if (channel == kTeamChannelId) {
         const auto guids = TeamService::GetTeamMemberGuids(sender_guid);
         return std::unordered_set<std::string>(guids.begin(), guids.end());
@@ -287,12 +360,14 @@ std::optional<std::unordered_set<std::string>> RecipientsFor(
         return out;
     }
 
-    return std::nullopt;  // City + anything unscoped: everyone.
+    if (channel == kCityChannelId) return Social::ChatChannels::ZoneRecipients(sender_guid);   // zone chat
+    return std::nullopt;  // Trade/LFG + anything unscoped: everyone.
 }
 
 // System line shown when a player sends on a channel they can't currently use.
 const char* UnavailableChannelText(uint32_t channel) {
     if (channel == kTeamChannelId)     return "*** You are not in a team ***";
+    if (channel == 6)                  return "*** You must be in a raid to do this ***";
     if (channel == kAgencyChannelId)   return "*** You are not in an agency ***";
     if (channel == kAllianceChannelId) return "*** Your agency is not in an alliance ***";
     return "*** You are not in an instance ***";
@@ -312,6 +387,8 @@ std::string SanitizeCommandForLog(std::string s) {
 
 bool HasParsedCommandAction(const ChatCommand::ParseResult& parsed) {
     return parsed.change_team.has_value()
+        || parsed.report.has_value()
+        || parsed.player_cmd.has_value()
         || parsed.spawn_target.has_value()
         || parsed.deploy_target.has_value()
         || parsed.topdown.has_value()
@@ -338,6 +415,7 @@ bool HasParsedCommandAction(const ChatCommand::ParseResult& parsed) {
 ChatSession::ChatSession(asio::ip::tcp::socket socket)
     : socket_(std::move(socket)),
       bind_retry_timer_(socket_.get_executor()),
+      voice_timer_(socket_.get_executor()),
       read_buf_(4096) {
     socket_.set_option(asio::ip::tcp::no_delay(true));
     EnableTcpKeepAlive(socket_);
@@ -372,11 +450,18 @@ void ChatSession::AnnounceJoinIfNeeded() {
                                    kInstanceChannelId, kTeamChannelId,
                                    kWhisperChannelId, kTradeChannelId,
                                    kLfgChannelId, kAgencyChannelId,
-                                   kAllianceChannelId }));
+                                   kAllianceChannelId, 6 /* Raid */ }));
+    for (size_t a = 0, b; !g_login_notice.empty() && a < g_login_notice.size(); a = b + 1) {   // "\n" = one feed line each
+        b = g_login_notice.find('\n', a); if (b == std::string::npos) b = g_login_notice.size();
+        if (b > a) deliver(BuildChatFrame(kFeedChannelId, g_login_notice.substr(a, b - a)));
+    }
+    Social::Friends::OnOnline(player_name_, socket_.get_executor());   // friend notice + F3 refresh
+    AgencyChat::OnChatJoin(session_guid_);   // agency MOTD + member online line
     BroadcastSystemMessage(
         "*** " + player_name_ + " has joined the chat ***",
         kSystemChannelId,
         /*exclude=*/nullptr);
+    if (ServiceHooks::Enabled("voip_config")) VoiceTick();
 }
 
 bool ChatSession::BindPlayerFromRegistry(const char* reason) {
@@ -386,6 +471,7 @@ bool ChatSession::BindPlayerFromRegistry(const char* reason) {
     if (!info) return false;
 
     player_name_ = info->player_name;
+    if (!bound_at_) bound_at_ = static_cast<int64_t>(std::time(nullptr));
     bind_retry_timer_.cancel();
     Logger::Log("chat", "[Chat] %s bound player='%s' guid=%s\n",
         reason ? reason : "bind", player_name_.c_str(), session_guid_.c_str());
@@ -500,6 +586,7 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
     if (length < 6) return;
 
     uint16_t packet_type = data[2] | (data[3] << 8);
+    if (packet_type == Social::ChatChannels::kListChannelMembers) { Social::ChatChannels::OnListMembers(session_guid_, data, length); return; }   // /chatwho
     if (packet_type != GA_U::CHAT_MESSAGE) {
         Logger::Log("chat", "[Chat] Unknown packet type 0x%04X\n", packet_type);
         return;
@@ -552,6 +639,28 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
                 Logger::Log("chat-command",
                     "[ChatCmd] player='%s' guid=%s command='%s' outcome=ignored details=invalid_args\n",
                     player_name_.c_str(), session_guid_.c_str(), command_for_log.c_str());
+            }
+        }
+        if (parsed.recognized && !g_dev_chat_commands) {
+            // Players keep -changeteam, -classcounts, -announce (own list) and
+            // -components (own compile-time switch); everything else is dev-only.
+            const bool dev_only = parsed.spawn_target || parsed.deploy_target || parsed.topdown
+                || parsed.spectate || parsed.toggle_broken_suits || parsed.toggle_solo_mode
+                || parsed.set_dlc || parsed.markers || parsed.fx_browse || parsed.set_spawn_table
+                || parsed.cheat || parsed.possess || parsed.unpossess || parsed.unspectate
+                || parsed.coords || parsed.fullheal || parsed.reload_queues;
+            if (dev_only) {
+                parsed.spawn_target.reset(); parsed.deploy_target.reset(); parsed.topdown.reset();
+                parsed.spectate.reset(); parsed.toggle_broken_suits.reset(); parsed.toggle_solo_mode.reset();
+                parsed.set_dlc.reset(); parsed.markers.reset(); parsed.fx_browse.reset();
+                parsed.set_spawn_table.reset(); parsed.cheat.reset();
+                parsed.possess = parsed.unpossess = parsed.unspectate = false;
+                parsed.coords = parsed.fullheal = parsed.reload_queues = false;
+                Logger::Log("chat-command",
+                    "[ChatCmd] player='%s' guid=%s outcome=denied details=dev_controls_off\n",
+                    player_name_.c_str(), session_guid_.c_str());
+                deliver(BuildChatFrame(kSystemChannelId,
+                    "*** That command is not available on this server ***"));
             }
         }
         if (parsed.recognized && parsed.change_team) {
@@ -626,6 +735,14 @@ void ChatSession::handle_packet(const uint8_t* data, size_t length) {
                     player_name_.c_str(), session_guid_.c_str(), sent,
                     parsed.announce->c_str());
             }
+        }
+        if (parsed.recognized && parsed.report) {
+            const auto res = BugReports::Submit(parsed.report->kind, session_guid_, player_name_,
+                parsed.report->target, parsed.report->text);
+            deliver(BuildChatFrame(kSystemChannelId, res.reply));
+        }
+        if (parsed.recognized && parsed.player_cmd) {
+            PlayerCommands::Run(session_guid_, parsed.player_cmd->name, parsed.player_cmd->rest);
         }
         if (parsed.recognized && parsed.components.has_value()) {
             HandleComponentsCommand(*parsed.components);
@@ -792,8 +909,12 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
     // Missing channel field falls back to City — the unscoped "everyone"
     // channel, which is what this code did before channels were scoped.
     uint32_t channel = pkt.Read4B(GA_T::CHAT_CH_TYPE).value_or(kCityChannelId);
+    if (channel == Social::ChatChannels::kGlobalChannelId && Social::ChatChannels::OnGlobal(session_guid_, player_name_, IsAnnouncer(), data, length)) return;   // /gl /alert
 
     std::string message = player_name_ + ": " + pkt.ReadString(GA_T::MESSAGE).value_or("");
+    if (std::string gag; Social::Friends::IsGagged(player_name_, &gag)) { deliver(BuildChatFrame(kSystemChannelId, gag)); return; }
+    Social::Friends::Activity(player_name_);   // chatting clears /afk
+    if (Social::Teams::HandleRaidAlert(session_guid_, player_name_, data, length)) return;   // /rgw /raidw
 
     bool isDM = channel == kWhisperChannelId;
 
@@ -860,6 +981,8 @@ void ChatSession::broadcast(const uint8_t* data, size_t length) {
         }
         target->deliver(makeWhisperFrame(player_name_, text, player_name_));
         deliver(makeWhisperFrame(player_name_, text, targetName));
+        if (auto afk = Social::Friends::AfkAutoReply(targetName); !afk.empty())   // "%s - AFK"
+            deliver(BuildChatFrame(kSystemChannelId, afk));
         return;
     }
 
@@ -935,6 +1058,7 @@ bool ChatSession::SendChannelMessageFrom(const std::string& session_guid,
         if (auto peer = weak.lock()) {
             if (peer->get_session_guid() != session_guid) continue;
             if (peer->get_player_name().empty()) return false;
+            if (std::string gag; Social::Friends::IsGagged(peer->get_player_name(), &gag)) { peer->deliver(BuildChatFrame(kSystemChannelId, gag)); return true; }
             peer->SendOnChannel(channel, peer->get_player_name() + ": " + text);
             return true;
         }
@@ -961,6 +1085,17 @@ void ChatSession::AgencyMessage(int64_t agency_id, const std::string& text) {
         (long long)agency_id, text.c_str(), delivered);
 }
 
+void ChatSession::DeliverFrameToUsers(const std::vector<int64_t>& user_ids, const std::vector<uint8_t>& frame) {
+    const std::unordered_set<int64_t> wanted(user_ids.begin(), user_ids.end());
+    PruneExpiredSessions();
+    for (auto& weak : g_chat_sessions) {
+        auto peer = weak.lock();
+        if (!peer || peer->get_session_guid().empty()) continue;
+        auto info = PlayerSessionStore::GetByGuid(peer->get_session_guid());
+        if (info && wanted.count(info->user_id)) peer->deliver(frame);
+    }
+}
+
 void ChatSession::SystemMessageToGuid(const std::string& session_guid,
                                       const std::string& text) {
     if (session_guid.empty()) return;
@@ -973,6 +1108,57 @@ void ChatSession::SystemMessageToGuid(const std::string& session_guid,
             }
         }
     }
+}
+
+void ChatSession::SystemMsgIdToGuid(const std::string& session_guid, uint32_t msg_id,
+                                    const std::vector<MsgField>& fields) {
+    if (session_guid.empty()) return;
+    std::vector<uint8_t> b;
+    const auto put2 = [&](uint32_t v) { b.push_back(v & 0xFF); b.push_back((v >> 8) & 0xFF); };
+    const auto put4 = [&](uint32_t v) { put2(v & 0xFFFF); put2(v >> 16); };
+    put2(GA_U::CHAT_MESSAGE);
+    put2((uint32_t)fields.size() + 3);
+    put2(GA_T::CHAT_CH_TYPE); put4(kSystemChannelId);
+    put2(GA_T::CHAT_ANNOUNCEMENT_FLAG); b.push_back(1);
+    put2(GA_T::MSG_ID); put4(msg_id);
+    for (const auto& f : fields) {
+        put2(f.type);
+        if (f.kind == 's') { put2((uint32_t)f.s.size()); b.insert(b.end(), f.s.begin(), f.s.end()); }
+        else put4(f.n);
+    }
+    std::vector<uint8_t> frame;
+    frame.push_back(b.size() & 0xFF); frame.push_back((b.size() >> 8) & 0xFF);
+    frame.insert(frame.end(), b.begin(), b.end());
+    for (auto& weak : g_chat_sessions) {
+        if (auto peer = weak.lock()) {
+            if (peer->get_session_guid() == session_guid) {
+                peer->deliver(frame);
+                return;
+            }
+        }
+    }
+}
+
+std::vector<std::string> ChatSession::OnlinePlayerNames() {
+    std::vector<std::string> names;
+    for (auto& weak : g_chat_sessions) {
+        if (auto peer = weak.lock()) {
+            if (!peer->player_name_.empty()) names.push_back(peer->player_name_);
+        }
+    }
+    std::sort(names.begin(), names.end());
+    names.erase(std::unique(names.begin(), names.end()), names.end());
+    return names;
+}
+
+int64_t ChatSession::SessionSecondsForGuid(const std::string& session_guid) {
+    for (auto& weak : g_chat_sessions) {
+        if (auto peer = weak.lock()) {
+            if (peer->session_guid_ == session_guid && peer->bound_at_)
+                return static_cast<int64_t>(std::time(nullptr)) - peer->bound_at_;
+        }
+    }
+    return -1;
 }
 
 bool ChatSession::is_ignoring(const std::string& sender_name) {
@@ -990,6 +1176,118 @@ bool ChatSession::is_ignoring(const std::string& sender_name) {
     return ignored_lower_.count(lower) != 0;
 }
 
+void ChatSession::SetDevChatCommands(bool enabled) {
+    g_dev_chat_commands = enabled;
+    Logger::Log("chat", "[Chat] dev chat commands %s\n", enabled ? "ENABLED (dev_controls)" : "disabled");
+}
+
+void ChatSession::SetLoginNotice(const std::string& text) {
+    g_login_notice = text;
+}
+
+void ChatSession::SetNewsFile(const std::string& path) {
+    g_news_file = path;
+}
+
+bool ChatSession::SendNewsToGuid(const std::string& session_guid, std::string* headline) {
+    constexpr size_t kMaxPosts = 5;
+    if (session_guid.empty() || g_news_file.empty()) return false;
+    std::ifstream in(g_news_file);
+    if (!in) return false;
+    nlohmann::json j = nlohmann::json::parse(in, nullptr, /*allow_exceptions=*/false);
+    if (!j.is_object() || !j.contains("posts") || !j["posts"].is_array() || j["posts"].empty()) return false;
+
+    std::vector<std::vector<uint8_t>> frames;
+    frames.push_back(BuildChatFrame(kFeedChannelId,
+        "=== " + j.value("title", std::string("Global News")) + " ==="));
+    for (const auto& post : j["posts"]) {
+        if (frames.size() > kMaxPosts) break;
+        if (!post.is_object()) continue;
+        std::string text = post.value("text", std::string());
+        if (text.empty()) continue;
+        if (headline && headline->empty()) *headline = text;
+        std::string date = post.value("date", std::string());
+        frames.push_back(BuildChatFrame(kFeedChannelId, date.empty() ? text : "[" + date + "] " + text));
+    }
+    for (auto& weak : g_chat_sessions) {
+        if (auto peer = weak.lock()) {
+            if (peer->get_session_guid() == session_guid) {
+                for (auto& f : frames) peer->deliver(f);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+namespace {
+// One leaderboard line: "<label>: 1. name 12  2. name 9 ..." from a query that
+// returns (name, value) rows, best first.
+std::string HallOfLegendsLine(sqlite3* db, const char* label, const char* sql) {
+    std::string line = std::string(label) + ":";
+    sqlite3_stmt* s = nullptr;
+    int n = 0;
+    if (sqlite3_prepare_v2(db, sql, -1, &s, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(s) == SQLITE_ROW) {
+            const unsigned char* nm = sqlite3_column_text(s, 0);
+            if (!nm) continue;
+            ++n;
+            line += "  " + std::to_string(n) + ". " + reinterpret_cast<const char*>(nm) +
+                    " " + std::to_string(sqlite3_column_int64(s, 1));
+        }
+    }
+    sqlite3_finalize(s);
+    if (n == 0) line += " no records yet";
+    return line;
+}
+}
+
+bool ChatSession::SendHallOfLegendsToGuid(const std::string& session_guid) {
+    if (session_guid.empty()) return false;
+    sqlite3* db = Database::GetConnection();
+    if (!db) return false;
+    // real accounts only (zz* = test accounts, service_account = server-run AvA bot agents); live characters only
+    #define HOL_USERS "u.username NOT LIKE 'zz%' AND COALESCE(u.service_account, 0) = 0 AND c.deleted_at = 0"
+    std::vector<std::vector<uint8_t>> frames;
+    frames.push_back(BuildChatFrame(kFeedChannelId, "=== AvA Hall of Legends ==="));
+    frames.push_back(BuildChatFrame(kFeedChannelId, HallOfLegendsLine(db, "AvA season winners",  /* 1.39 hall shows past season winners */
+        "SELECT 'Season ' || s.season || ' ' || COALESCE(s.owner_name, '?') || ', territories', s.territories FROM ga_ava_seasons s "  /* winner per season */
+        "WHERE s.territories > 0 AND s.owner_agency_id = (SELECT x.owner_agency_id FROM ga_ava_seasons x WHERE x.season = s.season "
+        "AND x.territories > 0 ORDER BY x.networth DESC, x.territories DESC, x.owner_agency_id LIMIT 1) ORDER BY s.season DESC LIMIT 5")));
+    frames.push_back(BuildChatFrame(kFeedChannelId, HallOfLegendsLine(db, "Highest level",
+        "SELECT u.username, MAX(COALESCE((SELECT MAX(l.level) FROM asm_data_set_xp_levels l "
+        "WHERE l.xp_value <= c.xp), 1)) AS v FROM ga_characters c JOIN ga_users u ON u.id = c.user_id "
+        "WHERE " HOL_USERS " GROUP BY u.id ORDER BY v DESC, MAX(c.xp) DESC LIMIT 5")));
+    frames.push_back(BuildChatFrame(kFeedChannelId, HallOfLegendsLine(db, "Missions won",
+        "SELECT u.username, COUNT(DISTINCT i.id) AS v FROM ga_match_player_stats m "
+        "JOIN ga_instances i ON i.instance_id = m.instance_id JOIN ga_characters c ON c.id = m.character_id "
+        "JOIN ga_users u ON u.id = c.user_id WHERE i.is_home_map = 0 "
+        "AND i.winning_task_force = m.task_force AND " HOL_USERS
+        " GROUP BY u.id ORDER BY v DESC LIMIT 5")));
+    frames.push_back(BuildChatFrame(kFeedChannelId, HallOfLegendsLine(db, "Enemies defeated",
+        "SELECT u.username, SUM(m.bot_kills) AS v FROM ga_match_player_stats m "
+        "JOIN ga_characters c ON c.id = m.character_id JOIN ga_users u ON u.id = c.user_id "
+        "WHERE " HOL_USERS " GROUP BY u.id HAVING v > 0 ORDER BY v DESC LIMIT 5")));
+    frames.push_back(BuildChatFrame(kFeedChannelId, HallOfLegendsLine(db, "PvP kills",
+        "SELECT u.username, SUM(m.kills) AS v FROM ga_match_player_stats m "
+        "JOIN ga_characters c ON c.id = m.character_id JOIN ga_users u ON u.id = c.user_id "
+        "WHERE " HOL_USERS " GROUP BY u.id HAVING v > 0 ORDER BY v DESC LIMIT 5")));
+    frames.push_back(BuildChatFrame(kFeedChannelId, HallOfLegendsLine(db, "AvA wins",
+        "SELECT u.username, SUM(r.wins) AS v FROM ga_ava_records r "
+        "JOIN ga_characters c ON c.id = r.character_id JOIN ga_users u ON u.id = c.user_id "
+        "WHERE " HOL_USERS " GROUP BY u.id HAVING v > 0 ORDER BY v DESC, SUM(r.captures) DESC LIMIT 5")));
+    #undef HOL_USERS
+    for (auto& weak : g_chat_sessions) {
+        if (auto peer = weak.lock()) {
+            if (peer->get_session_guid() == session_guid) {
+                for (auto& f : frames) peer->deliver(f);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 void ChatSession::SetAnnouncers(const std::vector<std::string>& names) {
     g_announcers.clear();
     for (const auto& n : names) {
@@ -998,9 +1296,19 @@ void ChatSession::SetAnnouncers(const std::vector<std::string>& names) {
     Logger::Log("chat", "[Chat] announcer list loaded: %zu name(s)\n", g_announcers.size());
 }
 
+std::optional<std::unordered_set<std::string>> ChatSession::ChannelScope(uint32_t channel, const std::string& guid) { return RecipientsFor(channel, guid); }
+
 bool ChatSession::IsAnnouncer() const {
     if (g_announcers.empty() || player_name_.empty()) return false;
     return g_announcers.count(ToLowerAscii(player_name_)) != 0;
+}
+
+bool ChatSession::DeliverToPlayer(const std::string& player_name, const std::vector<uint8_t>& frame) {
+    if (player_name.empty()) return false;
+    for (auto& weak : g_chat_sessions)
+        if (auto peer = weak.lock())
+            if (peer->get_player_name() == player_name) { peer->deliver(frame); return true; }
+    return false;
 }
 
 void ChatSession::SystemMessageTo(const std::string& player_name, const std::string& text) {
@@ -1016,10 +1324,77 @@ void ChatSession::SystemMessageTo(const std::string& player_name, const std::str
     }
 }
 
+// Voice channel membership. Every 2 s the session works out where the
+// player is (party, instance + side, the instance's map, agency) and, when
+// that changed, asks the "voip_config" ServiceHooks service what to send;
+// its answer goes to the client as VOIP_CONFIG. The call runs on a worker
+// thread and the reply is handled back on this session's executor. No
+// service, "pass" or an error -> nothing is sent (retried after 10 s).
+void ChatSession::VoiceTick() {
+    if (closed_ || session_guid_.empty()) return;
+    auto info = PlayerSessionStore::GetByGuid(session_guid_);
+    if (info) {
+        nlohmann::json m;
+        m["player"] = player_name_;
+        m["ip"] = info->ip_address;
+        m["user_id"] = info->user_id;
+        m["character_id"] = info->selected_character_id;
+        int64_t inst = 0; int tf = 0; std::string map;
+        if (auto where = InstanceRegistry::GetInstancePlayerTaskForce(session_guid_)) {
+            inst = where->first; tf = where->second;
+            if (auto ii = InstanceRegistry::GetInstanceById(inst)) map = ii->map_name;
+        }
+        m["instance_id"] = inst;
+        m["task_force"] = tf;
+        m["map"] = map;
+        m["team_id"] = TeamService::GetTeamId(session_guid_);
+        if (voice_ticks_++ % 5 == 0)
+            voice_agency_ = info->user_id ? Database::GetAgencyIdForUser(info->user_id) : 0;
+        m["agency_id"] = voice_agency_;
+        const std::string key = m.dump();
+        const int64_t now = static_cast<int64_t>(std::time(nullptr));
+        if (!voice_busy_ && key != voice_key_ && now >= voice_retry_at_) {
+            voice_busy_ = true;
+            nlohmann::json data = m;
+            data["guid"] = session_guid_;
+            data["first"] = !voice_sent_;
+            std::weak_ptr<ChatSession> weak = shared_from_this();
+            auto ex = socket_.get_executor();
+            std::thread([weak, ex, data, key]() {
+                auto decision = ServiceHooks::Call("voip_config", data);
+                asio::post(ex, [weak, decision, key]() {
+                    if (auto self = weak.lock()) self->OnVoiceConfig(decision, key);
+                });
+            }).detach();
+        }
+    }
+    auto self(shared_from_this());
+    voice_timer_.expires_after(std::chrono::seconds(2));
+    voice_timer_.async_wait([this, self](std::error_code ec) {
+        if (!ec) VoiceTick();
+    });
+}
+
+void ChatSession::OnVoiceConfig(const std::optional<nlohmann::json>& decision, const std::string& key) {
+    voice_busy_ = false;
+    if (closed_) return;
+    if (!decision) {
+        voice_retry_at_ = static_cast<int64_t>(std::time(nullptr)) + 10;
+        return;
+    }
+    voice_key_ = key;
+    auto frame = BuildVoipConfigFrame(*decision);
+    if (frame.empty()) return;
+    deliver(frame);
+    voice_sent_ = true;
+    Logger::Log("chat", "[Voice] VOIP_CONFIG -> player='%s' bytes=%zu\n", player_name_.c_str(), frame.size());
+}
+
 void ChatSession::TearDown(const char* reason) {
     if (closed_) return;
     closed_ = true;
     bind_retry_timer_.cancel();
+    voice_timer_.cancel();
 
     Logger::Log("chat",
         "[Chat] tearing down player='%s' guid=%s reason=%s queue=%zu sessions_before=%zu\n",
@@ -1031,11 +1406,13 @@ void ChatSession::TearDown(const char* reason) {
     // departing session itself — its socket is about to close, deliver()
     // would short-circuit anyway because closed_=true. Done BEFORE the
     // socket close so the broadcast loop still sees a clean state.
+    if (announced_join_) AgencyChat::OnChatLeave(session_guid_, socket_.get_executor());
     if (announced_join_ && !player_name_.empty()) {
         BroadcastSystemMessage(
             "*** " + player_name_ + " has left the chat ***",
             kSystemChannelId,
             /*exclude=*/this);
+        Social::Friends::OnOffline(player_name_, socket_.get_executor());
     }
 
     write_queue_.clear();

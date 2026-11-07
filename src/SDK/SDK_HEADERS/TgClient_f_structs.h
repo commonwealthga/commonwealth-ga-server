@@ -135,8 +135,8 @@ struct UTgAgencyData_execPromote_Parms
 struct UTgAgencyData_execUpdateRecruiting_Parms
 {
 	struct FString                                     sText;                                            		// 0x0000 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      bRecruiting : 1;                                  		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bSubOnly : 1;                                     		// 0x0010 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bRecruiting    ;                                  		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bSubOnly    ;                                     		// 0x0010 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgAgencyData.CheckFiltered
@@ -145,7 +145,7 @@ struct UTgAgencyData_execCheckFiltered_Parms
 {
 	struct FsAgencyMemberInfo                          Info;                                             		// 0x0000 (0x004C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
 	int                                                nFilter;                                          		// 0x004C (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0050 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0050 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgAgencyData.SetFilter
@@ -168,14 +168,14 @@ struct UTgAgencyData_execGetNumMembersOfRank_Parms
 struct UTgAgencyData_execLocalPlayerHasPermission_Parms
 {
 	int                                                flag;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgAgencyData.LocalPlayerIsLeader
 // [0x00020400] ( FUNC_Native )
 struct UTgAgencyData_execLocalPlayerIsLeader_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgAgencyData.GetLocalPlayerInfo
@@ -220,7 +220,7 @@ struct UTgAgencyData_execClearData_Parms
 struct UTgAgencyData_execRequestAgencyInfo_Parms
 {
 	int                                                Flags;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgAgencyData.GetSortedInfoArray
@@ -290,8 +290,8 @@ struct UTgAllianceData_execTick_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgAllianceData_execClearData_Parms
 {
-	unsigned long                                      bGeneralData : 1;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bMemberData : 1;                                  		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bGeneralData    ;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bMemberData    ;                                  		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgAllianceData.RequestAllianceInfo
@@ -299,7 +299,7 @@ struct UTgAllianceData_execClearData_Parms
 struct UTgAllianceData_execRequestAllianceInfo_Parms
 {
 	int                                                Flags;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgConsole.InputKey
@@ -310,15 +310,15 @@ struct UTgConsole_execInputKey_Parms
 	struct FName                                       Key;                                              		// 0x0004 (0x0008) [0x0000000000000080]              ( CPF_Parm )
 	unsigned char                                      Event;                                            		// 0x000C (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	float                                              AmountDepressed;                                  		// 0x0010 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bGamepad : 1;                                     		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0018 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bGamepad    ;                                     		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0018 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgConsole.SetEnabled
 // [0x00020400] ( FUNC_Native )
 struct UTgConsole_execSetEnabled_Parms
 {
-	unsigned long                                      bEnabled : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnabled    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgDataInterface.GetLocalBotList
@@ -437,14 +437,14 @@ struct UTgDataSet_execAddCurrentRow_Parms
 struct UTgDataSet_execSort_Parms
 {
 	struct FString                                     sColName;                                         		// 0x0000 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      bAscending : 1;                                   		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAscending    ;                                   		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgDataSet.DeleteAll
 // [0x00024401] ( FUNC_Final | FUNC_Native )
 struct UTgDataSet_execDeleteAll_Parms
 {
-	unsigned long                                      bUpdateBound : 1;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bUpdateBound    ;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgDataSet.DeleteRow
@@ -464,7 +464,7 @@ struct UTgDataSet_execAddRow_Parms
 struct UTgDataSet_execGoToRowSet_Parms
 {
 	int                                                nTokenId;                                         		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgDataSet.MoveTo
@@ -472,28 +472,28 @@ struct UTgDataSet_execGoToRowSet_Parms
 struct UTgDataSet_execMoveTo_Parms
 {
 	int                                                nRowNumber;                                       		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgDataSet.MoveLast
 // [0x00020401] ( FUNC_Final | FUNC_Native )
 struct UTgDataSet_execMoveLast_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgDataSet.MoveNext
 // [0x00020401] ( FUNC_Final | FUNC_Native )
 struct UTgDataSet_execMoveNext_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgDataSet.MoveFirst
 // [0x00020401] ( FUNC_Final | FUNC_Native )
 struct UTgDataSet_execMoveFirst_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgDataSet.SetNbrColValue
@@ -557,7 +557,7 @@ struct UTgDataSet_execGetCurrentRowId_Parms
 struct UTgDataSet_execColumnEmptyOrNull_Parms
 {
 	struct FString                                     sColName;                                         		// 0x0000 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgDataSet.RecordCount
@@ -597,7 +597,7 @@ struct UTgGameViewportClient_execDrawTransition_Parms
 struct UTgGameViewportClient_eventInit_Parms
 {
 	struct FString                                     OutError;                                         		// 0x0000 (0x000C) [0x0000000000400180]              ( CPF_Parm | CPF_OutParm | CPF_NeedCtorLink )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgGameViewportClient.NativeGameSessionEnded
@@ -629,7 +629,7 @@ struct UTgGameViewportClient_execDetachHUDSettings_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgGameViewportClient_execCenterMouseInViewport_Parms
 {
-	unsigned long                                      CenterPreCaptureMousePos : 1;                     		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      CenterPreCaptureMousePos    ;                     		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgHUD_Game.ShowPathToAttentionPOI
@@ -695,10 +695,10 @@ struct ATgHUD_Game_execGetActiveReleaseMenu_Parms
 // [0x00024002] 
 struct ATgHUD_Game_execShowReleaseDialog_Parms
 {
-	unsigned long                                      bShow : 1;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bShow    ;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	struct FDeathZoomInfo                              Info;                                             		// 0x0004 (0x001C) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              fReleaseTime;                                     		// 0x0020 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bCanManuallyRelease : 1;                          		// 0x0024 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bCanManuallyRelease    ;                          		// 0x0024 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// class UTgUIReleaseMenus*                        relmenu;                                          		// 0x0028 (0x0004) [0x0000000000000000]              
 	// class UTgUIScoreboard*                          scoreScene;                                       		// 0x002C (0x0004) [0x0000000000000000]              
 };
@@ -742,7 +742,7 @@ struct ATgHUD_Game_execShowWorldInteractionText_Parms
 // [0x00024002] 
 struct ATgHUD_Game_execHideProgressBar_Parms
 {
-	unsigned long                                      bWorldInteractionBar : 1;                         		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bWorldInteractionBar    ;                         		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgHUD_Game.StartProgressBar
@@ -751,7 +751,7 @@ struct ATgHUD_Game_execStartProgressBar_Parms
 {
 	float                                              fDuration;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FString                                     sLabel;                                           		// 0x0004 (0x000C) [0x0000000000400090]              ( CPF_OptionalParm | CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      bWorldInteractionBar : 1;                         		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bWorldInteractionBar    ;                         		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgHUD_Game.DisplayBadConnectionAlert
@@ -777,8 +777,8 @@ struct ATgHUD_Game_execShowTaskForce_Parms
 // [0x00020002] 
 struct ATgHUD_Game_execSetReticuleVisibility_Parms
 {
-	unsigned long                                      bCrossHairVisible : 1;                            		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bWeaponStatusVisible : 1;                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bCrossHairVisible    ;                            		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bWeaponStatusVisible    ;                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgHUD_Game.Tick
@@ -805,7 +805,7 @@ struct ATgHUD_Game_execPlayZoomBlur_Parms
 // [0x00024002] 
 struct ATgHUD_Game_execPlayZoomEffect_Parms
 {
-	unsigned long                                      bEnable : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnable    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	unsigned char                                      ZoomType;                                         		// 0x0004 (0x0001) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
 
@@ -858,7 +858,7 @@ struct ATgHUD_Game_execCalcHitDirection_Parms
 	// struct FVector                                  AxisY;                                            		// 0x0038 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  AxisZ;                                            		// 0x0044 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  ShotDirection;                                    		// 0x0050 (0x000C) [0x0000000000000000]              
-	// unsigned long                                   bIsInFront : 1;                                   		// 0x005C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsInFront    ;                                   		// 0x005C (0x0004) [0x0000000000000000] [0x00000001] 
 	// struct FVector2D                                AngularDist;                                      		// 0x0060 (0x0008) [0x0000000000000000]              
 	// float                                           PositionInQuadrant;                               		// 0x0068 (0x0004) [0x0000000000000000]              
 	// float                                           Multiplier;                                       		// 0x006C (0x0004) [0x0000000000000000]              
@@ -871,14 +871,14 @@ struct ATgHUD_Game_execPlayHitEffect_Parms
 	float                                              Damage;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     HitDir;                                           		// 0x0004 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	// class ATgPawn*                                  LocalPlayer;                                      		// 0x0010 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   PlayerIsZoomed : 1;                               		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   PlayerIsZoomed    ;                               		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgClient.TgHUD_Game.RadarMapRotates
 // [0x00020202] ( FUNC_Exec )
 struct ATgHUD_Game_execRadarMapRotates_Parms
 {
-	unsigned long                                      RotatingMapStyle : 1;                             		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      RotatingMapStyle    ;                             		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgHUD_Game.LogBreak
@@ -892,14 +892,14 @@ struct ATgHUD_Game_execLogBreak_Parms
 // [0x00020202] ( FUNC_Exec )
 struct ATgHUD_Game_execSelectPreviousDevice_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgHUD_Game.SelectNextDevice
 // [0x00020202] ( FUNC_Exec )
 struct ATgHUD_Game_execSelectNextDevice_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgHUD_Game.UpdateSelectedDevice
@@ -913,7 +913,7 @@ struct ATgHUD_Game_execUpdateSelectedDevice_Parms
 // [0x00020202] ( FUNC_Exec )
 struct ATgHUD_Game_execUsePickupDevice_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgHUD_Game.SelectDeviceBarType
@@ -921,7 +921,7 @@ struct ATgHUD_Game_execUsePickupDevice_Parms
 struct ATgHUD_Game_execSelectDeviceBarType_Parms
 {
 	unsigned char                                      eType;                                            		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgHUD_Game.SelectDeviceBarSlot
@@ -929,7 +929,7 @@ struct ATgHUD_Game_execSelectDeviceBarType_Parms
 struct ATgHUD_Game_execSelectDeviceBarSlot_Parms
 {
 	int                                                Slot;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgHUD_Game.ToggleDrawAllHUD
@@ -950,7 +950,7 @@ struct ATgHUD_Game_execToggleDrawPawnHUD_Parms
 // [0x00020002] 
 struct ATgHUD_Game_execShouldDrawPawnHUD_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgHUD_Game.ToggleTargetExtraInfo
@@ -970,7 +970,7 @@ struct ATgHUD_Game_eventShowRaidTab_Parms
 // [0x00020802] ( FUNC_Event )
 struct ATgHUD_Game_eventCheckLevelUnlocks_Parms
 {
-	unsigned long                                      bIsTutorial : 1;                                  		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsTutorial    ;                                  		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class UTgUIUnlockScene*                         unlockScene;                                      		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -989,7 +989,7 @@ struct ATgHUD_Game_eventOpenIntroScene_Parms
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgHUD_Game_execTgFxLightsOn_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgHUD_Game.OpenDevMenu
@@ -1010,7 +1010,7 @@ struct ATgHUD_Game_execLiveTeamPerfStats_Parms
 // [0x00020002] 
 struct ATgHUD_Game_execIsForValidPlayer_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPlayerController*                      PC;                                               		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  localPawn;                                        		// 0x0008 (0x0004) [0x0000000000000000]              
 };
@@ -1019,7 +1019,7 @@ struct ATgHUD_Game_execIsForValidPlayer_Parms
 // [0x00020802] ( FUNC_Event )
 struct ATgHUD_Game_eventShowEndRaidScreen_Parms
 {
-	unsigned long                                      bAttackerWon : 1;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAttackerWon    ;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class UTgUIEndRaidScreen*                       endRaidScene;                                     		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class UTgUIScoreboard*                          scoreScene;                                       		// 0x0008 (0x0004) [0x0000000000000000]              
 };
@@ -1028,9 +1028,9 @@ struct ATgHUD_Game_eventShowEndRaidScreen_Parms
 // [0x00020002] 
 struct ATgHUD_Game_execShowQuestEndMissionScene_Parms
 {
-	unsigned long                                      MissionVictor : 1;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      PlayerVictor : 1;                                 		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bTie : 1;                                         		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      MissionVictor    ;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      PlayerVictor    ;                                 		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bTie    ;                                         		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class UTgUIEndQuestMission*                     endMissionScene;                                  		// 0x000C (0x0004) [0x0000000000000000]              
 };
 
@@ -1038,9 +1038,9 @@ struct ATgHUD_Game_execShowQuestEndMissionScene_Parms
 // [0x00020002] 
 struct ATgHUD_Game_execShowEndMissionScreen_Parms
 {
-	unsigned long                                      MissionVictor : 1;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      PlayerVictor : 1;                                 		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bTie : 1;                                         		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      MissionVictor    ;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      PlayerVictor    ;                                 		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bTie    ;                                         		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class UTgUIEndMissionScreen*                    endMissionScene;                                  		// 0x000C (0x0004) [0x0000000000000000]              
 };
 
@@ -1048,8 +1048,8 @@ struct ATgHUD_Game_execShowEndMissionScreen_Parms
 // [0x00020002] 
 struct ATgHUD_Game_execUpdateScoreBoard_Parms
 {
-	unsigned long                                      bPlayerVictor : 1;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bTie : 1;                                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bPlayerVictor    ;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bTie    ;                                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgHUD_Game.CloseConfirmPopup
@@ -1057,7 +1057,7 @@ struct ATgHUD_Game_execUpdateScoreBoard_Parms
 struct ATgHUD_Game_eventCloseConfirmPopup_Parms
 {
 	class UFunction*                                   callbackPtr;                                      		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bTellGameClient : 1;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bTellGameClient    ;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// class UTgUIConfirmPopup*                        confirmPopup;                                     		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -1110,7 +1110,7 @@ struct ATgHUD_Game_execOpenItemModScreen_Parms
 // [0x00024202] ( FUNC_Exec )
 struct ATgHUD_Game_execOpenAgentScreen_Parms
 {
-	unsigned long                                      bIsTutorial : 1;                                  		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIsTutorial    ;                                  		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// class ATgPlayerController*                      PC;                                               		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  localPawn;                                        		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class UTgUIAgentProfile_Equip*                  profilescene;                                     		// 0x000C (0x0004) [0x0000000000000000]              
@@ -1156,9 +1156,9 @@ struct ATgHUD_Game_execOpenAuctionScreen_Parms
 // [0x00020802] ( FUNC_Event )
 struct ATgHUD_Game_eventMainMenuDisplayed_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class UTgUISceneDriver*                         drv;                                              		// 0x0004 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bDisplayed : 1;                                   		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bDisplayed    ;                                   		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgClient.TgHUD_Game.OpenPlayerSearchPrepopulatedById
@@ -1189,7 +1189,7 @@ struct ATgHUD_Game_eventSelectAgentTab_Parms
 	// unsigned char                                   menuFunc;                                         		// 0x000C (0x0001) [0x0000000000000000]              
 	// struct FName                                    sceneName;                                        		// 0x0010 (0x0008) [0x0000000000000000]              
 	// class UTgUIAgentProfile*                        ag;                                               		// 0x0018 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bInspectorMode : 1;                               		// 0x001C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bInspectorMode    ;                               		// 0x001C (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgClient.TgHUD_Game.SelectAgencyTab
@@ -1323,7 +1323,7 @@ struct ATgHUD_Game_execTestSetHexBackground_Parms
 // [0x00020202] ( FUNC_Exec )
 struct ATgHUD_Game_execShowDeviceBarHUD_Parms
 {
-	unsigned long                                      Show : 1;                                         		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      Show    ;                                         		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgHUD_Game.GetInputKeyForCommand
@@ -1400,7 +1400,7 @@ struct ATgHUD_Game_execInRange_Parms
 	float                                              X;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              lower;                                            		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              upper;                                            		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgHUD_Game.SizeInt
@@ -1492,7 +1492,7 @@ struct ATgHUD_Game_execAddNewKilledTarget_Parms
 {
 	struct FString                                     KilledName;                                       		// 0x0000 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
 	struct FString                                     KillerName;                                       		// 0x000C (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      KillerWasPlayer : 1;                              		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      KillerWasPlayer    ;                              		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgHUD_Game.AddConsoleMessage
@@ -1649,7 +1649,7 @@ struct ATgHUD_Game_execGetTgUISceneDriver_Parms
 struct ATgHUD_Game_execTriggerCloseTgUIScene_Parms
 {
 	class UUIScene*                                    Scene;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgHUD_Game.TriggerOpenTgUIScene
@@ -1908,7 +1908,7 @@ struct ATgHUD_Game_execSetRewardScreenAutoDismiss_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgHUD_Game_execIsRewardScreenOpen_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgHUD_Game.OpenNextRewardScreen
@@ -1923,7 +1923,7 @@ struct ATgHUD_Game_execGetControllerAndViewport_Parms
 {
 	class ATgPlayerController*                         pController;                                      		// 0x0000 (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
 	class UTgGameViewportClient*                       pViewport;                                        		// 0x0004 (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgHUD_Game.GetMapTransition
@@ -1944,7 +1944,7 @@ struct ATgHUD_Game_execToggleMapNameDisplay_Parms
 struct ATgHUD_Game_execSetDepthTestingEnabled_Parms
 {
 	class UCanvas*                                     pCanvas;                                          		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bEnable : 1;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnable    ;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgHUD_Game.DrawObjectiveOverlays
@@ -1971,49 +1971,49 @@ struct ATgHUD_Game_execResubmitPopups_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgHUD_Game_execCheckShouldSkipEndMission_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgHUD_Game.HideObjectiveNames
 // [0x00020400] ( FUNC_Native )
 struct ATgHUD_Game_execHideObjectiveNames_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgHUD_Game.HideObjectives
 // [0x00020400] ( FUNC_Native )
 struct ATgHUD_Game_execHideObjectives_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgHUD_Game.HideEnemyTags
 // [0x00020400] ( FUNC_Native )
 struct ATgHUD_Game_execHideEnemyTags_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgHUD_Game.ShowCombatText
 // [0x00020400] ( FUNC_Native )
 struct ATgHUD_Game_execShowCombatText_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgHUD_Game.ShowDeployableHealthBars
 // [0x00020400] ( FUNC_Native )
 struct ATgHUD_Game_execShowDeployableHealthBars_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgHUD_Game.CheckDisableWorldRendering
 // [0x00020400] ( FUNC_Native )
 struct ATgHUD_Game_execCheckDisableWorldRendering_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgHUD_Game.OpenTeamScreen
@@ -2035,7 +2035,7 @@ struct ATgHUD_Game_execOpenManagedSceneByID_Parms
 struct ATgHUD_Game_execToggleManagedSceneByID_Parms
 {
 	unsigned char                                      funcID;                                           		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bOpenedFromUIVolume : 1;                          		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bOpenedFromUIVolume    ;                          		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class UTgUISceneDriver*                            ReturnValue;                                      		// 0x0008 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -2044,7 +2044,7 @@ struct ATgHUD_Game_execToggleManagedSceneByID_Parms
 struct ATgHUD_Game_execToggleManagedScene_Parms
 {
 	struct FName                                       ClassName;                                        		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bOpenedFromUIVolume : 1;                          		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bOpenedFromUIVolume    ;                          		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class UTgUISceneDriver*                            ReturnValue;                                      		// 0x000C (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -2052,7 +2052,7 @@ struct ATgHUD_Game_execToggleManagedScene_Parms
 // [0x00024600] ( FUNC_Exec | FUNC_Native )
 struct ATgHUD_Game_execChatCycleTab_Parms
 {
-	unsigned long                                      Increment : 1;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      Increment    ;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgHUD_Game.ChatOpacity
@@ -2072,14 +2072,14 @@ struct ATgHUD_Game_execChatEnd_Parms
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgHUD_Game_execChatPageDown_Parms
 {
-	unsigned long                                      Active : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      Active    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgHUD_Game.ChatPageUp
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgHUD_Game_execChatPageUp_Parms
 {
-	unsigned long                                      Active : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      Active    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgHUD_Game.ChatToggleMode
@@ -2116,7 +2116,7 @@ struct ATgHUD_Game_execChatStartDefault_Parms
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgHUD_Game_execFreemouseOnHUD_Parms
 {
-	unsigned long                                      bFree : 1;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bFree    ;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgHUD_Game.GetStringDimensions
@@ -2257,7 +2257,7 @@ struct ATgLoginHUD_eventSendCharCreateErrorCode_Parms
 struct ATgLoginHUD_eventCreateCharacter_Parms
 {
 	// class UTgUICustomHeadMenu*                      chmenu;                                           		// 0x0000 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bInvalid : 1;                                     		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bInvalid    ;                                     		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 	// struct FCharacterInfoStruct                     charInfoStruct;                                   		// 0x0008 (0x0038) [0x0000000000400000]              ( CPF_NeedCtorLink )
 };
 
@@ -2326,14 +2326,14 @@ struct ATgLoginHUD_execPostBeginPlay_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgLoginHUD_execSetMatineeCamToLogin_Parms
 {
-	unsigned long                                      bSetToLogin : 1;                                  		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bSetToLogin    ;                                  		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgLoginHUD.LoadCharacterSelectMenu
 // [0x00024400] ( FUNC_Native )
 struct ATgLoginHUD_execLoadCharacterSelectMenu_Parms
 {
-	unsigned long                                      bError : 1;                                       		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bError    ;                                       		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgLoginHUD.LoadLoginMenu
@@ -2393,28 +2393,28 @@ struct ATgLoginInfo_execPostBeginPlay_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgLoginInfo_execShouldSkipLoginHUD_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgLoginInfo.HasSelectedCharacter
 // [0x00020400] ( FUNC_Native )
 struct ATgLoginInfo_execHasSelectedCharacter_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgLoginInfo.IsInGame
 // [0x00020400] ( FUNC_Native )
 struct ATgLoginInfo_execIsInGame_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgLoginInfo.IsLoggedIn
 // [0x00020400] ( FUNC_Native )
 struct ATgLoginInfo_execIsLoggedIn_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgLoginInfo.CreateDebugStructure
@@ -2465,7 +2465,7 @@ struct ATgLoginPlayerController_execPostBeginPlay_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgLoginPlayerController_execCheckAutoLogin_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgStatsData.Init
@@ -2519,8 +2519,8 @@ struct UTgStatsData_execCopyScores_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgStatsData_execSetGameOver_Parms
 {
-	unsigned long                                      bGameover : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bPlayerVictor : 1;                                		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bGameover    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bPlayerVictor    ;                                		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUILevelMap.InitializeUniformScaleRadarMap
@@ -2533,8 +2533,8 @@ struct UTgUILevelMap_execInitializeUniformScaleRadarMap_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUILevelMap_execChangeDesiredMapOpacity_Parms
 {
-	unsigned long                                      Activate : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      Increase : 1;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      Activate    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      Increase    ;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUILevelMap.PostRender
@@ -2574,14 +2574,14 @@ struct UTgUILevelMap_execSetOpacity_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgUILevelMap_execHide_Parms
 {
-	unsigned long                                      Immediate : 1;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      Immediate    ;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgUILevelMap.Show
 // [0x00024400] ( FUNC_Native )
 struct UTgUILevelMap_execShow_Parms
 {
-	unsigned long                                      Immediate : 1;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      Immediate    ;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgUILevelMap.GetWorldTime
@@ -2617,7 +2617,7 @@ struct UTgUIPrimaryHUD_ActiveItem_execSetSecondaryValue_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_ActiveItem_execSetSecondaryModeOn_Parms
 {
-	unsigned long                                      bSecondaryModeOn : 1;                             		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bSecondaryModeOn    ;                             		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_ActiveItem.ShowActiveText
@@ -2713,14 +2713,14 @@ struct UTgUIPrimaryHUD_ActiveItem_execTickPrimaryHUDElement_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_AgentInfo_execCheckQueueUpdate_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_AgentInfo.CheckPlayerUpdate
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_AgentInfo_execCheckPlayerUpdate_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_AgentInfo.UpdatePositioning
@@ -2808,7 +2808,7 @@ struct UTgUIPrimaryHUD_BuffBar_execCheckBuffs_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_BuffBar_execReset_Parms
 {
-	unsigned long                                      bHide : 1;                                        		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bHide    ;                                        		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_BuffBar.AddBuff
@@ -2819,7 +2819,7 @@ struct UTgUIPrimaryHUD_BuffBar_execAddBuff_Parms
 	int                                                nIndex;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              TimeRemaining;                                    		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nNumStacks;                                       		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_BuffBar.UpdateBuffWidget
@@ -2876,22 +2876,22 @@ struct UTgUIPrimaryHUD_Clock_execSetTime_Parms
 {
 	float                                              fTimeBase;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fTimeStarted;                                     		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bCountingDown : 1;                                		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bCountingDown    ;                                		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_Clock.SetStyle
 // [0x00024400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_Clock_execSetStyle_Parms
 {
-	unsigned long                                      bUsingProgressBar : 1;                            		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bUsingAlarmImage : 1;                             		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bUsingProgressBar    ;                            		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bUsingAlarmImage    ;                             		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_Clock.UseAsMissionTimer
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_Clock_execUseAsMissionTimer_Parms
 {
-	unsigned long                                      bIsMissionTimer : 1;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsMissionTimer    ;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_Clock.TickPrimaryHUDElement
@@ -3056,21 +3056,21 @@ struct UTgUIPrimaryHUD_DeviceBar_execUpdateCooldown_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_DeviceBar_execHasInhandDevice_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_DeviceBar.SelectPreviousDevice
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_DeviceBar_execSelectPreviousDevice_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_DeviceBar.SelectNextDevice
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_DeviceBar_execSelectNextDevice_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_DeviceBar.SelectDeviceBarType
@@ -3078,7 +3078,7 @@ struct UTgUIPrimaryHUD_DeviceBar_execSelectNextDevice_Parms
 struct UTgUIPrimaryHUD_DeviceBar_execSelectDeviceBarType_Parms
 {
 	unsigned char                                      eType;                                            		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_DeviceBar.SelectDeviceBarSlot
@@ -3086,7 +3086,7 @@ struct UTgUIPrimaryHUD_DeviceBar_execSelectDeviceBarType_Parms
 struct UTgUIPrimaryHUD_DeviceBar_execSelectDeviceBarSlot_Parms
 {
 	int                                                Slot;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_DeviceBar.ResetHUDCooldowns
@@ -3113,7 +3113,7 @@ struct UTgUIPrimaryHUD_DeviceBar_execRefreshUICooldowns_Parms
 struct UTgUIPrimaryHUD_DeviceBar_execGetActiveDeviceSlotString_Parms
 {
 	struct FString                                     DeviceString;                                     		// 0x0000 (0x000C) [0x0000000000400180]              ( CPF_Parm | CPF_OutParm | CPF_NeedCtorLink )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_DeviceBar.UpdateSelectedDevice
@@ -3259,7 +3259,7 @@ struct UTgUIPrimaryHUD_KillDisplay_execAddNewKilledTarget_Parms
 {
 	struct FString                                     Target;                                           		// 0x0000 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
 	struct FString                                     KillerName;                                       		// 0x000C (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      KillerWasPlayer : 1;                              		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      KillerWasPlayer    ;                              		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_KillDisplay.TickPrimaryHUDElement
@@ -3289,14 +3289,14 @@ struct UTgUIPrimaryHUD_KillDisplay_execFixupWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_MiniMap_execShow_Parms
 {
-	unsigned long                                      Immediate : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      Immediate    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_MiniMap.Hide
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_MiniMap_execHide_Parms
 {
-	unsigned long                                      Immediate : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      Immediate    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_MiniMap.InitPrimaryHUDElement
@@ -3338,7 +3338,7 @@ struct UTgUIPrimaryHUD_MissionInfo_execRepositionWidgets_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_MissionInfo_execPopulateMissionInfo_Parms
 {
-	unsigned long                                      bNoResetActive : 1;                               		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bNoResetActive    ;                               		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_MissionInfo.TickPrimaryHUDElement
@@ -3437,14 +3437,14 @@ struct UTgUIPrimaryHUD_Settings_execSaveConfigSettings_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_Settings_execShouldTick_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_Settings.IsHidden
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_Settings_execIsHidden_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_Settings.CleanBasePanelList
@@ -3479,14 +3479,14 @@ struct UTgUIPrimaryHUD_Settings_execAddBasePanel_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_Settings_execIgnoreSettings_Parms
 {
-	unsigned long                                      bIgnore : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIgnore    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_Settings.SetUIVisibility
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_Settings_execSetUIVisibility_Parms
 {
-	unsigned long                                      Visible : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      Visible    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_SlotWidgets.Init
@@ -3506,7 +3506,7 @@ struct UTgUIPrimaryHUD_SlotWidgets_execSetBlank_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_SlotWidgets_execSetUnavailable_Parms
 {
-	unsigned long                                      bUnavailable : 1;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bUnavailable    ;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_SlotWidgets.Show
@@ -3551,7 +3551,7 @@ struct UTgUIPrimaryHUD_TeamPanel_execFixupWidgets_Parms
 struct UTgUIPrimaryHUD_VMTree_execHandleKeyInput_Parms
 {
 	struct FName                                       KeyInput;                                         		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPrimaryHUD_VMTree.DeactivateTreeUI
@@ -3635,7 +3635,7 @@ struct UTgUISceneDriver_eventSetDefaultSceneDriverSceneDelegates_Parms
 struct UTgUISceneDriver_execDefaultSceneDriverSceneDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             bAltModified;                                     		// 0x0028 (0x0004) [0x0000000000000000]              
 	// struct FName                                    closeKeyName;                                     		// 0x002C (0x0008) [0x0000000000000000]              
 };
@@ -3664,7 +3664,7 @@ struct UTgUISceneDriver_execCheckSceneForUIModelDragRelease_Parms
 struct UTgUISceneDriver_execHandleTgUIModelFixedRotation_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISceneDriver.HandleTgUIModelDragRotation
@@ -3672,7 +3672,7 @@ struct UTgUISceneDriver_execHandleTgUIModelFixedRotation_Parms
 struct UTgUISceneDriver_execHandleTgUIModelDragRotation_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISceneDriver.SetFocusedWidget
@@ -3680,7 +3680,7 @@ struct UTgUISceneDriver_execHandleTgUIModelDragRotation_Parms
 struct UTgUISceneDriver_execSetFocusedWidget_Parms
 {
 	class UUIScreenObject*                             NewFocus;                                         		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISceneDriver.SetNextWidgetFocused
@@ -3700,7 +3700,7 @@ struct UTgUISceneDriver_execSetPreviousWidgetFocused_Parms
 struct UTgUISceneDriver_execOnNextButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISceneDriver.OnPrevButton
@@ -3708,7 +3708,7 @@ struct UTgUISceneDriver_execOnNextButton_Parms
 struct UTgUISceneDriver_execOnPrevButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISceneDriver.OnFirstButton
@@ -3716,7 +3716,7 @@ struct UTgUISceneDriver_execOnPrevButton_Parms
 struct UTgUISceneDriver_execOnFirstButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISceneDriver.OnLastButton
@@ -3724,7 +3724,7 @@ struct UTgUISceneDriver_execOnFirstButton_Parms
 struct UTgUISceneDriver_execOnLastButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISceneDriver.OpenTabScene
@@ -3739,7 +3739,7 @@ struct UTgUISceneDriver_execOpenTabScene_Parms
 struct UTgUISceneDriver_execDefaultTgShouldModulateDelegate_Parms
 {
 	float                                              AlphaModulationPercent;                           		// 0x0000 (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISceneDriver.SetParentUIScene
@@ -3784,7 +3784,7 @@ struct UTgUISceneDriver_execDefaultSceneDriverCloseDelegate_Parms
 struct UTgUISceneDriver_execSetVisible_Parms
 {
 	class UUIObject*                                   pObject;                                          		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bVisible : 1;                                     		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bVisible    ;                                     		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgUISceneDriver.UnregisterCallbacks
@@ -3809,7 +3809,7 @@ struct UTgUISceneDriver_execRepaint_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUISceneDriver_execSetButtonsEnabled_Parms
 {
-	unsigned long                                      bEnabled : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnabled    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUISceneDriver.HideChildControlsByTag
@@ -3825,7 +3825,7 @@ struct UTgUISceneDriver_execHideChildControlsByTag_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUISceneDriver_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISceneDriver.FixupTgUIScene
@@ -3890,7 +3890,7 @@ struct UTgUICameraSettingsMenu_execOnFakeRadioButtonChanged_Parms
 struct UTgUICameraSettingsMenu_execOnApplyButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICameraSettingsMenu.OnBackButtonKey
@@ -3898,7 +3898,7 @@ struct UTgUICameraSettingsMenu_execOnApplyButtonKey_Parms
 struct UTgUICameraSettingsMenu_execOnBackButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICameraSettingsMenu.ApplyCameraSettings
@@ -3923,7 +3923,7 @@ struct UTgUICameraSettingsMenu_execFixupWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUICameraSettingsMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICameraSettingsMenu.FixupTgUIScene
@@ -3937,7 +3937,7 @@ struct UTgUICameraSettingsMenu_execFixupTgUIScene_Parms
 struct UTgUIChallengePopup_execOnDeclineButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIChallengePopup.OnAcceptButton
@@ -3945,14 +3945,14 @@ struct UTgUIChallengePopup_execOnDeclineButton_Parms
 struct UTgUIChallengePopup_execOnAcceptButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIChallengePopup.TickTgUIScene
 // [0x00020400] ( FUNC_Native )
 struct UTgUIChallengePopup_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIChallengePopup.FixupTgUIScene
@@ -3973,7 +3973,7 @@ struct UTgUIChat_execTick_Parms
 struct UTgUIChat_execOnChatScrollButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIChat.OnChatEntrySubmitText
@@ -3982,7 +3982,7 @@ struct UTgUIChat_execOnChatEntrySubmitText_Parms
 {
 	class UUIEditBox*                                  ebox;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                PlayerIndex;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIChat.OnChatTabClicked
@@ -3990,7 +3990,7 @@ struct UTgUIChat_execOnChatEntrySubmitText_Parms
 struct UTgUIChat_execOnChatTabClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIChat.OnSceneInputKeyDelegate
@@ -3998,7 +3998,7 @@ struct UTgUIChat_execOnChatTabClicked_Parms
 struct UTgUIChat_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIChat.ChatEntryLineChanged
@@ -4051,7 +4051,7 @@ struct UTgUIClassSelectScene_execOnClassMouseOverDelegate_Parms
 struct UTgUIClassSelectScene_execOnNextButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIClassSelectScene.OnBackButtonDelegate
@@ -4059,7 +4059,7 @@ struct UTgUIClassSelectScene_execOnNextButtonDelegate_Parms
 struct UTgUIClassSelectScene_execOnBackButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIClassSelectScene.OnSelectClassGenderDelegate
@@ -4067,7 +4067,7 @@ struct UTgUIClassSelectScene_execOnBackButtonDelegate_Parms
 struct UTgUIClassSelectScene_execOnSelectClassGenderDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIClassSelectScene.OnSceneInputKeyDelegate
@@ -4075,7 +4075,7 @@ struct UTgUIClassSelectScene_execOnSelectClassGenderDelegate_Parms
 struct UTgUIClassSelectScene_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIClassSelectScene.HighlightClassGender
@@ -4110,7 +4110,7 @@ struct UTgUIConfirmPopup_execSetConfirmTextAndCallback_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIConfirmPopup_execHandleConfirmButtonCallback_Parms
 {
-	unsigned long                                      accepted : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      accepted    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIConfirmPopup.RemoveConfirmPopupByCallback
@@ -4118,7 +4118,7 @@ struct UTgUIConfirmPopup_execHandleConfirmButtonCallback_Parms
 struct UTgUIConfirmPopup_execRemoveConfirmPopupByCallback_Parms
 {
 	class UFunction*                                   callbackPtr;                                      		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bTellGameClient : 1;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bTellGameClient    ;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgUIConfirmPopup.SetConfirmDialogText
@@ -4137,7 +4137,7 @@ struct UTgUIConfirmPopup_execFixupWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIConfirmPopup_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIConfirmPopup.FixupTgUIScene
@@ -4151,7 +4151,7 @@ struct UTgUIConfirmPopup_execFixupTgUIScene_Parms
 struct UTgUIConfirmPopup_execOnConfirmNo_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIConfirmPopup.OnConfirmYes
@@ -4159,7 +4159,7 @@ struct UTgUIConfirmPopup_execOnConfirmNo_Parms
 struct UTgUIConfirmPopup_execOnConfirmYes_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICreateCharA.SendSections
@@ -4187,7 +4187,7 @@ struct UTgUICreateCharA_eventFixupWidgetsUC_Parms
 struct UTgUICreateCharA_execOnGenderButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICreateCharA.OnSelectHeadDelegate
@@ -4195,7 +4195,7 @@ struct UTgUICreateCharA_execOnGenderButtonDelegate_Parms
 struct UTgUICreateCharA_execOnSelectHeadDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICreateCharA.OnNextButtonDelegate
@@ -4203,7 +4203,7 @@ struct UTgUICreateCharA_execOnSelectHeadDelegate_Parms
 struct UTgUICreateCharA_execOnNextButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICreateCharA.OnBackButtonDelegate
@@ -4211,7 +4211,7 @@ struct UTgUICreateCharA_execOnNextButtonDelegate_Parms
 struct UTgUICreateCharA_execOnBackButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICreateCharA.OnSceneInputKeyDelegate
@@ -4219,7 +4219,7 @@ struct UTgUICreateCharA_execOnBackButtonDelegate_Parms
 struct UTgUICreateCharA_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICreateCharA.SaveMorphSettings
@@ -4270,7 +4270,7 @@ struct UTgUICreatePlayerScene_eventFixupWidgetsUC_Parms
 struct UTgUICreatePlayerScene_execOnAcceptInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICreatePlayerScene.OnSceneInputKeyDelegate
@@ -4278,7 +4278,7 @@ struct UTgUICreatePlayerScene_execOnAcceptInputKeyDelegate_Parms
 struct UTgUICreatePlayerScene_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICreatePlayerScene.FixupTgUIScene
@@ -4292,7 +4292,7 @@ struct UTgUICreatePlayerScene_execFixupTgUIScene_Parms
 struct UTgUICreditsMenu_execOnSceneInput_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICreditsMenu.FixupTgUIScene
@@ -4312,7 +4312,7 @@ struct UTgUIDevInGame_eventFixupWidgetsUC_Parms
 struct UTgUIDevInGame_execOnSpawnBotButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgHUD_Game*                              tghudgame;                                        		// 0x0028 (0x0004) [0x0000000000000000]              
 };
 
@@ -4321,7 +4321,7 @@ struct UTgUIDevInGame_execOnSpawnBotButtonKey_Parms
 struct UTgUIDevInGame_execOnLaunchScreenButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevInGame.OnMissionScreenButtonKey
@@ -4329,7 +4329,7 @@ struct UTgUIDevInGame_execOnLaunchScreenButtonKey_Parms
 struct UTgUIDevInGame_execOnMissionScreenButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevInGame.OnCloseButtonKey
@@ -4337,7 +4337,7 @@ struct UTgUIDevInGame_execOnMissionScreenButtonKey_Parms
 struct UTgUIDevInGame_execOnCloseButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevInGame.FixupWidgets
@@ -4350,7 +4350,7 @@ struct UTgUIDevInGame_execFixupWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIDevInGame_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevInGame.FixupTgUIScene
@@ -4370,7 +4370,7 @@ struct UTgUIDevSpawnBot_eventFixupWidgetsUC_Parms
 struct UTgUIDevSpawnBot_execOnBotList18_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotList17
@@ -4378,7 +4378,7 @@ struct UTgUIDevSpawnBot_execOnBotList18_Parms
 struct UTgUIDevSpawnBot_execOnBotList17_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotList16
@@ -4386,7 +4386,7 @@ struct UTgUIDevSpawnBot_execOnBotList17_Parms
 struct UTgUIDevSpawnBot_execOnBotList16_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotList15
@@ -4394,7 +4394,7 @@ struct UTgUIDevSpawnBot_execOnBotList16_Parms
 struct UTgUIDevSpawnBot_execOnBotList15_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotList14
@@ -4402,7 +4402,7 @@ struct UTgUIDevSpawnBot_execOnBotList15_Parms
 struct UTgUIDevSpawnBot_execOnBotList14_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotList13
@@ -4410,7 +4410,7 @@ struct UTgUIDevSpawnBot_execOnBotList14_Parms
 struct UTgUIDevSpawnBot_execOnBotList13_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotList12
@@ -4418,7 +4418,7 @@ struct UTgUIDevSpawnBot_execOnBotList13_Parms
 struct UTgUIDevSpawnBot_execOnBotList12_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotList11
@@ -4426,7 +4426,7 @@ struct UTgUIDevSpawnBot_execOnBotList12_Parms
 struct UTgUIDevSpawnBot_execOnBotList11_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotList10
@@ -4434,7 +4434,7 @@ struct UTgUIDevSpawnBot_execOnBotList11_Parms
 struct UTgUIDevSpawnBot_execOnBotList10_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotList9
@@ -4442,7 +4442,7 @@ struct UTgUIDevSpawnBot_execOnBotList10_Parms
 struct UTgUIDevSpawnBot_execOnBotList9_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotList8
@@ -4450,7 +4450,7 @@ struct UTgUIDevSpawnBot_execOnBotList9_Parms
 struct UTgUIDevSpawnBot_execOnBotList8_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotList7
@@ -4458,7 +4458,7 @@ struct UTgUIDevSpawnBot_execOnBotList8_Parms
 struct UTgUIDevSpawnBot_execOnBotList7_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotList6
@@ -4466,7 +4466,7 @@ struct UTgUIDevSpawnBot_execOnBotList7_Parms
 struct UTgUIDevSpawnBot_execOnBotList6_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotList5
@@ -4474,7 +4474,7 @@ struct UTgUIDevSpawnBot_execOnBotList6_Parms
 struct UTgUIDevSpawnBot_execOnBotList5_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotList4
@@ -4482,7 +4482,7 @@ struct UTgUIDevSpawnBot_execOnBotList5_Parms
 struct UTgUIDevSpawnBot_execOnBotList4_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotList3
@@ -4490,7 +4490,7 @@ struct UTgUIDevSpawnBot_execOnBotList4_Parms
 struct UTgUIDevSpawnBot_execOnBotList3_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotList2
@@ -4498,7 +4498,7 @@ struct UTgUIDevSpawnBot_execOnBotList3_Parms
 struct UTgUIDevSpawnBot_execOnBotList2_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotList1
@@ -4506,7 +4506,7 @@ struct UTgUIDevSpawnBot_execOnBotList2_Parms
 struct UTgUIDevSpawnBot_execOnBotList1_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnBotListBase
@@ -4516,7 +4516,7 @@ struct UTgUIDevSpawnBot_execOnBotListBase_Parms
 	struct FName                                       Key;                                              		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
 	unsigned char                                      Event;                                            		// 0x0008 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	int                                                Index;                                            		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnSpawnBotButton
@@ -4524,7 +4524,7 @@ struct UTgUIDevSpawnBot_execOnBotListBase_Parms
 struct UTgUIDevSpawnBot_execOnSpawnBotButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnCloseButton
@@ -4532,7 +4532,7 @@ struct UTgUIDevSpawnBot_execOnSpawnBotButton_Parms
 struct UTgUIDevSpawnBot_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnSpawnBotSceneKey
@@ -4540,7 +4540,7 @@ struct UTgUIDevSpawnBot_execOnCloseButton_Parms
 struct UTgUIDevSpawnBot_execOnSpawnBotSceneKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnScrollLowerButton
@@ -4548,7 +4548,7 @@ struct UTgUIDevSpawnBot_execOnSpawnBotSceneKey_Parms
 struct UTgUIDevSpawnBot_execOnScrollLowerButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.OnScrollHigherButton
@@ -4556,7 +4556,7 @@ struct UTgUIDevSpawnBot_execOnScrollLowerButton_Parms
 struct UTgUIDevSpawnBot_execOnScrollHigherButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.StopScrolling
@@ -4569,14 +4569,14 @@ struct UTgUIDevSpawnBot_execStopScrolling_Parms
 // [0x00020002] 
 struct UTgUIDevSpawnBot_execStartScrolling_Parms
 {
-	unsigned long                                      bHigher : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bHigher    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.ScrollChange
 // [0x00020002] 
 struct UTgUIDevSpawnBot_execScrollChange_Parms
 {
-	unsigned long                                      bHigher : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bHigher    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.SetupDataInterface
@@ -4595,7 +4595,7 @@ struct UTgUIDevSpawnBot_execUpdateScrolling_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIDevSpawnBot_execAttemptSpawn_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.PopulateWidgets
@@ -4614,7 +4614,7 @@ struct UTgUIDevSpawnBot_execFixupWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIDevSpawnBot_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDevSpawnBot.FixupTgUIScene
@@ -4646,21 +4646,21 @@ struct UTgUIEndRaidScreen_execHideScene_Parms
 struct UTgUIEndRaidScreen_execOnCloseButtonPressed_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIEndRaidScreen.SetLabelTextAndColor
 // [0x00020400] ( FUNC_Native )
 struct UTgUIEndRaidScreen_execSetLabelTextAndColor_Parms
 {
-	unsigned long                                      bAttackersWon : 1;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAttackersWon    ;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIEndRaidScreen.TickTgUIScene
 // [0x00020400] ( FUNC_Native )
 struct UTgUIEndRaidScreen_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIEndRaidScreen.FixupTgUIScene
@@ -4687,8 +4687,8 @@ struct UTgUIEULAMenu_execOnScroll_Parms
 {
 	class UUIScreenObject*                             Sender;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              Nudges;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bMaxedOut : 1;                                    		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bMaxedOut    ;                                    		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIEULAMenu.OnSceneInput
@@ -4696,7 +4696,7 @@ struct UTgUIEULAMenu_execOnScroll_Parms
 struct UTgUIEULAMenu_execOnSceneInput_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIEULAMenu.OnButtonClick
@@ -4704,7 +4704,7 @@ struct UTgUIEULAMenu_execOnSceneInput_Parms
 struct UTgUIEULAMenu_execOnButtonClick_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIEULAMenu.FixupTgUIScene
@@ -4725,7 +4725,7 @@ struct UTgUIFriendsList_execOnPopupSubmitText_Parms
 {
 	class UUIEditBox*                                  ebox;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                PlayerIndex;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIFriendsList.OnPopupButtons
@@ -4733,7 +4733,7 @@ struct UTgUIFriendsList_execOnPopupSubmitText_Parms
 struct UTgUIFriendsList_execOnPopupButtons_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIFriendsList.OnSceneButtons
@@ -4741,7 +4741,7 @@ struct UTgUIFriendsList_execOnPopupButtons_Parms
 struct UTgUIFriendsList_execOnSceneButtons_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIFriendsList.OnSceneInputKey
@@ -4749,7 +4749,7 @@ struct UTgUIFriendsList_execOnSceneButtons_Parms
 struct UTgUIFriendsList_execOnSceneInputKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIFriendsList.OnIgnoreButtons
@@ -4757,7 +4757,7 @@ struct UTgUIFriendsList_execOnSceneInputKey_Parms
 struct UTgUIFriendsList_execOnIgnoreButtons_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIFriendsList.OnListItemSelected
@@ -4765,7 +4765,7 @@ struct UTgUIFriendsList_execOnIgnoreButtons_Parms
 struct UTgUIFriendsList_execOnListItemSelected_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIFriendsList.OnFriendButtons
@@ -4773,7 +4773,7 @@ struct UTgUIFriendsList_execOnListItemSelected_Parms
 struct UTgUIFriendsList_execOnFriendButtons_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIFriendsList.FixupTgUIScene
@@ -4787,7 +4787,7 @@ struct UTgUIFriendsList_execFixupTgUIScene_Parms
 struct UTgUIHexAuction_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIHexAuction.SetHexPosition
@@ -4816,7 +4816,7 @@ struct UTgUIHexAuction_execOnMissionTypeChanged_Parms
 struct UTgUIHexAuction_execOnSelectMissile_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIHexAuction.OnPlaceBidClicked
@@ -4824,7 +4824,7 @@ struct UTgUIHexAuction_execOnSelectMissile_Parms
 struct UTgUIHexAuction_execOnPlaceBidClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIHexAuction.UpdateButtonCovers
@@ -4855,7 +4855,7 @@ struct UTgUIHexAuction_execFixupWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIHexAuction_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIHexAuction.FixupTgUIScene
@@ -4881,7 +4881,7 @@ struct UTgUIInGameMainMenu_eventFixupWidgetsUC_Parms
 struct UTgUIInGameMainMenu_execOnDisconnectButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPlayerController*                      tgpc;                                             		// 0x0028 (0x0004) [0x0000000000000000]              
 };
 
@@ -4890,7 +4890,7 @@ struct UTgUIInGameMainMenu_execOnDisconnectButtonKey_Parms
 struct UTgUIInGameMainMenu_execOnSpawnBotButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgHUD_Game*                              tghudgame;                                        		// 0x0028 (0x0004) [0x0000000000000000]              
 };
 
@@ -4899,7 +4899,7 @@ struct UTgUIInGameMainMenu_execOnSpawnBotButtonKey_Parms
 struct UTgUIInGameMainMenu_execOnLaunchScreenButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInGameMainMenu.OnSettingsButtonKey
@@ -4907,7 +4907,7 @@ struct UTgUIInGameMainMenu_execOnLaunchScreenButtonKey_Parms
 struct UTgUIInGameMainMenu_execOnSettingsButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgHUD_Game*                              tghudgame;                                        		// 0x0028 (0x0004) [0x0000000000000000]              
 };
 
@@ -4916,7 +4916,7 @@ struct UTgUIInGameMainMenu_execOnSettingsButtonKey_Parms
 struct UTgUIInGameMainMenu_execOnExitGameButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInGameMainMenu.OnReturnToGameButtonKey
@@ -4924,7 +4924,7 @@ struct UTgUIInGameMainMenu_execOnExitGameButtonKey_Parms
 struct UTgUIInGameMainMenu_execOnReturnToGameButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInGameMainMenu.OnEndMissionButton
@@ -4932,7 +4932,7 @@ struct UTgUIInGameMainMenu_execOnReturnToGameButtonKey_Parms
 struct UTgUIInGameMainMenu_execOnEndMissionButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPlayerController*                      PC;                                               		// 0x0028 (0x0004) [0x0000000000000000]              
 	// class AWorldInfo*                               WI;                                               		// 0x002C (0x0004) [0x0000000000000000]              
 };
@@ -4959,7 +4959,7 @@ struct UTgUIInGameMainMenu_execFixupTgUIScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIInGameMainMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInstanceSelect.FixupWidgetsUC
@@ -4987,7 +4987,7 @@ struct UTgUIInstanceSelect_execGetInstanceListCallback_Parms
 struct UTgUIInstanceSelect_execOnSelectInstanceDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInstanceSelect.OnChangeButtonDelegate
@@ -4995,7 +4995,7 @@ struct UTgUIInstanceSelect_execOnSelectInstanceDelegate_Parms
 struct UTgUIInstanceSelect_execOnChangeButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInstanceSelect.OnCloseButtonDelegate
@@ -5003,7 +5003,7 @@ struct UTgUIInstanceSelect_execOnChangeButtonDelegate_Parms
 struct UTgUIInstanceSelect_execOnCloseButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInstanceSelect.OnSceneInputKeyDelegate
@@ -5011,7 +5011,7 @@ struct UTgUIInstanceSelect_execOnCloseButtonDelegate_Parms
 struct UTgUIInstanceSelect_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInstanceSelect.SelectInstanceItem
@@ -5058,7 +5058,7 @@ struct UTgUIIntroScene_execSetIntroParams_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIIntroScene_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIIntroScene.FixupTgUIScene
@@ -5084,7 +5084,7 @@ struct UTgUILFGPopup_execUpdateLFGWidgets_Parms
 struct UTgUILFGPopup_execOnCancelButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGPopup.OnAcceptButton
@@ -5092,7 +5092,7 @@ struct UTgUILFGPopup_execOnCancelButton_Parms
 struct UTgUILFGPopup_execOnAcceptButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGPopup.OnCloseButton
@@ -5100,7 +5100,7 @@ struct UTgUILFGPopup_execOnAcceptButton_Parms
 struct UTgUILFGPopup_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGPopup.OnLFGPopupKey
@@ -5108,14 +5108,14 @@ struct UTgUILFGPopup_execOnCloseButton_Parms
 struct UTgUILFGPopup_execOnLFGPopupKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGPopup.TickTgUIScene
 // [0x00020400] ( FUNC_Native )
 struct UTgUILFGPopup_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGPopup.FixupTgUIScene
@@ -5129,7 +5129,7 @@ struct UTgUILFGPopup_execFixupTgUIScene_Parms
 struct UTgUILoadItemProfile_execOnDialogButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// struct FString                                  sWidgetTag;                                       		// 0x0028 (0x000C) [0x0000000000400000]              ( CPF_NeedCtorLink )
 	// class ATgPlayerController*                      PC;                                               		// 0x0034 (0x0004) [0x0000000000000000]              
 };
@@ -5150,7 +5150,7 @@ struct UTgUILoadItemProfile_execFixupWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUILoadItemProfile_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoadItemProfile.FixupTgUIScene
@@ -5169,14 +5169,14 @@ struct UTgUIMapTransition_eventFixupWidgetsUC_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIMapTransition_execCanShowCloseButton_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMapTransition.PleaseShowCloseButton
 // [0x00020400] ( FUNC_Native )
 struct UTgUIMapTransition_execPleaseShowCloseButton_Parms
 {
-	unsigned long                                      bEnablePlease : 1;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnablePlease    ;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIMapTransition.OnCloseButtonClick
@@ -5184,7 +5184,7 @@ struct UTgUIMapTransition_execPleaseShowCloseButton_Parms
 struct UTgUIMapTransition_execOnCloseButtonClick_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMapTransition.SetBackgroundImage
@@ -5204,7 +5204,7 @@ struct UTgUIMapTransition_execResetMapTransition_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIMapTransition_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMapTransition.RegisterCallbacks
@@ -5236,7 +5236,7 @@ struct UTgUIMapTransition_execFixupTgUIScene_Parms
 struct UTgUINavScene_execOnShowPath_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUINavScene.OnSelect
@@ -5244,7 +5244,7 @@ struct UTgUINavScene_execOnShowPath_Parms
 struct UTgUINavScene_execOnSelect_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUINavScene.OnCloseButton
@@ -5252,7 +5252,7 @@ struct UTgUINavScene_execOnSelect_Parms
 struct UTgUINavScene_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUINavScene.SetRawInputKeyForList
@@ -5285,7 +5285,7 @@ struct UTgUINavScene_execUpdateHighlight_Parms
 struct UTgUINavScene_execSelect_Parms
 {
 	int                                                nIndex;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUINavScene.SelectByButton
@@ -5293,7 +5293,7 @@ struct UTgUINavScene_execSelect_Parms
 struct UTgUINavScene_execSelectByButton_Parms
 {
 	class UUIButton*                                   Button;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUINavScene.BuildPOIList
@@ -5307,7 +5307,7 @@ struct UTgUINavScene_execBuildPOIList_Parms
 struct UTgUINavScene_execOnSceneKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUINavScene.FixupTgUIScene
@@ -5350,7 +5350,7 @@ struct UTgUINewSettingsMenu_execFixupWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUINewSettingsMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUINewSettingsMenu.FixupTgUIScene
@@ -5386,14 +5386,14 @@ struct UTgUIOmegaMenu_execSetUseMessage_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIOmegaMenu_execSetOmegaVisibility_Parms
 {
-	unsigned long                                      bVisible : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bVisible    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIOmegaMenu.TriggerOmegaAlert
 // [0x00024400] ( FUNC_Native )
 struct UTgUIOmegaMenu_execTriggerOmegaAlert_Parms
 {
-	unsigned long                                      bForced : 1;                                      		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForced    ;                                      		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgUIOmegaMenu.PopulateOmegaWidgets
@@ -5408,7 +5408,7 @@ struct UTgUIOmegaMenu_execPopulateOmegaWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIOmegaMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIOmegaMenu.FixupTgUIScene
@@ -5422,7 +5422,7 @@ struct UTgUIOmegaMenu_execFixupTgUIScene_Parms
 struct UTgUIOpenTerritories_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIOpenTerritories.FixupWidgetsUC
@@ -5436,7 +5436,7 @@ struct UTgUIOpenTerritories_eventFixupWidgetsUC_Parms
 struct UTgUIOpenTerritories_execOnOpenClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIOpenTerritories.FixupWidgets
@@ -5457,7 +5457,7 @@ struct UTgUIPlayerSearchMenu_execOnSubmitText_Parms
 {
 	class UUIEditBox*                                  ebox;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                PlayerIndex;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.OnResetKey
@@ -5465,7 +5465,7 @@ struct UTgUIPlayerSearchMenu_execOnSubmitText_Parms
 struct UTgUIPlayerSearchMenu_execOnResetKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.OnSearchKey
@@ -5473,7 +5473,7 @@ struct UTgUIPlayerSearchMenu_execOnResetKey_Parms
 struct UTgUIPlayerSearchMenu_execOnSearchKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.SetRawInputKeyForResultsList
@@ -5488,7 +5488,7 @@ struct UTgUIPlayerSearchMenu_eventSetRawInputKeyForResultsList_Parms
 struct UTgUIPlayerSearchMenu_execOnSendMessageSelected_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.OnInviteSelected
@@ -5496,7 +5496,7 @@ struct UTgUIPlayerSearchMenu_execOnSendMessageSelected_Parms
 struct UTgUIPlayerSearchMenu_execOnInviteSelected_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.OnTeamStatusHeaderKey
@@ -5504,7 +5504,7 @@ struct UTgUIPlayerSearchMenu_execOnInviteSelected_Parms
 struct UTgUIPlayerSearchMenu_execOnTeamStatusHeaderKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.OnLocationHeaderKey
@@ -5512,7 +5512,7 @@ struct UTgUIPlayerSearchMenu_execOnTeamStatusHeaderKey_Parms
 struct UTgUIPlayerSearchMenu_execOnLocationHeaderKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.OnLevelHeaderKey
@@ -5520,7 +5520,7 @@ struct UTgUIPlayerSearchMenu_execOnLocationHeaderKey_Parms
 struct UTgUIPlayerSearchMenu_execOnLevelHeaderKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.OnFactionHeaderKey
@@ -5528,7 +5528,7 @@ struct UTgUIPlayerSearchMenu_execOnLevelHeaderKey_Parms
 struct UTgUIPlayerSearchMenu_execOnFactionHeaderKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.OnAllianceHeaderKey
@@ -5536,7 +5536,7 @@ struct UTgUIPlayerSearchMenu_execOnFactionHeaderKey_Parms
 struct UTgUIPlayerSearchMenu_execOnAllianceHeaderKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.OnAgencyHeaderKey
@@ -5544,7 +5544,7 @@ struct UTgUIPlayerSearchMenu_execOnAllianceHeaderKey_Parms
 struct UTgUIPlayerSearchMenu_execOnAgencyHeaderKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.OnNameHeaderKey
@@ -5552,7 +5552,7 @@ struct UTgUIPlayerSearchMenu_execOnAgencyHeaderKey_Parms
 struct UTgUIPlayerSearchMenu_execOnNameHeaderKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.OnClassHeaderKey
@@ -5560,7 +5560,7 @@ struct UTgUIPlayerSearchMenu_execOnNameHeaderKey_Parms
 struct UTgUIPlayerSearchMenu_execOnClassHeaderKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.OnNextPageKey
@@ -5568,7 +5568,7 @@ struct UTgUIPlayerSearchMenu_execOnClassHeaderKey_Parms
 struct UTgUIPlayerSearchMenu_execOnNextPageKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.OnPrevPageKey
@@ -5576,7 +5576,7 @@ struct UTgUIPlayerSearchMenu_execOnNextPageKey_Parms
 struct UTgUIPlayerSearchMenu_execOnPrevPageKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.OnLastPageKey
@@ -5584,7 +5584,7 @@ struct UTgUIPlayerSearchMenu_execOnPrevPageKey_Parms
 struct UTgUIPlayerSearchMenu_execOnLastPageKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.OnFirstPageKey
@@ -5592,7 +5592,7 @@ struct UTgUIPlayerSearchMenu_execOnLastPageKey_Parms
 struct UTgUIPlayerSearchMenu_execOnFirstPageKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.OnSelectResult
@@ -5600,7 +5600,7 @@ struct UTgUIPlayerSearchMenu_execOnFirstPageKey_Parms
 struct UTgUIPlayerSearchMenu_execOnSelectResult_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.OnCloseButton
@@ -5608,7 +5608,7 @@ struct UTgUIPlayerSearchMenu_execOnSelectResult_Parms
 struct UTgUIPlayerSearchMenu_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.FixupWidgetsUC
@@ -5659,7 +5659,7 @@ struct UTgUIPlayerSearchMenu_execPostInitSceneDriver_Parms
 struct UTgUIPlayerSearchMenu_execOnSearchMenuKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.NextPage
@@ -5709,7 +5709,7 @@ struct UTgUIPlayerSearchMenu_execInviteSelected_Parms
 struct UTgUIPlayerSearchMenu_execSelectResult_Parms
 {
 	int                                                nPlayerId;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.SelectResultByButton
@@ -5717,7 +5717,7 @@ struct UTgUIPlayerSearchMenu_execSelectResult_Parms
 struct UTgUIPlayerSearchMenu_execSelectResultByButton_Parms
 {
 	class UUIButton*                                   Button;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPlayerSearchMenu.UpdateHighlight
@@ -5784,7 +5784,7 @@ struct UTgUIPlayerSearchMenu_execResetFields_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPostCreateLoad_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPostCreateLoad.FixupTgUIScene
@@ -5814,7 +5814,7 @@ struct UTgUIPreviewScreen_execOnRotateDudeStateChange_Parms
 struct UTgUIPreviewScreen_execOnRotateDudeCCWClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPreviewScreen.OnRotateDudeCWClicked
@@ -5822,7 +5822,7 @@ struct UTgUIPreviewScreen_execOnRotateDudeCCWClicked_Parms
 struct UTgUIPreviewScreen_execOnRotateDudeCWClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPreviewScreen.OnCloseButtonDelegate
@@ -5830,7 +5830,7 @@ struct UTgUIPreviewScreen_execOnRotateDudeCWClicked_Parms
 struct UTgUIPreviewScreen_execOnCloseButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPreviewScreen.OnPreviewScreenDelegate
@@ -5838,7 +5838,7 @@ struct UTgUIPreviewScreen_execOnCloseButtonDelegate_Parms
 struct UTgUIPreviewScreen_execOnPreviewScreenDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPreviewScreen.SetPaperDollPreviewItem
@@ -5852,7 +5852,7 @@ struct UTgUIPreviewScreen_execSetPaperDollPreviewItem_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPreviewScreen_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPreviewScreen.FixupTgUIScene
@@ -5878,7 +5878,7 @@ struct UTgUIPrimaryHUD_eventFixupUIDeviceBarsUC_Parms
 struct UTgUIPrimaryHUD_execOnPrimaryHUDKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPrimaryHUD.UpdateFade
@@ -5891,7 +5891,7 @@ struct UTgUIPrimaryHUD_execUpdateFade_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_execSetFade_Parms
 {
-	unsigned long                                      bEnableFading : 1;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnableFading    ;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	struct FColor                                      FadeColor;                                        		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	struct FVector2D                                   FadeAlpha;                                        		// 0x0008 (0x0008) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              FadeTime;                                         		// 0x0010 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
@@ -5901,7 +5901,7 @@ struct UTgUIPrimaryHUD_execSetFade_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_execSetOmegaVisibility_Parms
 {
-	unsigned long                                      bVisible : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bVisible    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIPrimaryHUD.TempToggleElement
@@ -5909,14 +5909,14 @@ struct UTgUIPrimaryHUD_execSetOmegaVisibility_Parms
 struct UTgUIPrimaryHUD_execTempToggleElement_Parms
 {
 	unsigned char                                      Element;                                          		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bVisible : 1;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bVisible    ;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIPrimaryHUD.UpdateEquipTimer
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_execUpdateEquipTimer_Parms
 {
-	unsigned long                                      IsActive : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      IsActive    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	float                                              EquipTime;                                        		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 };
 
@@ -5968,8 +5968,8 @@ struct UTgUIPrimaryHUD_execSwitchReticuleStatusBar_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_execSetReticuleVisibility_Parms
 {
-	unsigned long                                      CrossHairVisibility : 1;                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      WeaponStatusVisibility : 1;                       		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      CrossHairVisibility    ;                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      WeaponStatusVisibility    ;                       		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIPrimaryHUD.SetUIClockTimer
@@ -5990,7 +5990,7 @@ struct UTgUIPrimaryHUD_execUpdateAlerts_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_execOnSpeaking_Parms
 {
-	unsigned long                                      bSpeaking : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bSpeaking    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIPrimaryHUD.ToggleMapNameDisplay
@@ -6021,7 +6021,7 @@ struct UTgUIPrimaryHUD_execPreCloseScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIPrimaryHUD_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIPrimaryHUD.FixupWidgets
@@ -6055,7 +6055,7 @@ struct UTgUIQueueScene_execAddFeedbackMessage_Parms
 struct UTgUIQueueScene_execOnDevButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQueueScene.OnCloseButtonDelegate
@@ -6063,7 +6063,7 @@ struct UTgUIQueueScene_execOnDevButtonDelegate_Parms
 struct UTgUIQueueScene_execOnCloseButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQueueScene.OnRefreshQueueDelegate
@@ -6071,7 +6071,7 @@ struct UTgUIQueueScene_execOnCloseButtonDelegate_Parms
 struct UTgUIQueueScene_execOnRefreshQueueDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQueueScene.OnLeaveQueueDelegate
@@ -6079,7 +6079,7 @@ struct UTgUIQueueScene_execOnRefreshQueueDelegate_Parms
 struct UTgUIQueueScene_execOnLeaveQueueDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQueueScene.OnJoinQueueDelegate
@@ -6087,7 +6087,7 @@ struct UTgUIQueueScene_execOnLeaveQueueDelegate_Parms
 struct UTgUIQueueScene_execOnJoinQueueDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQueueScene.OnSelectQueueDelegate
@@ -6095,7 +6095,7 @@ struct UTgUIQueueScene_execOnJoinQueueDelegate_Parms
 struct UTgUIQueueScene_execOnSelectQueueDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQueueScene.OnSceneKeyDelegate
@@ -6103,7 +6103,7 @@ struct UTgUIQueueScene_execOnSelectQueueDelegate_Parms
 struct UTgUIQueueScene_execOnSceneKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQueueScene.PopulateQueueList
@@ -6122,7 +6122,7 @@ struct UTgUIQueueScene_execRegisterCallbacks_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIQueueScene_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQueueScene.FixupTgUIScene
@@ -6143,7 +6143,7 @@ struct UTgUIRaidHexMap_eventFixupWidgetsUC_Parms
 struct UTgUIRaidHexMap_execOnSceneRaidDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidHexMap.OnSceneCargoDelegate
@@ -6151,7 +6151,7 @@ struct UTgUIRaidHexMap_execOnSceneRaidDelegate_Parms
 struct UTgUIRaidHexMap_execOnSceneCargoDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidHexMap.OnSceneDetailDelegate
@@ -6159,7 +6159,7 @@ struct UTgUIRaidHexMap_execOnSceneCargoDelegate_Parms
 struct UTgUIRaidHexMap_execOnSceneDetailDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidHexMap.OnSceneTeamDelegate
@@ -6167,7 +6167,7 @@ struct UTgUIRaidHexMap_execOnSceneDetailDelegate_Parms
 struct UTgUIRaidHexMap_execOnSceneTeamDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidHexMap.OnSceneLeaveDelegate
@@ -6175,7 +6175,7 @@ struct UTgUIRaidHexMap_execOnSceneTeamDelegate_Parms
 struct UTgUIRaidHexMap_execOnSceneLeaveDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidHexMap.OnCloseDelegate
@@ -6183,7 +6183,7 @@ struct UTgUIRaidHexMap_execOnSceneLeaveDelegate_Parms
 struct UTgUIRaidHexMap_execOnCloseDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidHexMap.OnReturnDelegate
@@ -6191,7 +6191,7 @@ struct UTgUIRaidHexMap_execOnCloseDelegate_Parms
 struct UTgUIRaidHexMap_execOnReturnDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidHexMap.OnLaunchClickDelegate
@@ -6199,7 +6199,7 @@ struct UTgUIRaidHexMap_execOnReturnDelegate_Parms
 struct UTgUIRaidHexMap_execOnLaunchClickDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidHexMap.UpdateInfoPanel
@@ -6213,14 +6213,14 @@ struct UTgUIRaidHexMap_execUpdateInfoPanel_Parms
 struct UTgUIRaidHexMap_execOnSceneKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidHexMap.TickTgUIScene
 // [0x00020400] ( FUNC_Native )
 struct UTgUIRaidHexMap_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidHexMap.FixupTgUIScene
@@ -6253,7 +6253,7 @@ struct UTgUIRaidMenu_eventFixupWidgetsUC_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIRaidMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidMenu.FixupTgUIScene
@@ -6273,7 +6273,7 @@ struct UTgUIRaidMenu_execPostOpenScene_Parms
 struct UTgUIRaidMenu_execOnSceneMapDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidMenu.OnSceneCargoDelegate
@@ -6281,7 +6281,7 @@ struct UTgUIRaidMenu_execOnSceneMapDelegate_Parms
 struct UTgUIRaidMenu_execOnSceneCargoDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidMenu.OnSceneDetailDelegate
@@ -6289,7 +6289,7 @@ struct UTgUIRaidMenu_execOnSceneCargoDelegate_Parms
 struct UTgUIRaidMenu_execOnSceneDetailDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidMenu.OnSceneTeamDelegate
@@ -6297,7 +6297,7 @@ struct UTgUIRaidMenu_execOnSceneDetailDelegate_Parms
 struct UTgUIRaidMenu_execOnSceneTeamDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidMenu.OnReturnDelegate
@@ -6305,7 +6305,7 @@ struct UTgUIRaidMenu_execOnSceneTeamDelegate_Parms
 struct UTgUIRaidMenu_execOnReturnDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidMenu.OnCloseDelegate
@@ -6313,7 +6313,7 @@ struct UTgUIRaidMenu_execOnReturnDelegate_Parms
 struct UTgUIRaidMenu_execOnCloseDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidMenu.OnSceneLeaveDelegate
@@ -6321,7 +6321,7 @@ struct UTgUIRaidMenu_execOnCloseDelegate_Parms
 struct UTgUIRaidMenu_execOnSceneLeaveDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidMenu.OnScenePromoteDelegate
@@ -6329,7 +6329,7 @@ struct UTgUIRaidMenu_execOnSceneLeaveDelegate_Parms
 struct UTgUIRaidMenu_execOnScenePromoteDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidMenu.OnSceneRemoveDelegate
@@ -6337,7 +6337,7 @@ struct UTgUIRaidMenu_execOnScenePromoteDelegate_Parms
 struct UTgUIRaidMenu_execOnSceneRemoveDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidMenu.OnSceneInputKeyDelegate
@@ -6345,7 +6345,7 @@ struct UTgUIRaidMenu_execOnSceneRemoveDelegate_Parms
 struct UTgUIRaidMenu_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidMenu.OnMoveToDelegate
@@ -6353,7 +6353,7 @@ struct UTgUIRaidMenu_execOnSceneInputKeyDelegate_Parms
 struct UTgUIRaidMenu_execOnMoveToDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidMenu.OnRaidTeamDelegate
@@ -6361,7 +6361,7 @@ struct UTgUIRaidMenu_execOnMoveToDelegate_Parms
 struct UTgUIRaidMenu_execOnRaidTeamDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRaidMenu.OnRaidMemberDelegate
@@ -6369,7 +6369,7 @@ struct UTgUIRaidMenu_execOnRaidTeamDelegate_Parms
 struct UTgUIRaidMenu_execOnRaidMemberDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIReleaseMenus.FixupWidgetsUC
@@ -6383,7 +6383,7 @@ struct UTgUIReleaseMenus_eventFixupWidgetsUC_Parms
 struct UTgUIReleaseMenus_execOnBasicReleaseDialogButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIReleaseMenus.SetSpectateText
@@ -6396,14 +6396,14 @@ struct UTgUIReleaseMenus_execSetSpectateText_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIReleaseMenus_execToggleHideScene_Parms
 {
-	unsigned long                                      hideFlag : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      hideFlag    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIReleaseMenus.IsReleaseDialogActive
 // [0x00020400] ( FUNC_Native )
 struct UTgUIReleaseMenus_execIsReleaseDialogActive_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIReleaseMenus.SetDeathZoomInfo
@@ -6417,9 +6417,9 @@ struct UTgUIReleaseMenus_execSetDeathZoomInfo_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgUIReleaseMenus_execSetReleaseData_Parms
 {
-	unsigned long                                      bActive : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bActive    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	float                                              fReleaseTime;                                     		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bCanManuallyRelease : 1;                          		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bCanManuallyRelease    ;                          		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgUIReleaseMenus.UpdateReleaseDialog
@@ -6444,7 +6444,7 @@ struct UTgUIReleaseMenus_execFixupWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIReleaseMenus_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIReleaseMenus.FixupTgUIScene
@@ -6475,7 +6475,7 @@ struct UTgUISceneDriver_Tooltip_eventFixupConfirmWidgets_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgUISceneDriver_Tooltip_execOpenFeatureUpgradePopup_Parms
 {
-	unsigned long                                      bSubscriberCheck : 1;                             		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSubscriberCheck    ;                             		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgUISceneDriver_Tooltip.OnConfirmItemStateChange
@@ -6501,7 +6501,7 @@ struct UTgUISceneDriver_Tooltip_execOnAmountChangedDelegate_Parms
 struct UTgUISceneDriver_Tooltip_execOnConfirmOkClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISceneDriver_Tooltip.OnConfirmNoClicked
@@ -6509,7 +6509,7 @@ struct UTgUISceneDriver_Tooltip_execOnConfirmOkClicked_Parms
 struct UTgUISceneDriver_Tooltip_execOnConfirmNoClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISceneDriver_Tooltip.OnConfirmYesClicked
@@ -6517,7 +6517,7 @@ struct UTgUISceneDriver_Tooltip_execOnConfirmNoClicked_Parms
 struct UTgUISceneDriver_Tooltip_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISceneDriver_Tooltip.OpenConfirmInfoPopup
@@ -6569,7 +6569,7 @@ struct UTgUISceneDriver_Tooltip_execCreateConfirmPopup_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUISceneDriver_Tooltip_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISceneDriver_Tooltip.OpenTgUIScene
@@ -6604,7 +6604,7 @@ struct UTgUIAgencyDirectory_execOnEnterValueChanged_Parms
 struct UTgUIAgencyDirectory_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyDirectory.OnCancelButtonDelegate
@@ -6612,7 +6612,7 @@ struct UTgUIAgencyDirectory_execOnConfirmYesClicked_Parms
 struct UTgUIAgencyDirectory_execOnCancelButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyDirectory.OnSendCancelButtonDelegate
@@ -6620,7 +6620,7 @@ struct UTgUIAgencyDirectory_execOnCancelButtonDelegate_Parms
 struct UTgUIAgencyDirectory_execOnSendCancelButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyDirectory.OnSendButtonDelegate
@@ -6628,7 +6628,7 @@ struct UTgUIAgencyDirectory_execOnSendCancelButtonDelegate_Parms
 struct UTgUIAgencyDirectory_execOnSendButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyDirectory.OnApplyButtonDelegate
@@ -6636,7 +6636,7 @@ struct UTgUIAgencyDirectory_execOnSendButtonDelegate_Parms
 struct UTgUIAgencyDirectory_execOnApplyButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyDirectory.OnSelectAgencyDelegate
@@ -6644,7 +6644,7 @@ struct UTgUIAgencyDirectory_execOnApplyButtonDelegate_Parms
 struct UTgUIAgencyDirectory_execOnSelectAgencyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyDirectory.OnSearchButtonDelegate
@@ -6652,7 +6652,7 @@ struct UTgUIAgencyDirectory_execOnSelectAgencyDelegate_Parms
 struct UTgUIAgencyDirectory_execOnSearchButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyDirectory.OnCloseButtonDelegate
@@ -6660,7 +6660,7 @@ struct UTgUIAgencyDirectory_execOnSearchButtonDelegate_Parms
 struct UTgUIAgencyDirectory_execOnCloseButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyDirectory.OnSceneKeyDelegate
@@ -6668,7 +6668,7 @@ struct UTgUIAgencyDirectory_execOnCloseButtonDelegate_Parms
 struct UTgUIAgencyDirectory_execOnSceneKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyDirectory.PreCloseScene
@@ -6681,7 +6681,7 @@ struct UTgUIAgencyDirectory_execPreCloseScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgencyDirectory_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyDirectory.FixupTgUIScene
@@ -6703,7 +6703,7 @@ struct UTgUIAgencyMenu_eventSelectTab_Parms
 struct UTgUIAgencyMenu_execOnSelectInventoryTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu.OnSelectAuditingTab
@@ -6711,7 +6711,7 @@ struct UTgUIAgencyMenu_execOnSelectInventoryTab_Parms
 struct UTgUIAgencyMenu_execOnSelectAuditingTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu.OnSelectRecruitingTab
@@ -6719,7 +6719,7 @@ struct UTgUIAgencyMenu_execOnSelectAuditingTab_Parms
 struct UTgUIAgencyMenu_execOnSelectRecruitingTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu.OnSelectFacilitiesTab
@@ -6727,7 +6727,7 @@ struct UTgUIAgencyMenu_execOnSelectRecruitingTab_Parms
 struct UTgUIAgencyMenu_execOnSelectFacilitiesTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu.OnSelectManagementTab
@@ -6735,7 +6735,7 @@ struct UTgUIAgencyMenu_execOnSelectFacilitiesTab_Parms
 struct UTgUIAgencyMenu_execOnSelectManagementTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu.OnSelectApplicantsTab
@@ -6743,7 +6743,7 @@ struct UTgUIAgencyMenu_execOnSelectManagementTab_Parms
 struct UTgUIAgencyMenu_execOnSelectApplicantsTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu.OnSelectAllianceTab
@@ -6751,7 +6751,7 @@ struct UTgUIAgencyMenu_execOnSelectApplicantsTab_Parms
 struct UTgUIAgencyMenu_execOnSelectAllianceTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu.OnSelectBaseTab
@@ -6759,7 +6759,7 @@ struct UTgUIAgencyMenu_execOnSelectAllianceTab_Parms
 struct UTgUIAgencyMenu_execOnSelectBaseTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu.OnSelectGeneralTab
@@ -6767,7 +6767,7 @@ struct UTgUIAgencyMenu_execOnSelectBaseTab_Parms
 struct UTgUIAgencyMenu_execOnSelectGeneralTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu.OnCloseButton
@@ -6775,7 +6775,7 @@ struct UTgUIAgencyMenu_execOnSelectGeneralTab_Parms
 struct UTgUIAgencyMenu_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu.FixupWidgetsUC
@@ -6789,7 +6789,7 @@ struct UTgUIAgencyMenu_eventFixupWidgetsUC_Parms
 struct UTgUIAgencyMenu_execOnAgencyMenuKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu.GetAllianceData
@@ -6834,7 +6834,7 @@ struct UTgUIAgencyMenu_execPostOpenScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgencyMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Alliance.OnSelectAllianceMember
@@ -6842,7 +6842,7 @@ struct UTgUIAgencyMenu_execTickTgUIScene_Parms
 struct UTgUIAgencyMenu_Alliance_execOnSelectAllianceMember_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Alliance.SetRawInputKeyForAllianceMemberList
@@ -6858,7 +6858,7 @@ struct UTgUIAgencyMenu_Alliance_execOnAllianceApplicantInviteSubmitText_Parms
 {
 	class UUIEditBox*                                  ebox;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                PlayerIndex;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Alliance.OnAllianceApplicantInviteButtonKey
@@ -6866,7 +6866,7 @@ struct UTgUIAgencyMenu_Alliance_execOnAllianceApplicantInviteSubmitText_Parms
 struct UTgUIAgencyMenu_Alliance_execOnAllianceApplicantInviteButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Alliance.OnConfirmCancelKey
@@ -6874,7 +6874,7 @@ struct UTgUIAgencyMenu_Alliance_execOnAllianceApplicantInviteButtonKey_Parms
 struct UTgUIAgencyMenu_Alliance_execOnConfirmCancelKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Alliance.OnConfirmAcceptKey
@@ -6882,7 +6882,7 @@ struct UTgUIAgencyMenu_Alliance_execOnConfirmCancelKey_Parms
 struct UTgUIAgencyMenu_Alliance_execOnConfirmAcceptKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Alliance.OnMemberLeaveButton
@@ -6890,7 +6890,7 @@ struct UTgUIAgencyMenu_Alliance_execOnConfirmAcceptKey_Parms
 struct UTgUIAgencyMenu_Alliance_execOnMemberLeaveButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Alliance.OnMemberRemoveButton
@@ -6898,7 +6898,7 @@ struct UTgUIAgencyMenu_Alliance_execOnMemberLeaveButton_Parms
 struct UTgUIAgencyMenu_Alliance_execOnMemberRemoveButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Alliance.OnCreationSubmitText
@@ -6907,7 +6907,7 @@ struct UTgUIAgencyMenu_Alliance_execOnCreationSubmitText_Parms
 {
 	class UUIEditBox*                                  ebox;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                PlayerIndex;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Alliance.OnCreationButtonKey
@@ -6915,7 +6915,7 @@ struct UTgUIAgencyMenu_Alliance_execOnCreationSubmitText_Parms
 struct UTgUIAgencyMenu_Alliance_execOnCreationButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Alliance.FixupWidgetsUC
@@ -6929,7 +6929,7 @@ struct UTgUIAgencyMenu_Alliance_eventFixupWidgetsUC_Parms
 struct UTgUIAgencyMenu_Alliance_execSelectAllianceMember_Parms
 {
 	int                                                nAgencyId;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Alliance.SelectAllianceMemberByButton
@@ -6937,7 +6937,7 @@ struct UTgUIAgencyMenu_Alliance_execSelectAllianceMember_Parms
 struct UTgUIAgencyMenu_Alliance_execSelectAllianceMemberByButton_Parms
 {
 	class UUIButton*                                   Button;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Alliance.UpdateAllianceMemberHighlight
@@ -7036,7 +7036,7 @@ struct UTgUIAgencyMenu_Applicants_execOnApplicantInviteSubmitText_Parms
 {
 	class UUIEditBox*                                  ebox;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                PlayerIndex;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Applicants.OnApplicantInviteButtonKey
@@ -7044,7 +7044,7 @@ struct UTgUIAgencyMenu_Applicants_execOnApplicantInviteSubmitText_Parms
 struct UTgUIAgencyMenu_Applicants_execOnApplicantInviteButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Applicants.FixupWidgetsUC
@@ -7084,7 +7084,7 @@ struct UTgUIAgencyMenu_Creation_execOnCreationSubmitText_Parms
 {
 	class UUIEditBox*                                  ebox;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                PlayerIndex;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Creation.OnCreationButtonKey
@@ -7092,7 +7092,7 @@ struct UTgUIAgencyMenu_Creation_execOnCreationSubmitText_Parms
 struct UTgUIAgencyMenu_Creation_execOnCreationButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Creation.OnGenerateColorKey
@@ -7100,7 +7100,7 @@ struct UTgUIAgencyMenu_Creation_execOnCreationButtonKey_Parms
 struct UTgUIAgencyMenu_Creation_execOnGenerateColorKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Creation.FixupWidgetsUC
@@ -7146,7 +7146,7 @@ struct UTgUIAgencyMenu_Facilities_eventFixupWidgetsUC_Parms
 struct UTgUIAgencyMenu_Facilities_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Facilities.UpdateProductionInformation
@@ -7172,7 +7172,7 @@ struct UTgUIAgencyMenu_Facilities_execUpdateZoneList_Parms
 struct UTgUIAgencyMenu_Facilities_execOnNavButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Facilities.OnDefenseApplied
@@ -7180,7 +7180,7 @@ struct UTgUIAgencyMenu_Facilities_execOnNavButton_Parms
 struct UTgUIAgencyMenu_Facilities_execOnDefenseApplied_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Facilities.OnShieldTileClicked
@@ -7188,7 +7188,7 @@ struct UTgUIAgencyMenu_Facilities_execOnDefenseApplied_Parms
 struct UTgUIAgencyMenu_Facilities_execOnShieldTileClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Facilities.UpdateDefenseButtons
@@ -7212,7 +7212,7 @@ struct UTgUIAgencyMenu_Facilities_execOnCurrentTaskStateChanged_Parms
 struct UTgUIAgencyMenu_Facilities_execOnCancelCurrentTask_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Facilities.OnCancelTask
@@ -7220,7 +7220,7 @@ struct UTgUIAgencyMenu_Facilities_execOnCancelCurrentTask_Parms
 struct UTgUIAgencyMenu_Facilities_execOnCancelTask_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Facilities.OnAddTask
@@ -7228,7 +7228,7 @@ struct UTgUIAgencyMenu_Facilities_execOnCancelTask_Parms
 struct UTgUIAgencyMenu_Facilities_execOnAddTask_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Facilities.OnAbandonHex
@@ -7236,7 +7236,7 @@ struct UTgUIAgencyMenu_Facilities_execOnAddTask_Parms
 struct UTgUIAgencyMenu_Facilities_execOnAbandonHex_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Facilities.OnTransferHex
@@ -7244,7 +7244,7 @@ struct UTgUIAgencyMenu_Facilities_execOnAbandonHex_Parms
 struct UTgUIAgencyMenu_Facilities_execOnTransferHex_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Facilities.OnChangeHQ
@@ -7252,7 +7252,7 @@ struct UTgUIAgencyMenu_Facilities_execOnTransferHex_Parms
 struct UTgUIAgencyMenu_Facilities_execOnChangeHQ_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Facilities.OnChangeFacility
@@ -7260,7 +7260,7 @@ struct UTgUIAgencyMenu_Facilities_execOnChangeHQ_Parms
 struct UTgUIAgencyMenu_Facilities_execOnChangeFacility_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Facilities.OnZoneChanged
@@ -7276,7 +7276,7 @@ struct UTgUIAgencyMenu_Facilities_execOnZoneChanged_Parms
 struct UTgUIAgencyMenu_Facilities_execOnAgencyMenuKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Facilities.GetHoverHexCellPosition
@@ -7321,7 +7321,7 @@ struct UTgUIAgencyMenu_Facilities_execRegisterCallbacks_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgencyMenu_Facilities_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Facilities.FixupWidgets
@@ -7361,7 +7361,7 @@ struct UTgUIAgencyMenu_General_eventSetRawInputKeyForMemberList_Parms
 struct UTgUIAgencyMenu_General_execOnChangeOfficerCommentButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.OnChangePublicCommentButtonKey
@@ -7369,7 +7369,7 @@ struct UTgUIAgencyMenu_General_execOnChangeOfficerCommentButtonKey_Parms
 struct UTgUIAgencyMenu_General_execOnChangePublicCommentButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.OnChangeMOTDButtonKey
@@ -7377,7 +7377,7 @@ struct UTgUIAgencyMenu_General_execOnChangePublicCommentButtonKey_Parms
 struct UTgUIAgencyMenu_General_execOnChangeMOTDButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.SubmitPopupEditBox
@@ -7393,7 +7393,7 @@ struct UTgUIAgencyMenu_General_execOnPopupSubmitText_Parms
 {
 	class UUIEditBox*                                  ebox;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                PlayerIndex;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.OnPopupPanelCancel
@@ -7401,7 +7401,7 @@ struct UTgUIAgencyMenu_General_execOnPopupSubmitText_Parms
 struct UTgUIAgencyMenu_General_execOnPopupPanelCancel_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.OnPopupPanelAccept
@@ -7409,7 +7409,7 @@ struct UTgUIAgencyMenu_General_execOnPopupPanelCancel_Parms
 struct UTgUIAgencyMenu_General_execOnPopupPanelAccept_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.SetupPopupTextEditPanel
@@ -7418,7 +7418,7 @@ struct UTgUIAgencyMenu_General_eventSetupPopupTextEditPanel_Parms
 {
 	unsigned char                                      NewMode;                                          		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	// struct FsAgencyMemberInfo                       selectedPlayerInfo;                               		// 0x0004 (0x004C) [0x0000000000400000]              ( CPF_NeedCtorLink )
-	// unsigned long                                   bFoundPlayer : 1;                                 		// 0x0050 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bFoundPlayer    ;                                 		// 0x0050 (0x0004) [0x0000000000000000] [0x00000001] 
 	// struct FString                                  sNewMessage;                                      		// 0x0054 (0x000C) [0x0000000000400000]              ( CPF_NeedCtorLink )
 	// struct FString                                  sNewHeader;                                       		// 0x0060 (0x000C) [0x0000000000400000]              ( CPF_NeedCtorLink )
 };
@@ -7428,7 +7428,7 @@ struct UTgUIAgencyMenu_General_eventSetupPopupTextEditPanel_Parms
 struct UTgUIAgencyMenu_General_execOnTeamInviteButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.OnRemoveButtonKey
@@ -7436,7 +7436,7 @@ struct UTgUIAgencyMenu_General_execOnTeamInviteButtonKey_Parms
 struct UTgUIAgencyMenu_General_execOnRemoveButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.OnDemoteButtonKey
@@ -7444,7 +7444,7 @@ struct UTgUIAgencyMenu_General_execOnRemoveButtonKey_Parms
 struct UTgUIAgencyMenu_General_execOnDemoteButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.OnPromoteButtonKey
@@ -7452,7 +7452,7 @@ struct UTgUIAgencyMenu_General_execOnDemoteButtonKey_Parms
 struct UTgUIAgencyMenu_General_execOnPromoteButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.OnSearchHotlinkKey
@@ -7460,7 +7460,7 @@ struct UTgUIAgencyMenu_General_execOnPromoteButtonKey_Parms
 struct UTgUIAgencyMenu_General_execOnSearchHotlinkKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.OnStatusHeaderKey
@@ -7468,7 +7468,7 @@ struct UTgUIAgencyMenu_General_execOnSearchHotlinkKey_Parms
 struct UTgUIAgencyMenu_General_execOnStatusHeaderKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.OnRankHeaderKey
@@ -7476,7 +7476,7 @@ struct UTgUIAgencyMenu_General_execOnStatusHeaderKey_Parms
 struct UTgUIAgencyMenu_General_execOnRankHeaderKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.OnNameHeaderKey
@@ -7484,7 +7484,7 @@ struct UTgUIAgencyMenu_General_execOnRankHeaderKey_Parms
 struct UTgUIAgencyMenu_General_execOnNameHeaderKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.OnSelectMember
@@ -7492,7 +7492,7 @@ struct UTgUIAgencyMenu_General_execOnNameHeaderKey_Parms
 struct UTgUIAgencyMenu_General_execOnSelectMember_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.OnShowOfflineCheckBoxChanged
@@ -7515,7 +7515,7 @@ struct UTgUIAgencyMenu_General_eventFixupWidgetsUC_Parms
 struct UTgUIAgencyMenu_General_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.PostOpenScene
@@ -7571,7 +7571,7 @@ struct UTgUIAgencyMenu_General_execPlayerSearchSelected_Parms
 struct UTgUIAgencyMenu_General_execOnAgencyMenuKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.SelectMember
@@ -7579,7 +7579,7 @@ struct UTgUIAgencyMenu_General_execOnAgencyMenuKey_Parms
 struct UTgUIAgencyMenu_General_execSelectMember_Parms
 {
 	int                                                nPlayerId;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.SelectMemberByButton
@@ -7587,7 +7587,7 @@ struct UTgUIAgencyMenu_General_execSelectMember_Parms
 struct UTgUIAgencyMenu_General_execSelectMemberByButton_Parms
 {
 	class UUIButton*                                   Button;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_General.UpdateHighlight
@@ -7608,7 +7608,7 @@ struct UTgUIAgencyMenu_General_execUpdateDetailPanel_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgUIAgencyMenu_General_execUpdateMemberListDisplay_Parms
 {
-	unsigned long                                      bNeedsResort : 1;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bNeedsResort    ;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.FixupWidgetsUC
@@ -7650,7 +7650,7 @@ struct UTgUIAgencyMenu_Inventory_eventSetSelectInventoryItemDelegate_Parms
 struct UTgUIAgencyMenu_Inventory_execOnPrevAgencyButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.OnNextAgencyButton
@@ -7658,7 +7658,7 @@ struct UTgUIAgencyMenu_Inventory_execOnPrevAgencyButton_Parms
 struct UTgUIAgencyMenu_Inventory_execOnNextAgencyButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.OnAgencyItemStateChange
@@ -7694,7 +7694,7 @@ struct UTgUIAgencyMenu_Inventory_execOnFilterChangedDelegate_Parms
 struct UTgUIAgencyMenu_Inventory_execOnConfirmNoClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.OnConfirmYesClicked
@@ -7702,7 +7702,7 @@ struct UTgUIAgencyMenu_Inventory_execOnConfirmNoClicked_Parms
 struct UTgUIAgencyMenu_Inventory_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.OnItemSendToDelegate
@@ -7710,7 +7710,7 @@ struct UTgUIAgencyMenu_Inventory_execOnConfirmYesClicked_Parms
 struct UTgUIAgencyMenu_Inventory_execOnItemSendToDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.OnDeleteItemDelegate
@@ -7718,7 +7718,7 @@ struct UTgUIAgencyMenu_Inventory_execOnItemSendToDelegate_Parms
 struct UTgUIAgencyMenu_Inventory_execOnDeleteItemDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.OnWithdrawCreditsDelegate
@@ -7726,7 +7726,7 @@ struct UTgUIAgencyMenu_Inventory_execOnDeleteItemDelegate_Parms
 struct UTgUIAgencyMenu_Inventory_execOnWithdrawCreditsDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.OnDepositCreditsDelegate
@@ -7734,7 +7734,7 @@ struct UTgUIAgencyMenu_Inventory_execOnWithdrawCreditsDelegate_Parms
 struct UTgUIAgencyMenu_Inventory_execOnDepositCreditsDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.OnWithdrawItemDelegate
@@ -7742,7 +7742,7 @@ struct UTgUIAgencyMenu_Inventory_execOnDepositCreditsDelegate_Parms
 struct UTgUIAgencyMenu_Inventory_execOnWithdrawItemDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.OnDepositItemDelegate
@@ -7750,7 +7750,7 @@ struct UTgUIAgencyMenu_Inventory_execOnWithdrawItemDelegate_Parms
 struct UTgUIAgencyMenu_Inventory_execOnDepositItemDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.OnSortAgencyInventoryDelegate
@@ -7758,7 +7758,7 @@ struct UTgUIAgencyMenu_Inventory_execOnDepositItemDelegate_Parms
 struct UTgUIAgencyMenu_Inventory_execOnSortAgencyInventoryDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.OnSortInventoryDelegate
@@ -7766,7 +7766,7 @@ struct UTgUIAgencyMenu_Inventory_execOnSortAgencyInventoryDelegate_Parms
 struct UTgUIAgencyMenu_Inventory_execOnSortInventoryDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.OnSelectAgencyItemDelegate
@@ -7774,7 +7774,7 @@ struct UTgUIAgencyMenu_Inventory_execOnSortInventoryDelegate_Parms
 struct UTgUIAgencyMenu_Inventory_execOnSelectAgencyItemDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.OnSelectInventoryItemDelegate
@@ -7782,7 +7782,7 @@ struct UTgUIAgencyMenu_Inventory_execOnSelectAgencyItemDelegate_Parms
 struct UTgUIAgencyMenu_Inventory_execOnSelectInventoryItemDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.OnAgencyMenuKey
@@ -7790,7 +7790,7 @@ struct UTgUIAgencyMenu_Inventory_execOnSelectInventoryItemDelegate_Parms
 struct UTgUIAgencyMenu_Inventory_execOnAgencyMenuKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.HideTransferItemPanel
@@ -7804,7 +7804,7 @@ struct UTgUIAgencyMenu_Inventory_execHideTransferItemPanel_Parms
 struct UTgUIAgencyMenu_Inventory_execShowTransferCreditsPanel_Parms
 {
 	int                                                creditCount;                                      		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bDeposit : 1;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bDeposit    ;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.ShowTransferItemPanel
@@ -7813,7 +7813,7 @@ struct UTgUIAgencyMenu_Inventory_execShowTransferItemPanel_Parms
 {
 	class UTgInventoryObject*                          pItem;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                ItemCount;                                        		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bDeposit : 1;                                     		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bDeposit    ;                                     		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Inventory.SelectAgencyItem
@@ -7872,7 +7872,7 @@ struct UTgUIAgencyMenu_Inventory_execFixupWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgencyMenu_Inventory_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_InventoryLog.FixupWidgetsUC
@@ -7886,7 +7886,7 @@ struct UTgUIAgencyMenu_InventoryLog_eventFixupWidgetsUC_Parms
 struct UTgUIAgencyMenu_InventoryLog_execOnSearchButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_InventoryLog.ResizeLogList
@@ -7918,7 +7918,7 @@ struct UTgUIAgencyMenu_InventoryLog_execOpenTgUIScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgencyMenu_InventoryLog_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Management.OnAgencyDescriptionButton
@@ -7926,7 +7926,7 @@ struct UTgUIAgencyMenu_InventoryLog_execTickTgUIScene_Parms
 struct UTgUIAgencyMenu_Management_execOnAgencyDescriptionButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Management.OnAgencyDescriptionSubmitText
@@ -7935,7 +7935,7 @@ struct UTgUIAgencyMenu_Management_execOnAgencyDescriptionSubmitText_Parms
 {
 	class UUIEditBox*                                  ebox;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                PlayerIndex;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Management.OnTransferLeaderButton
@@ -7943,7 +7943,7 @@ struct UTgUIAgencyMenu_Management_execOnAgencyDescriptionSubmitText_Parms
 struct UTgUIAgencyMenu_Management_execOnTransferLeaderButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Management.OnTransferLeaderSubmitText
@@ -7952,7 +7952,7 @@ struct UTgUIAgencyMenu_Management_execOnTransferLeaderSubmitText_Parms
 {
 	class UUIEditBox*                                  ebox;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                PlayerIndex;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Management.OnRankDisabled
@@ -7960,7 +7960,7 @@ struct UTgUIAgencyMenu_Management_execOnTransferLeaderSubmitText_Parms
 struct UTgUIAgencyMenu_Management_execOnRankDisabled_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Management.OnRankValueChanged
@@ -7976,7 +7976,7 @@ struct UTgUIAgencyMenu_Management_execOnRankValueChanged_Parms
 struct UTgUIAgencyMenu_Management_execOnRankDemote_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Management.OnRankPromote
@@ -7984,7 +7984,7 @@ struct UTgUIAgencyMenu_Management_execOnRankDemote_Parms
 struct UTgUIAgencyMenu_Management_execOnRankPromote_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Management.OnRankRevert
@@ -7992,7 +7992,7 @@ struct UTgUIAgencyMenu_Management_execOnRankPromote_Parms
 struct UTgUIAgencyMenu_Management_execOnRankRevert_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Management.OnRankSend
@@ -8000,7 +8000,7 @@ struct UTgUIAgencyMenu_Management_execOnRankRevert_Parms
 struct UTgUIAgencyMenu_Management_execOnRankSend_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Management.OnRankRemove
@@ -8008,7 +8008,7 @@ struct UTgUIAgencyMenu_Management_execOnRankSend_Parms
 struct UTgUIAgencyMenu_Management_execOnRankRemove_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Management.OnRankAdd
@@ -8016,7 +8016,7 @@ struct UTgUIAgencyMenu_Management_execOnRankRemove_Parms
 struct UTgUIAgencyMenu_Management_execOnRankAdd_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Management.OnAgencyDisband
@@ -8024,7 +8024,7 @@ struct UTgUIAgencyMenu_Management_execOnRankAdd_Parms
 struct UTgUIAgencyMenu_Management_execOnAgencyDisband_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Management.FixupWidgetsUC
@@ -8061,7 +8061,7 @@ struct UTgUIAgencyMenu_Management_execOnRankChanged_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgencyMenu_Management_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Management.PreCloseScene
@@ -8167,7 +8167,7 @@ struct UTgUIAgencyMenu_Management_execSetAgencyDescription_Parms
 struct UTgUIAgencyMenu_Management_execSelectRank_Parms
 {
 	int                                                nRankId;                                          		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Management.UpdateViewablePanels
@@ -8181,7 +8181,7 @@ struct UTgUIAgencyMenu_Management_execUpdateViewablePanels_Parms
 struct UTgUIAgencyMenu_Recruiting_execOnSubmitButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Recruiting.OnSelectAgent
@@ -8189,7 +8189,7 @@ struct UTgUIAgencyMenu_Recruiting_execOnSubmitButtonKey_Parms
 struct UTgUIAgencyMenu_Recruiting_execOnSelectAgent_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Recruiting.SetRawInputKeyForAgentListMember
@@ -8204,7 +8204,7 @@ struct UTgUIAgencyMenu_Recruiting_eventSetRawInputKeyForAgentListMember_Parms
 struct UTgUIAgencyMenu_Recruiting_execOnAcceptKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Recruiting.OnDeclineKey
@@ -8212,7 +8212,7 @@ struct UTgUIAgencyMenu_Recruiting_execOnAcceptKey_Parms
 struct UTgUIAgencyMenu_Recruiting_execOnDeclineKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Recruiting.FixupWidgetsUC
@@ -8234,7 +8234,7 @@ struct UTgUIAgencyMenu_Recruiting_execOnEnterValueChanged_Parms
 struct UTgUIAgencyMenu_Recruiting_execOnDeclineButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Recruiting.OnAcceptButtonDelegate
@@ -8242,7 +8242,7 @@ struct UTgUIAgencyMenu_Recruiting_execOnDeclineButtonDelegate_Parms
 struct UTgUIAgencyMenu_Recruiting_execOnAcceptButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Recruiting.SendRecruitingUpdate
@@ -8256,7 +8256,7 @@ struct UTgUIAgencyMenu_Recruiting_execSendRecruitingUpdate_Parms
 struct UTgUIAgencyMenu_Recruiting_execSelectAgent_Parms
 {
 	int                                                nCharacterId;                                     		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Recruiting.SelectAgentByButton
@@ -8264,7 +8264,7 @@ struct UTgUIAgencyMenu_Recruiting_execSelectAgent_Parms
 struct UTgUIAgencyMenu_Recruiting_execSelectAgentByButton_Parms
 {
 	class UUIButton*                                   Button;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgencyMenu_Recruiting.UpdateViewablePanels
@@ -8304,7 +8304,7 @@ struct UTgUIAgentProfile_eventSelectTab_Parms
 struct UTgUIAgentProfile_execOnSelectAchieveTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile.OnSelectInvTab
@@ -8312,7 +8312,7 @@ struct UTgUIAgentProfile_execOnSelectAchieveTab_Parms
 struct UTgUIAgentProfile_execOnSelectInvTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile.OnSelectStatsTab
@@ -8320,7 +8320,7 @@ struct UTgUIAgentProfile_execOnSelectInvTab_Parms
 struct UTgUIAgentProfile_execOnSelectStatsTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile.OnSelectSkillsTab
@@ -8328,7 +8328,7 @@ struct UTgUIAgentProfile_execOnSelectStatsTab_Parms
 struct UTgUIAgentProfile_execOnSelectSkillsTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile.OnSelectEquipTab
@@ -8336,7 +8336,7 @@ struct UTgUIAgentProfile_execOnSelectSkillsTab_Parms
 struct UTgUIAgentProfile_execOnSelectEquipTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile.OnCloseButton
@@ -8344,7 +8344,7 @@ struct UTgUIAgentProfile_execOnSelectEquipTab_Parms
 struct UTgUIAgentProfile_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile.FixupWidgetsUC
@@ -8359,7 +8359,7 @@ struct UTgUIAgentProfile_eventFixupWidgetsUC_Parms
 struct UTgUIAgentProfile_execOnSelectProfileButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile.GetPawnToUse
@@ -8373,14 +8373,14 @@ struct UTgUIAgentProfile_execGetPawnToUse_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgentProfile_execCanChangeProfiles_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile.IsReadOnlyMode
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgentProfile_execIsReadOnlyMode_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile.SetInspectedPawn
@@ -8395,7 +8395,7 @@ struct UTgUIAgentProfile_execSetInspectedPawn_Parms
 struct UTgUIAgentProfile_execOnAgentMenuKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile.FixupWidgets
@@ -8420,7 +8420,7 @@ struct UTgUIAgentProfile_execPostOpenScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgentProfile_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Achievement.FixupWidgetsUC
@@ -8470,7 +8470,7 @@ struct UTgUIAgentProfile_Achievement_execOnProgressBarStateChangeDelegate_Parms
 struct UTgUIAgentProfile_Achievement_execOnAchievementNextButtonClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Achievement.OnAchievementPrevButtonClicked
@@ -8478,7 +8478,7 @@ struct UTgUIAgentProfile_Achievement_execOnAchievementNextButtonClicked_Parms
 struct UTgUIAgentProfile_Achievement_execOnAchievementPrevButtonClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Achievement.OnCategoryNextButtonClicked
@@ -8486,7 +8486,7 @@ struct UTgUIAgentProfile_Achievement_execOnAchievementPrevButtonClicked_Parms
 struct UTgUIAgentProfile_Achievement_execOnCategoryNextButtonClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Achievement.OnCategoryPrevButtonClicked
@@ -8494,7 +8494,7 @@ struct UTgUIAgentProfile_Achievement_execOnCategoryNextButtonClicked_Parms
 struct UTgUIAgentProfile_Achievement_execOnCategoryPrevButtonClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Achievement.OnAchievementCategoryClicked
@@ -8502,7 +8502,7 @@ struct UTgUIAgentProfile_Achievement_execOnCategoryPrevButtonClicked_Parms
 struct UTgUIAgentProfile_Achievement_execOnAchievementCategoryClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Achievement.PreCloseScene
@@ -8515,7 +8515,7 @@ struct UTgUIAgentProfile_Achievement_execPreCloseScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgentProfile_Achievement_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Achievement.FixupTgUIScene
@@ -8536,7 +8536,7 @@ struct UTgUIAgentProfile_Equip_eventSelectTab_Parms
 struct UTgUIAgentProfile_Equip_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.SetEquippedItemRepairClick
@@ -8612,7 +8612,7 @@ struct UTgUIAgentProfile_Equip_execPostRender_Parms
 struct UTgUIAgentProfile_Equip_execCheckTutorialDisabled_Parms
 {
 	unsigned char                                      Step;                                             		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.CheckTutorialStep
@@ -8620,7 +8620,7 @@ struct UTgUIAgentProfile_Equip_execCheckTutorialDisabled_Parms
 struct UTgUIAgentProfile_Equip_execCheckTutorialStep_Parms
 {
 	unsigned char                                      Step;                                             		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.UpdateTutorialProgress
@@ -8648,7 +8648,7 @@ struct UTgUIAgentProfile_Equip_execOnPaperDollUpdated_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgentProfile_Equip_execUpdatePaperDoll_Parms
 {
-	unsigned long                                      bInit : 1;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bInit    ;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.DestroyPaperDoll
@@ -8668,7 +8668,7 @@ struct UTgUIAgentProfile_Equip_execSetupPaperDoll_Parms
 struct UTgUIAgentProfile_Equip_execOnConfirmOkClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.OnConfirmNoClicked
@@ -8676,7 +8676,7 @@ struct UTgUIAgentProfile_Equip_execOnConfirmOkClicked_Parms
 struct UTgUIAgentProfile_Equip_execOnConfirmNoClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.OnConfirmYesClicked
@@ -8684,7 +8684,7 @@ struct UTgUIAgentProfile_Equip_execOnConfirmNoClicked_Parms
 struct UTgUIAgentProfile_Equip_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.OnEquippedItemStateChange
@@ -8702,7 +8702,7 @@ struct UTgUIAgentProfile_Equip_execOnEquippedItemStateChange_Parms
 struct UTgUIAgentProfile_Equip_execOnEquippedItemSelect_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.OnInvItemSelect
@@ -8710,7 +8710,7 @@ struct UTgUIAgentProfile_Equip_execOnEquippedItemSelect_Parms
 struct UTgUIAgentProfile_Equip_execOnInvItemSelect_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.OnInvItemStateChange
@@ -8728,7 +8728,7 @@ struct UTgUIAgentProfile_Equip_execOnInvItemStateChange_Parms
 struct UTgUIAgentProfile_Equip_execOnDeviceListSelect_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.OnDeviceListStateChange
@@ -8756,7 +8756,7 @@ struct UTgUIAgentProfile_Equip_execOnRepairButtonMouseOver_Parms
 struct UTgUIAgentProfile_Equip_execOnRepairButtonClick_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.OnPrevDevicePageButton
@@ -8764,7 +8764,7 @@ struct UTgUIAgentProfile_Equip_execOnRepairButtonClick_Parms
 struct UTgUIAgentProfile_Equip_execOnPrevDevicePageButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.OnNextDevicePageButton
@@ -8772,7 +8772,7 @@ struct UTgUIAgentProfile_Equip_execOnPrevDevicePageButton_Parms
 struct UTgUIAgentProfile_Equip_execOnNextDevicePageButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.OnSelectAppearanceTab
@@ -8780,7 +8780,7 @@ struct UTgUIAgentProfile_Equip_execOnNextDevicePageButton_Parms
 struct UTgUIAgentProfile_Equip_execOnSelectAppearanceTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.OnSelectArmorTab
@@ -8788,7 +8788,7 @@ struct UTgUIAgentProfile_Equip_execOnSelectAppearanceTab_Parms
 struct UTgUIAgentProfile_Equip_execOnSelectArmorTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.OnSelectDeviceTab
@@ -8796,7 +8796,7 @@ struct UTgUIAgentProfile_Equip_execOnSelectArmorTab_Parms
 struct UTgUIAgentProfile_Equip_execOnSelectDeviceTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.OnAgentMenuKey
@@ -8804,14 +8804,14 @@ struct UTgUIAgentProfile_Equip_execOnSelectDeviceTab_Parms
 struct UTgUIAgentProfile_Equip_execOnAgentMenuKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.IsReadOnlyMode
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgentProfile_Equip_execIsReadOnlyMode_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Equip.PreCloseScene
@@ -8830,7 +8830,7 @@ struct UTgUIAgentProfile_Equip_execFixupWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgentProfile_Equip_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Inventory.FixupWidgetsUC
@@ -8926,7 +8926,7 @@ struct UTgUIAgentProfile_Inventory_execOnInvItemStateChange_Parms
 struct UTgUIAgentProfile_Inventory_execOnSalvageCloseDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Inventory.OnActivateInventoryItemDelegate
@@ -8934,7 +8934,7 @@ struct UTgUIAgentProfile_Inventory_execOnSalvageCloseDelegate_Parms
 struct UTgUIAgentProfile_Inventory_execOnActivateInventoryItemDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Inventory.OnSortInventoryDelegate
@@ -8942,7 +8942,7 @@ struct UTgUIAgentProfile_Inventory_execOnActivateInventoryItemDelegate_Parms
 struct UTgUIAgentProfile_Inventory_execOnSortInventoryDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Inventory.OnSalvageInventoryItemDelegate
@@ -8950,7 +8950,7 @@ struct UTgUIAgentProfile_Inventory_execOnSortInventoryDelegate_Parms
 struct UTgUIAgentProfile_Inventory_execOnSalvageInventoryItemDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Inventory.OnDeleteInventoryItemDelegate
@@ -8958,7 +8958,7 @@ struct UTgUIAgentProfile_Inventory_execOnSalvageInventoryItemDelegate_Parms
 struct UTgUIAgentProfile_Inventory_execOnDeleteInventoryItemDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Inventory.OnSelectInventoryItemDelegate
@@ -8966,7 +8966,7 @@ struct UTgUIAgentProfile_Inventory_execOnDeleteInventoryItemDelegate_Parms
 struct UTgUIAgentProfile_Inventory_execOnSelectInventoryItemDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Inventory.OnFilterChangedDelegate
@@ -8982,7 +8982,7 @@ struct UTgUIAgentProfile_Inventory_execOnFilterChangedDelegate_Parms
 struct UTgUIAgentProfile_Inventory_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Inventory.OnConfirmYesClicked
@@ -8990,7 +8990,7 @@ struct UTgUIAgentProfile_Inventory_execOnSceneInputKeyDelegate_Parms
 struct UTgUIAgentProfile_Inventory_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Inventory.SelectInventoryItem
@@ -9022,7 +9022,7 @@ struct UTgUIAgentProfile_Inventory_execFixupTgUIScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgentProfile_Inventory_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Inventory.PreCloseScene
@@ -9051,7 +9051,7 @@ struct UTgUIAgentProfile_Skill_eventFixupWidgetsUC_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgentProfile_Skill_execValidateRespecSkillFeature_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Skill.OnSkillButtonStateChangeDelegate
@@ -9069,7 +9069,7 @@ struct UTgUIAgentProfile_Skill_execOnSkillButtonStateChangeDelegate_Parms
 struct UTgUIAgentProfile_Skill_execOnSkillButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Skill.OnResetAllDelegate
@@ -9077,7 +9077,7 @@ struct UTgUIAgentProfile_Skill_execOnSkillButtonDelegate_Parms
 struct UTgUIAgentProfile_Skill_execOnResetAllDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Skill.OnResetDelegate
@@ -9085,7 +9085,7 @@ struct UTgUIAgentProfile_Skill_execOnResetAllDelegate_Parms
 struct UTgUIAgentProfile_Skill_execOnResetDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Skill.OnSaveDelegate
@@ -9093,14 +9093,14 @@ struct UTgUIAgentProfile_Skill_execOnResetDelegate_Parms
 struct UTgUIAgentProfile_Skill_execOnSaveDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Skill.IsReadOnlyMode
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgentProfile_Skill_execIsReadOnlyMode_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Skill.PostOpenScene
@@ -9125,7 +9125,7 @@ struct UTgUIAgentProfile_Skill_execFixupTgUIScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgentProfile_Skill_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Stat.FixupWidgetsUC
@@ -9161,7 +9161,7 @@ struct UTgUIAgentProfile_Stat_execOnFlairIconStateChange_Parms
 struct UTgUIAgentProfile_Stat_execOnUnequipFlairClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Stat.OnFlairIconClicked
@@ -9169,7 +9169,7 @@ struct UTgUIAgentProfile_Stat_execOnUnequipFlairClicked_Parms
 struct UTgUIAgentProfile_Stat_execOnFlairIconClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Stat.OnPaperDollUpdated
@@ -9195,7 +9195,7 @@ struct UTgUIAgentProfile_Stat_execSetupPaperDoll_Parms
 struct UTgUIAgentProfile_Stat_execOnNextBadgeButtonClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Stat.OnPrevBadgeButtonClicked
@@ -9203,7 +9203,7 @@ struct UTgUIAgentProfile_Stat_execOnNextBadgeButtonClicked_Parms
 struct UTgUIAgentProfile_Stat_execOnPrevBadgeButtonClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Stat.OnNextButtonClicked
@@ -9211,7 +9211,7 @@ struct UTgUIAgentProfile_Stat_execOnPrevBadgeButtonClicked_Parms
 struct UTgUIAgentProfile_Stat_execOnNextButtonClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Stat.OnPrevButtonClicked
@@ -9219,7 +9219,7 @@ struct UTgUIAgentProfile_Stat_execOnNextButtonClicked_Parms
 struct UTgUIAgentProfile_Stat_execOnPrevButtonClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Stat.OnSelectIconTab
@@ -9227,7 +9227,7 @@ struct UTgUIAgentProfile_Stat_execOnPrevButtonClicked_Parms
 struct UTgUIAgentProfile_Stat_execOnSelectIconTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Stat.OnSelectSubTab
@@ -9235,7 +9235,7 @@ struct UTgUIAgentProfile_Stat_execOnSelectIconTab_Parms
 struct UTgUIAgentProfile_Stat_execOnSelectSubTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Stat.OnSceneInputKeyDelegate
@@ -9243,7 +9243,7 @@ struct UTgUIAgentProfile_Stat_execOnSelectSubTab_Parms
 struct UTgUIAgentProfile_Stat_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAgentProfile_Stat.PostOpenScene
@@ -9268,14 +9268,14 @@ struct UTgUIAgentProfile_Stat_execFixupTgUIScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAgentProfile_Stat_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionGeneral.ValidateAuctionFeature
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAuctionGeneral_execValidateAuctionFeature_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionGeneral.OnConfirmNoClicked
@@ -9283,7 +9283,7 @@ struct UTgUIAuctionGeneral_execValidateAuctionFeature_Parms
 struct UTgUIAuctionGeneral_execOnConfirmNoClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionGeneral.OnConfirmYesClicked
@@ -9291,7 +9291,7 @@ struct UTgUIAuctionGeneral_execOnConfirmNoClicked_Parms
 struct UTgUIAuctionGeneral_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionGeneral.OpenBuyoutConfirmPopup
@@ -9306,7 +9306,7 @@ struct UTgUIAuctionGeneral_execOpenBuyoutConfirmPopup_Parms
 struct UTgUIAuctionGeneral_execOnAuctionItemSelect_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionGeneral.OnBuyoutButton
@@ -9314,7 +9314,7 @@ struct UTgUIAuctionGeneral_execOnAuctionItemSelect_Parms
 struct UTgUIAuctionGeneral_execOnBuyoutButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionGeneral.OnTabButton
@@ -9322,7 +9322,7 @@ struct UTgUIAuctionGeneral_execOnBuyoutButton_Parms
 struct UTgUIAuctionGeneral_execOnTabButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionGeneral.OnCloseButton
@@ -9330,7 +9330,7 @@ struct UTgUIAuctionGeneral_execOnTabButton_Parms
 struct UTgUIAuctionGeneral_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionBidMenu.FixupWidgetsUC
@@ -9378,7 +9378,7 @@ struct UTgUIAuctionBidMenu_execOnAuctionItemStateChange_Parms
 struct UTgUIAuctionBidMenu_execOnAuctionItemSelect_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionBidMenu.OnCancelAuctionButton
@@ -9386,7 +9386,7 @@ struct UTgUIAuctionBidMenu_execOnAuctionItemSelect_Parms
 struct UTgUIAuctionBidMenu_execOnCancelAuctionButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionBidMenu.OnBidButton
@@ -9394,7 +9394,7 @@ struct UTgUIAuctionBidMenu_execOnCancelAuctionButton_Parms
 struct UTgUIAuctionBidMenu_execOnBidButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionBidMenu.OnSceneKeyPressed
@@ -9402,7 +9402,7 @@ struct UTgUIAuctionBidMenu_execOnBidButton_Parms
 struct UTgUIAuctionBidMenu_execOnSceneKeyPressed_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionBidMenu.UpdateHighlight
@@ -9428,7 +9428,7 @@ struct UTgUIAuctionBidMenu_execResizeDisplayList_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAuctionBidMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionBidMenu.FixupWidgets
@@ -9518,7 +9518,7 @@ struct UTgUIAuctionBrowseMenu_execOnLowestPriceOnlyChanged_Parms
 struct UTgUIAuctionBrowseMenu_execOnTypeCategoryClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionBrowseMenu.OnAuctionTimeStateChange
@@ -9546,7 +9546,7 @@ struct UTgUIAuctionBrowseMenu_execOnAuctionItemStateChange_Parms
 struct UTgUIAuctionBrowseMenu_execOnAuctionItemSelect_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionBrowseMenu.OnBidButton
@@ -9554,7 +9554,7 @@ struct UTgUIAuctionBrowseMenu_execOnAuctionItemSelect_Parms
 struct UTgUIAuctionBrowseMenu_execOnBidButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionBrowseMenu.OnSearchButton
@@ -9562,7 +9562,7 @@ struct UTgUIAuctionBrowseMenu_execOnBidButton_Parms
 struct UTgUIAuctionBrowseMenu_execOnSearchButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionBrowseMenu.OnResetButton
@@ -9570,7 +9570,7 @@ struct UTgUIAuctionBrowseMenu_execOnSearchButton_Parms
 struct UTgUIAuctionBrowseMenu_execOnResetButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionBrowseMenu.OnSceneKeyPressed
@@ -9578,7 +9578,7 @@ struct UTgUIAuctionBrowseMenu_execOnResetButton_Parms
 struct UTgUIAuctionBrowseMenu_execOnSceneKeyPressed_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionBrowseMenu.UpdateHighlight
@@ -9604,7 +9604,7 @@ struct UTgUIAuctionBrowseMenu_execResizeDisplayList_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAuctionBrowseMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionBrowseMenu.FixupWidgets
@@ -9680,7 +9680,7 @@ struct UTgUIAuctionSellMenu_execOnInvItemStateChange_Parms
 struct UTgUIAuctionSellMenu_execOnSortInventoryDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionSellMenu.OnSelectInventoryItemDelegate
@@ -9688,7 +9688,7 @@ struct UTgUIAuctionSellMenu_execOnSortInventoryDelegate_Parms
 struct UTgUIAuctionSellMenu_execOnSelectInventoryItemDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionSellMenu.OnSellButton
@@ -9696,7 +9696,7 @@ struct UTgUIAuctionSellMenu_execOnSelectInventoryItemDelegate_Parms
 struct UTgUIAuctionSellMenu_execOnSellButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionSellMenu.OnSceneKeyPressed
@@ -9704,7 +9704,7 @@ struct UTgUIAuctionSellMenu_execOnSellButton_Parms
 struct UTgUIAuctionSellMenu_execOnSceneKeyPressed_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionSellMenu.UpdateInventoryHighlight
@@ -9717,7 +9717,7 @@ struct UTgUIAuctionSellMenu_execUpdateInventoryHighlight_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIAuctionSellMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIAuctionSellMenu.FixupWidgets
@@ -9751,7 +9751,7 @@ struct UTgUICampaignMenu_eventSelectTab_Parms
 struct UTgUICampaignMenu_execOnSelectLeaderboardTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu.OnSelectCombatLogTab
@@ -9759,7 +9759,7 @@ struct UTgUICampaignMenu_execOnSelectLeaderboardTab_Parms
 struct UTgUICampaignMenu_execOnSelectCombatLogTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu.OnSelectCombatTab
@@ -9767,7 +9767,7 @@ struct UTgUICampaignMenu_execOnSelectCombatLogTab_Parms
 struct UTgUICampaignMenu_execOnSelectCombatTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu.OnSelectHexMapTab
@@ -9775,7 +9775,7 @@ struct UTgUICampaignMenu_execOnSelectCombatTab_Parms
 struct UTgUICampaignMenu_execOnSelectHexMapTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu.OnCloseButton
@@ -9783,7 +9783,7 @@ struct UTgUICampaignMenu_execOnSelectHexMapTab_Parms
 struct UTgUICampaignMenu_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu.FixupWidgetsUC
@@ -9815,7 +9815,7 @@ struct UTgUICampaignMenu_execGetAgencyData_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUICampaignMenu_execOnHexDataUpdated_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu.OnSceneKey
@@ -9823,7 +9823,7 @@ struct UTgUICampaignMenu_execOnHexDataUpdated_Parms
 struct UTgUICampaignMenu_execOnSceneKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu.RegisterCallbacks
@@ -9836,7 +9836,7 @@ struct UTgUICampaignMenu_execRegisterCallbacks_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUICampaignMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu.PreCloseScene
@@ -9882,7 +9882,7 @@ struct UTgUICampaignMenu_Combat_eventFixupWidgetsUC_Parms
 struct UTgUICampaignMenu_Combat_execOnAttackerSetSort_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_Combat.OnAttackerJoin
@@ -9890,7 +9890,7 @@ struct UTgUICampaignMenu_Combat_execOnAttackerSetSort_Parms
 struct UTgUICampaignMenu_Combat_execOnAttackerJoin_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_Combat.OnSelectAttacker
@@ -9898,7 +9898,7 @@ struct UTgUICampaignMenu_Combat_execOnAttackerJoin_Parms
 struct UTgUICampaignMenu_Combat_execOnSelectAttacker_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_Combat.OnAttackerFilterChanged
@@ -9940,7 +9940,7 @@ struct UTgUICampaignMenu_Combat_execUpdateAttackerList_Parms
 struct UTgUICampaignMenu_Combat_execOnDefenderSetSort_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_Combat.OnDefenderKickTeam
@@ -9948,7 +9948,7 @@ struct UTgUICampaignMenu_Combat_execOnDefenderSetSort_Parms
 struct UTgUICampaignMenu_Combat_execOnDefenderKickTeam_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_Combat.OnDefenderJoin
@@ -9956,7 +9956,7 @@ struct UTgUICampaignMenu_Combat_execOnDefenderKickTeam_Parms
 struct UTgUICampaignMenu_Combat_execOnDefenderJoin_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_Combat.OnSelectDefender
@@ -9964,7 +9964,7 @@ struct UTgUICampaignMenu_Combat_execOnDefenderJoin_Parms
 struct UTgUICampaignMenu_Combat_execOnSelectDefender_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_Combat.OnDefenderFilterChanged
@@ -10029,14 +10029,14 @@ struct UTgUICampaignMenu_Combat_execPostOpenScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUICampaignMenu_Combat_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_Combat.OnACADataUpdated
 // [0x00020400] ( FUNC_Native )
 struct UTgUICampaignMenu_Combat_execOnACADataUpdated_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_CombatLog.FixupWidgetsUC
@@ -10050,7 +10050,7 @@ struct UTgUICampaignMenu_CombatLog_eventFixupWidgetsUC_Parms
 struct UTgUICampaignMenu_CombatLog_execOnResetButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_CombatLog.OnSearchButtonDelegate
@@ -10058,7 +10058,7 @@ struct UTgUICampaignMenu_CombatLog_execOnResetButtonDelegate_Parms
 struct UTgUICampaignMenu_CombatLog_execOnSearchButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_CombatLog.ResizeLogList
@@ -10084,7 +10084,7 @@ struct UTgUICampaignMenu_CombatLog_execFixupTgUIScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUICampaignMenu_CombatLog_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_HexMap.OnPopupButton
@@ -10092,7 +10092,7 @@ struct UTgUICampaignMenu_CombatLog_execTickTgUIScene_Parms
 struct UTgUICampaignMenu_HexMap_execOnPopupButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_HexMap.OnOpenTerritories
@@ -10100,7 +10100,7 @@ struct UTgUICampaignMenu_HexMap_execOnPopupButton_Parms
 struct UTgUICampaignMenu_HexMap_execOnOpenTerritories_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_HexMap.OnHexWithdraw
@@ -10108,7 +10108,7 @@ struct UTgUICampaignMenu_HexMap_execOnOpenTerritories_Parms
 struct UTgUICampaignMenu_HexMap_execOnHexWithdraw_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_HexMap.OnHexRaid
@@ -10116,7 +10116,7 @@ struct UTgUICampaignMenu_HexMap_execOnHexWithdraw_Parms
 struct UTgUICampaignMenu_HexMap_execOnHexRaid_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_HexMap.OnHexSteal
@@ -10124,7 +10124,7 @@ struct UTgUICampaignMenu_HexMap_execOnHexRaid_Parms
 struct UTgUICampaignMenu_HexMap_execOnHexSteal_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_HexMap.OnHexCapture
@@ -10132,7 +10132,7 @@ struct UTgUICampaignMenu_HexMap_execOnHexSteal_Parms
 struct UTgUICampaignMenu_HexMap_execOnHexCapture_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_HexMap.OnHexJoin
@@ -10140,7 +10140,7 @@ struct UTgUICampaignMenu_HexMap_execOnHexCapture_Parms
 struct UTgUICampaignMenu_HexMap_execOnHexJoin_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_HexMap.OnHexDefend
@@ -10148,7 +10148,7 @@ struct UTgUICampaignMenu_HexMap_execOnHexJoin_Parms
 struct UTgUICampaignMenu_HexMap_execOnHexDefend_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_HexMap.FixupWidgetsUC
@@ -10162,7 +10162,7 @@ struct UTgUICampaignMenu_HexMap_eventFixupWidgetsUC_Parms
 struct UTgUICampaignMenu_HexMap_execOnNavButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_HexMap.OnConfirmYesClicked
@@ -10170,7 +10170,7 @@ struct UTgUICampaignMenu_HexMap_execOnNavButton_Parms
 struct UTgUICampaignMenu_HexMap_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_HexMap.OnHexBidCancel
@@ -10178,7 +10178,7 @@ struct UTgUICampaignMenu_HexMap_execOnConfirmYesClicked_Parms
 struct UTgUICampaignMenu_HexMap_execOnHexBidCancel_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_HexMap.OnHexBid
@@ -10186,7 +10186,7 @@ struct UTgUICampaignMenu_HexMap_execOnHexBidCancel_Parms
 struct UTgUICampaignMenu_HexMap_execOnHexBid_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_HexMap.OnZoneChanged
@@ -10225,7 +10225,7 @@ struct UTgUICampaignMenu_HexMap_execUpdateToolTipData_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUICampaignMenu_HexMap_execUpdateHexMap_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_HexMap.OnHexAssignmentUpdated
@@ -10238,7 +10238,7 @@ struct UTgUICampaignMenu_HexMap_execOnHexAssignmentUpdated_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUICampaignMenu_HexMap_execOnHexDataUpdated_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_HexMap.OpenTerritories
@@ -10301,7 +10301,7 @@ struct UTgUICampaignMenu_HexMap_execOpenPopupMessage_Parms
 struct UTgUICampaignMenu_HexMap_execOnSceneKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_HexMap.PostRender
@@ -10320,7 +10320,7 @@ struct UTgUICampaignMenu_HexMap_execRegisterCallbacks_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUICampaignMenu_HexMap_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_HexMap.FixupTgUIScene
@@ -10382,7 +10382,7 @@ struct UTgUICampaignMenu_Leaderboard_execFixupTgUIScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUICampaignMenu_Leaderboard_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICampaignMenu_Leaderboard.PostOpenScene
@@ -10437,7 +10437,7 @@ struct UTgUICargoMenu_eventFixupWidgetsUC_Parms
 struct UTgUICargoMenu_execSelectCargoByButton_Parms
 {
 	class UUIButton*                                   Button;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.SelectMemberByButton
@@ -10445,7 +10445,7 @@ struct UTgUICargoMenu_execSelectCargoByButton_Parms
 struct UTgUICargoMenu_execSelectMemberByButton_Parms
 {
 	class UUIButton*                                   Button;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.OnAmountChangedDelegate
@@ -10481,7 +10481,7 @@ struct UTgUICargoMenu_execOnDropshipItemStateChange_Parms
 struct UTgUICargoMenu_execOnCargoRemoveDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.OnCargoAddDelegate
@@ -10489,7 +10489,7 @@ struct UTgUICargoMenu_execOnCargoRemoveDelegate_Parms
 struct UTgUICargoMenu_execOnCargoAddDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.OnDropshipRemoveDelegate
@@ -10497,7 +10497,7 @@ struct UTgUICargoMenu_execOnCargoAddDelegate_Parms
 struct UTgUICargoMenu_execOnDropshipRemoveDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.OnDropshipAddDelegate
@@ -10505,7 +10505,7 @@ struct UTgUICargoMenu_execOnDropshipRemoveDelegate_Parms
 struct UTgUICargoMenu_execOnDropshipAddDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.OnSelectSFTeamDelegate
@@ -10513,7 +10513,7 @@ struct UTgUICargoMenu_execOnDropshipAddDelegate_Parms
 struct UTgUICargoMenu_execOnSelectSFTeamDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.OnSceneMapDelegate
@@ -10521,7 +10521,7 @@ struct UTgUICargoMenu_execOnSelectSFTeamDelegate_Parms
 struct UTgUICargoMenu_execOnSceneMapDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.OnSceneManageDelegate
@@ -10529,7 +10529,7 @@ struct UTgUICargoMenu_execOnSceneMapDelegate_Parms
 struct UTgUICargoMenu_execOnSceneManageDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.OnSceneDetailDelegate
@@ -10537,7 +10537,7 @@ struct UTgUICargoMenu_execOnSceneManageDelegate_Parms
 struct UTgUICargoMenu_execOnSceneDetailDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.OnSceneTeamDelegate
@@ -10545,7 +10545,7 @@ struct UTgUICargoMenu_execOnSceneDetailDelegate_Parms
 struct UTgUICargoMenu_execOnSceneTeamDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.OnSceneRaidDelegate
@@ -10553,7 +10553,7 @@ struct UTgUICargoMenu_execOnSceneTeamDelegate_Parms
 struct UTgUICargoMenu_execOnSceneRaidDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.OnCargoListDelegate
@@ -10561,7 +10561,7 @@ struct UTgUICargoMenu_execOnSceneRaidDelegate_Parms
 struct UTgUICargoMenu_execOnCargoListDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.OnTeamMemberDelegate
@@ -10569,7 +10569,7 @@ struct UTgUICargoMenu_execOnCargoListDelegate_Parms
 struct UTgUICargoMenu_execOnTeamMemberDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.OnSceneLeaveDelegate
@@ -10577,7 +10577,7 @@ struct UTgUICargoMenu_execOnTeamMemberDelegate_Parms
 struct UTgUICargoMenu_execOnSceneLeaveDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.OnScenePromoteDelegate
@@ -10585,7 +10585,7 @@ struct UTgUICargoMenu_execOnSceneLeaveDelegate_Parms
 struct UTgUICargoMenu_execOnScenePromoteDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.OnSceneRemoveDelegate
@@ -10593,7 +10593,7 @@ struct UTgUICargoMenu_execOnScenePromoteDelegate_Parms
 struct UTgUICargoMenu_execOnSceneRemoveDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.OnCloseButtonDelegate
@@ -10601,7 +10601,7 @@ struct UTgUICargoMenu_execOnSceneRemoveDelegate_Parms
 struct UTgUICargoMenu_execOnCloseButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.OnSceneInputKeyDelegate
@@ -10609,7 +10609,7 @@ struct UTgUICargoMenu_execOnCloseButtonDelegate_Parms
 struct UTgUICargoMenu_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.RegisterCallbacks
@@ -10622,7 +10622,7 @@ struct UTgUICargoMenu_execRegisterCallbacks_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUICargoMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICargoMenu.FixupTgUIScene
@@ -10650,7 +10650,7 @@ struct UTgUICharacterSelectScene_eventClearModelData_Parms
 // [0x00020802] ( FUNC_Event )
 struct UTgUICharacterSelectScene_eventUpdateCustomModel_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.SelectCharacter
@@ -10658,7 +10658,7 @@ struct UTgUICharacterSelectScene_eventUpdateCustomModel_Parms
 struct UTgUICharacterSelectScene_eventSelectCharacter_Parms
 {
 	int                                                Index;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             oldSelection;                                     		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -10674,7 +10674,7 @@ struct UTgUICharacterSelectScene_execOpenCreateCharacterScreen_Parms
 struct UTgUICharacterSelectScene_execOnDeleteCancel_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.OnErrorOK
@@ -10682,7 +10682,7 @@ struct UTgUICharacterSelectScene_execOnDeleteCancel_Parms
 struct UTgUICharacterSelectScene_execOnErrorOK_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.OnDeleteOK
@@ -10690,7 +10690,7 @@ struct UTgUICharacterSelectScene_execOnErrorOK_Parms
 struct UTgUICharacterSelectScene_execOnDeleteOK_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.CamZoomToggleButton
@@ -10698,7 +10698,7 @@ struct UTgUICharacterSelectScene_execOnDeleteOK_Parms
 struct UTgUICharacterSelectScene_execCamZoomToggleButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.OnDeleteSelection
@@ -10706,7 +10706,7 @@ struct UTgUICharacterSelectScene_execCamZoomToggleButton_Parms
 struct UTgUICharacterSelectScene_execOnDeleteSelection_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.OnCreateSelection
@@ -10714,7 +10714,7 @@ struct UTgUICharacterSelectScene_execOnDeleteSelection_Parms
 struct UTgUICharacterSelectScene_execOnCreateSelection_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.OnSelectSelection
@@ -10722,7 +10722,7 @@ struct UTgUICharacterSelectScene_execOnCreateSelection_Parms
 struct UTgUICharacterSelectScene_execOnSelectSelection_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.OnBackButton
@@ -10730,7 +10730,7 @@ struct UTgUICharacterSelectScene_execOnSelectSelection_Parms
 struct UTgUICharacterSelectScene_execOnBackButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgLoginHUD*                              loginHUD;                                         		// 0x0028 (0x0004) [0x0000000000000000]              
 };
 
@@ -10739,7 +10739,7 @@ struct UTgUICharacterSelectScene_execOnBackButton_Parms
 struct UTgUICharacterSelectScene_execOnSelectCharacter7_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.OnSelectCharacter6
@@ -10747,7 +10747,7 @@ struct UTgUICharacterSelectScene_execOnSelectCharacter7_Parms
 struct UTgUICharacterSelectScene_execOnSelectCharacter6_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.OnSelectCharacter5
@@ -10755,7 +10755,7 @@ struct UTgUICharacterSelectScene_execOnSelectCharacter6_Parms
 struct UTgUICharacterSelectScene_execOnSelectCharacter5_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.OnSelectCharacter4
@@ -10763,7 +10763,7 @@ struct UTgUICharacterSelectScene_execOnSelectCharacter5_Parms
 struct UTgUICharacterSelectScene_execOnSelectCharacter4_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.OnSelectCharacter3
@@ -10771,7 +10771,7 @@ struct UTgUICharacterSelectScene_execOnSelectCharacter4_Parms
 struct UTgUICharacterSelectScene_execOnSelectCharacter3_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.OnSelectCharacter2
@@ -10779,7 +10779,7 @@ struct UTgUICharacterSelectScene_execOnSelectCharacter3_Parms
 struct UTgUICharacterSelectScene_execOnSelectCharacter2_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.OnSelectCharacter1
@@ -10787,7 +10787,7 @@ struct UTgUICharacterSelectScene_execOnSelectCharacter2_Parms
 struct UTgUICharacterSelectScene_execOnSelectCharacter1_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.OnSelectCharacter0
@@ -10795,7 +10795,7 @@ struct UTgUICharacterSelectScene_execOnSelectCharacter1_Parms
 struct UTgUICharacterSelectScene_execOnSelectCharacter0_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.FixupWidgetsUC
@@ -10816,7 +10816,7 @@ struct UTgUICharacterSelectScene_eventInitializeDataInterface_Parms
 struct UTgUICharacterSelectScene_execOnSelectNext_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.OnSelectPrevious
@@ -10824,7 +10824,7 @@ struct UTgUICharacterSelectScene_execOnSelectNext_Parms
 struct UTgUICharacterSelectScene_execOnSelectPrevious_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.OnSceneInputKeyDelegate
@@ -10832,14 +10832,14 @@ struct UTgUICharacterSelectScene_execOnSelectPrevious_Parms
 struct UTgUICharacterSelectScene_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.ValidateCharSlotFeature
 // [0x00020400] ( FUNC_Native )
 struct UTgUICharacterSelectScene_execValidateCharSlotFeature_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.OnDeleteFieldChangedDelegate
@@ -10860,14 +10860,14 @@ struct UTgUICharacterSelectScene_execPopulateCurrentMorphSettings_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUICharacterSelectScene_execZoomOnChar_Parms
 {
-	unsigned long                                      bZoomIn : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bZoomIn    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.UpdateStatusPanel
 // [0x00024400] ( FUNC_Native )
 struct UTgUICharacterSelectScene_execUpdateStatusPanel_Parms
 {
-	unsigned long                                      bEnable : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnable    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	struct FString                                     DisplayString;                                    		// 0x0004 (0x000C) [0x0000000000400090]              ( CPF_OptionalParm | CPF_Parm | CPF_NeedCtorLink )
 };
 
@@ -10894,7 +10894,7 @@ struct UTgUICharacterSelectScene_execTickDialogueBoxes_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUICharacterSelectScene_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICharacterSelectScene.ClearCharacterData
@@ -10975,7 +10975,7 @@ struct UTgUICraftScene_eventSetSelectCraftItemDelegate_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUICraftScene_execValidateCraftingFeature_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICraftScene.OnPrevPage
@@ -10983,7 +10983,7 @@ struct UTgUICraftScene_execValidateCraftingFeature_Parms
 struct UTgUICraftScene_execOnPrevPage_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICraftScene.OnNextPage
@@ -10991,7 +10991,7 @@ struct UTgUICraftScene_execOnPrevPage_Parms
 struct UTgUICraftScene_execOnNextPage_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICraftScene.OnCraftItemStateChange
@@ -11017,7 +11017,7 @@ struct UTgUICraftScene_execOnFilterChangedDelegate_Parms
 struct UTgUICraftScene_execOnCraftButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICraftScene.OnSortInventoryDelegate
@@ -11025,7 +11025,7 @@ struct UTgUICraftScene_execOnCraftButtonDelegate_Parms
 struct UTgUICraftScene_execOnSortInventoryDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICraftScene.OnSelectCraftItemDelegate
@@ -11033,7 +11033,7 @@ struct UTgUICraftScene_execOnSortInventoryDelegate_Parms
 struct UTgUICraftScene_execOnSelectCraftItemDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICraftScene.OnCloseButtonDelegate
@@ -11041,7 +11041,7 @@ struct UTgUICraftScene_execOnSelectCraftItemDelegate_Parms
 struct UTgUICraftScene_execOnCloseButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICraftScene.OnSceneInputKeyDelegate
@@ -11049,7 +11049,7 @@ struct UTgUICraftScene_execOnCloseButtonDelegate_Parms
 struct UTgUICraftScene_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICraftScene.ResizeCraftDetailsWidgets
@@ -11108,7 +11108,7 @@ struct UTgUICraftScene_execFixupTgUIScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUICraftScene_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICraftScene.PreCloseScene
@@ -11213,7 +11213,7 @@ struct UTgUICustomHeadMenu_execOnDetailButtonMouseOverDelegate_Parms
 struct UTgUICustomHeadMenu_execCreateHeadNextButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICustomHeadMenu.OnDetailButtonDelegate
@@ -11221,7 +11221,7 @@ struct UTgUICustomHeadMenu_execCreateHeadNextButton_Parms
 struct UTgUICustomHeadMenu_execOnDetailButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICustomHeadMenu.OnLockButtonDelegate
@@ -11229,7 +11229,7 @@ struct UTgUICustomHeadMenu_execOnDetailButtonDelegate_Parms
 struct UTgUICustomHeadMenu_execOnLockButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICustomHeadMenu.OnRandomAllButton
@@ -11237,7 +11237,7 @@ struct UTgUICustomHeadMenu_execOnLockButtonDelegate_Parms
 struct UTgUICustomHeadMenu_execOnRandomAllButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICustomHeadMenu.OnBackButton
@@ -11245,7 +11245,7 @@ struct UTgUICustomHeadMenu_execOnRandomAllButton_Parms
 struct UTgUICustomHeadMenu_execOnBackButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICustomHeadMenu.OnSceneInputKeyDelegate
@@ -11253,7 +11253,7 @@ struct UTgUICustomHeadMenu_execOnBackButton_Parms
 struct UTgUICustomHeadMenu_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICustomHeadMenu.OnConfirmNoClicked
@@ -11261,7 +11261,7 @@ struct UTgUICustomHeadMenu_execOnSceneInputKeyDelegate_Parms
 struct UTgUICustomHeadMenu_execOnConfirmNoClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICustomHeadMenu.OnConfirmYesClicked
@@ -11269,7 +11269,7 @@ struct UTgUICustomHeadMenu_execOnConfirmNoClicked_Parms
 struct UTgUICustomHeadMenu_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICustomHeadMenu.OnGroupSliderValueChanged
@@ -11310,7 +11310,7 @@ struct UTgUICustomHeadMenu_execBuildNodeData_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUICustomHeadMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUICustomHeadMenu.PostOpenScene
@@ -11341,7 +11341,7 @@ struct UTgUIDeviceModPopup_execFixupWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIDeviceModPopup_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDeviceModPopup.FixupTgUIScene
@@ -11365,7 +11365,7 @@ struct UTgUIDeviceModPopup_execOnInvItemStateChange_Parms
 struct UTgUIDeviceModPopup_execOnConfirmNo_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDeviceModPopup.OnConfirmYes
@@ -11373,7 +11373,7 @@ struct UTgUIDeviceModPopup_execOnConfirmNo_Parms
 struct UTgUIDeviceModPopup_execOnConfirmYes_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDeviceStats.FixupWidgetsUC
@@ -11389,7 +11389,7 @@ struct UTgUIDeviceStats_eventFixupWidgetsUC_Parms
 struct UTgUIDeviceStats_execOnEndMissionButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDeviceStats.OnMatchStatsButton
@@ -11397,7 +11397,7 @@ struct UTgUIDeviceStats_execOnEndMissionButton_Parms
 struct UTgUIDeviceStats_execOnMatchStatsButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDeviceStats.OnSummaryButton
@@ -11405,7 +11405,7 @@ struct UTgUIDeviceStats_execOnMatchStatsButton_Parms
 struct UTgUIDeviceStats_execOnSummaryButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDeviceStats.OnCloseButton
@@ -11413,7 +11413,7 @@ struct UTgUIDeviceStats_execOnSummaryButton_Parms
 struct UTgUIDeviceStats_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDeviceStats.OnDeviceItemStateChange
@@ -11431,7 +11431,7 @@ struct UTgUIDeviceStats_execOnDeviceItemStateChange_Parms
 struct UTgUIDeviceStats_execOnFieldClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDeviceStats.OnSceneKey
@@ -11439,7 +11439,7 @@ struct UTgUIDeviceStats_execOnFieldClicked_Parms
 struct UTgUIDeviceStats_execOnSceneKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDeviceStats.PostInitSceneDriver
@@ -11452,7 +11452,7 @@ struct UTgUIDeviceStats_execPostInitSceneDriver_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIDeviceStats_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIDeviceStats.FixupTgUIScene
@@ -11466,7 +11466,7 @@ struct UTgUIDeviceStats_execFixupTgUIScene_Parms
 struct UTgUIEndMissionScreen_execOnConfirmNoClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIEndMissionScreen.OnConfirmYesClicked
@@ -11474,7 +11474,7 @@ struct UTgUIEndMissionScreen_execOnConfirmNoClicked_Parms
 struct UTgUIEndMissionScreen_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIEndMissionScreen.OnUpgradeButton
@@ -11482,7 +11482,7 @@ struct UTgUIEndMissionScreen_execOnConfirmYesClicked_Parms
 struct UTgUIEndMissionScreen_execOnUpgradeButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIEndMissionScreen.OnEndMissionButton
@@ -11490,7 +11490,7 @@ struct UTgUIEndMissionScreen_execOnUpgradeButton_Parms
 struct UTgUIEndMissionScreen_execOnEndMissionButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIEndMissionScreen.OnDeviceStatsButton
@@ -11498,7 +11498,7 @@ struct UTgUIEndMissionScreen_execOnEndMissionButton_Parms
 struct UTgUIEndMissionScreen_execOnDeviceStatsButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIEndMissionScreen.OnMatchStatsButton
@@ -11506,7 +11506,7 @@ struct UTgUIEndMissionScreen_execOnDeviceStatsButton_Parms
 struct UTgUIEndMissionScreen_execOnMatchStatsButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIEndMissionScreen.OnLootItemStateChange
@@ -11529,16 +11529,16 @@ struct UTgUIEndMissionScreen_execBeginFadeIn_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIEndMissionScreen_execSetLabelTextAndColor_Parms
 {
-	unsigned long                                      MissionVictor : 1;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      PlayerVictor : 1;                                 		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bTie : 1;                                         		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      MissionVictor    ;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      PlayerVictor    ;                                 		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bTie    ;                                         		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIEndMissionScreen.TickTgUIScene
 // [0x00020400] ( FUNC_Native )
 struct UTgUIEndMissionScreen_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIEndMissionScreen.PostOpenScene
@@ -11558,7 +11558,7 @@ struct UTgUIEndMissionScreen_execPostInitSceneDriver_Parms
 struct UTgUIEndQuestMission_execOnEndMissionButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIEndQuestMission.BeginFadeIn
@@ -11571,16 +11571,16 @@ struct UTgUIEndQuestMission_execBeginFadeIn_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIEndQuestMission_execSetLabelTextAndColor_Parms
 {
-	unsigned long                                      MissionVictor : 1;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      PlayerVictor : 1;                                 		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bTie : 1;                                         		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      MissionVictor    ;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      PlayerVictor    ;                                 		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bTie    ;                                         		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgClient.TgUIEndQuestMission.TickTgUIScene
 // [0x00020400] ( FUNC_Native )
 struct UTgUIEndQuestMission_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIEndQuestMission.PostOpenScene
@@ -11594,7 +11594,7 @@ struct UTgUIEndQuestMission_execPostOpenScene_Parms
 struct UTgUIGameHelpItems_execOnSceneDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIGameHelpItems.OnCloseButton
@@ -11602,14 +11602,14 @@ struct UTgUIGameHelpItems_execOnSceneDelegate_Parms
 struct UTgUIGameHelpItems_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIGameHelpItems.TickTgUIScene
 // [0x00020400] ( FUNC_Native )
 struct UTgUIGameHelpItems_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIGameHelpItems.PostOpenScene
@@ -11629,7 +11629,7 @@ struct UTgUIInventoryPopup_eventFixupWidgetsUC_Parms
 struct UTgUIInventoryPopup_execOnPrevPage_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInventoryPopup.OnNextPage
@@ -11637,7 +11637,7 @@ struct UTgUIInventoryPopup_execOnPrevPage_Parms
 struct UTgUIInventoryPopup_execOnNextPage_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInventoryPopup.OnInvItemStateChange
@@ -11655,7 +11655,7 @@ struct UTgUIInventoryPopup_execOnInvItemStateChange_Parms
 struct UTgUIInventoryPopup_execOnSortInventoryDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInventoryPopup.OnFilterChangedDelegate
@@ -11671,7 +11671,7 @@ struct UTgUIInventoryPopup_execOnFilterChangedDelegate_Parms
 struct UTgUIInventoryPopup_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInventoryPopup.OnDeleteInventoryItemDelegate
@@ -11679,7 +11679,7 @@ struct UTgUIInventoryPopup_execOnConfirmYesClicked_Parms
 struct UTgUIInventoryPopup_execOnDeleteInventoryItemDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInventoryPopup.OnSelectInventoryItemDelegate
@@ -11687,7 +11687,7 @@ struct UTgUIInventoryPopup_execOnDeleteInventoryItemDelegate_Parms
 struct UTgUIInventoryPopup_execOnSelectInventoryItemDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInventoryPopup.OnBlockTypeDelegate
@@ -11695,7 +11695,7 @@ struct UTgUIInventoryPopup_execOnSelectInventoryItemDelegate_Parms
 struct UTgUIInventoryPopup_execOnBlockTypeDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInventoryPopup.OnAddButtonDelegate
@@ -11703,7 +11703,7 @@ struct UTgUIInventoryPopup_execOnBlockTypeDelegate_Parms
 struct UTgUIInventoryPopup_execOnAddButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInventoryPopup.OnCloseButtonDelegate
@@ -11711,7 +11711,7 @@ struct UTgUIInventoryPopup_execOnAddButtonDelegate_Parms
 struct UTgUIInventoryPopup_execOnCloseButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInventoryPopup.OnSceneInputKeyDelegate
@@ -11719,7 +11719,7 @@ struct UTgUIInventoryPopup_execOnCloseButtonDelegate_Parms
 struct UTgUIInventoryPopup_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInventoryPopup.FixupTgUIScene
@@ -11732,7 +11732,7 @@ struct UTgUIInventoryPopup_execFixupTgUIScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIInventoryPopup_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIInventoryPopup.PreCloseScene
@@ -11758,7 +11758,7 @@ struct UTgUIInventoryPopup_execPostInitSceneDriver_Parms
 struct UTgUIProductionPopup_execOnAddButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIProductionPopup.SetHex
@@ -11843,7 +11843,7 @@ struct UTgUIItemModification_eventSetOnDeviceItemMouseOver_Parms
 struct UTgUIItemModification_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIItemModification.FixupWidgetsUC
@@ -11865,7 +11865,7 @@ struct UTgUIItemModification_execOnFilterChangedDelegate_Parms
 struct UTgUIItemModification_execOnKitClick_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIItemModification.OnKitMouseOver
@@ -11883,7 +11883,7 @@ struct UTgUIItemModification_execOnKitMouseOver_Parms
 struct UTgUIItemModification_execOnKitItemClick_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIItemModification.OnKitItemMouseOver
@@ -11901,7 +11901,7 @@ struct UTgUIItemModification_execOnKitItemMouseOver_Parms
 struct UTgUIItemModification_execOnDeviceListClick_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIItemModification.OnDeviceListMouseOver
@@ -11919,7 +11919,7 @@ struct UTgUIItemModification_execOnDeviceListMouseOver_Parms
 struct UTgUIItemModification_execOnDeviceItemClick_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIItemModification.OnDeviceItemMouseOver
@@ -11937,7 +11937,7 @@ struct UTgUIItemModification_execOnDeviceItemMouseOver_Parms
 struct UTgUIItemModification_execOnPrevKitPageClick_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIItemModification.OnNextKitPageClick
@@ -11945,7 +11945,7 @@ struct UTgUIItemModification_execOnPrevKitPageClick_Parms
 struct UTgUIItemModification_execOnNextKitPageClick_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIItemModification.OnPrevDevicePageClick
@@ -11953,7 +11953,7 @@ struct UTgUIItemModification_execOnNextKitPageClick_Parms
 struct UTgUIItemModification_execOnPrevDevicePageClick_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIItemModification.OnNextDevicePageClick
@@ -11961,7 +11961,7 @@ struct UTgUIItemModification_execOnPrevDevicePageClick_Parms
 struct UTgUIItemModification_execOnNextDevicePageClick_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIItemModification.OnConfirmNoClicked
@@ -11969,7 +11969,7 @@ struct UTgUIItemModification_execOnNextDevicePageClick_Parms
 struct UTgUIItemModification_execOnConfirmNoClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIItemModification.OnConfirmYesClicked
@@ -11977,7 +11977,7 @@ struct UTgUIItemModification_execOnConfirmNoClicked_Parms
 struct UTgUIItemModification_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIItemModification.OnCombineClick
@@ -11985,7 +11985,7 @@ struct UTgUIItemModification_execOnConfirmYesClicked_Parms
 struct UTgUIItemModification_execOnCombineClick_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIItemModification.OnItemModMenuKey
@@ -11993,7 +11993,7 @@ struct UTgUIItemModification_execOnCombineClick_Parms
 struct UTgUIItemModification_execOnItemModMenuKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIItemModification.FixupWidgets
@@ -12018,7 +12018,7 @@ struct UTgUIItemModification_execPostOpenScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIItemModification_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGMenu.SetRawInputKeyForMemberList
@@ -12048,7 +12048,7 @@ struct UTgUILFGMenu_execOnLFGCriteriaChanged_Parms
 struct UTgUILFGMenu_execSelectMemberByButton_Parms
 {
 	class UUIButton*                                   Button;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGMenu.OnSceneCargoDelegate
@@ -12056,7 +12056,7 @@ struct UTgUILFGMenu_execSelectMemberByButton_Parms
 struct UTgUILFGMenu_execOnSceneCargoDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGMenu.OnSceneDetailDelegate
@@ -12064,7 +12064,7 @@ struct UTgUILFGMenu_execOnSceneCargoDelegate_Parms
 struct UTgUILFGMenu_execOnSceneDetailDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGMenu.OnSceneTeamDelegate
@@ -12072,7 +12072,7 @@ struct UTgUILFGMenu_execOnSceneDetailDelegate_Parms
 struct UTgUILFGMenu_execOnSceneTeamDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGMenu.OnSceneStrikeForceDelegate
@@ -12080,7 +12080,7 @@ struct UTgUILFGMenu_execOnSceneTeamDelegate_Parms
 struct UTgUILFGMenu_execOnSceneStrikeForceDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGMenu.OnTeamMemberDelegate
@@ -12088,7 +12088,7 @@ struct UTgUILFGMenu_execOnSceneStrikeForceDelegate_Parms
 struct UTgUILFGMenu_execOnTeamMemberDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGMenu.OnSceneLeaveDelegate
@@ -12096,7 +12096,7 @@ struct UTgUILFGMenu_execOnTeamMemberDelegate_Parms
 struct UTgUILFGMenu_execOnSceneLeaveDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGMenu.OnScenePromoteDelegate
@@ -12104,7 +12104,7 @@ struct UTgUILFGMenu_execOnSceneLeaveDelegate_Parms
 struct UTgUILFGMenu_execOnScenePromoteDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGMenu.OnSceneRemoveDelegate
@@ -12112,7 +12112,7 @@ struct UTgUILFGMenu_execOnScenePromoteDelegate_Parms
 struct UTgUILFGMenu_execOnSceneRemoveDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGMenu.OnCloseButtonDelegate
@@ -12120,7 +12120,7 @@ struct UTgUILFGMenu_execOnSceneRemoveDelegate_Parms
 struct UTgUILFGMenu_execOnCloseButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGMenu.OnSceneInputKeyDelegate
@@ -12128,14 +12128,14 @@ struct UTgUILFGMenu_execOnCloseButtonDelegate_Parms
 struct UTgUILFGMenu_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGMenu.TickTgUIScene
 // [0x00020400] ( FUNC_Native )
 struct UTgUILFGMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILFGMenu.FixupTgUIScene
@@ -12149,7 +12149,7 @@ struct UTgUILFGMenu_execFixupTgUIScene_Parms
 struct UTgUILoginMenu_execOnWeblinkKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.OnNotifyPasswordEditBoxStateChanged
@@ -12178,7 +12178,7 @@ struct UTgUILoginMenu_execOnLoginSubmitText_Parms
 {
 	class UUIEditBox*                                  ebox;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                PlayerIndex;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.OnSetFocusToPasswordEditBox
@@ -12186,7 +12186,7 @@ struct UTgUILoginMenu_execOnLoginSubmitText_Parms
 struct UTgUILoginMenu_execOnSetFocusToPasswordEditBox_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.OnSetFocusToAccountEditBox
@@ -12194,7 +12194,7 @@ struct UTgUILoginMenu_execOnSetFocusToPasswordEditBox_Parms
 struct UTgUILoginMenu_execOnSetFocusToAccountEditBox_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.OnEditBoxInputKey
@@ -12202,7 +12202,7 @@ struct UTgUILoginMenu_execOnSetFocusToAccountEditBox_Parms
 struct UTgUILoginMenu_execOnEditBoxInputKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.OnCheckboxKey
@@ -12210,7 +12210,7 @@ struct UTgUILoginMenu_execOnEditBoxInputKey_Parms
 struct UTgUILoginMenu_execOnCheckboxKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.OnSettingsCreditsButtonKey
@@ -12218,7 +12218,7 @@ struct UTgUILoginMenu_execOnCheckboxKey_Parms
 struct UTgUILoginMenu_execOnSettingsCreditsButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.OnCloseButtonKey
@@ -12226,7 +12226,7 @@ struct UTgUILoginMenu_execOnSettingsCreditsButtonKey_Parms
 struct UTgUILoginMenu_execOnCloseButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.OnDisconnectButtonKey
@@ -12234,7 +12234,7 @@ struct UTgUILoginMenu_execOnCloseButtonKey_Parms
 struct UTgUILoginMenu_execOnDisconnectButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.OnQueueButtonKey
@@ -12242,7 +12242,7 @@ struct UTgUILoginMenu_execOnDisconnectButtonKey_Parms
 struct UTgUILoginMenu_execOnQueueButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.OnQuitButtonKey
@@ -12250,7 +12250,7 @@ struct UTgUILoginMenu_execOnQueueButtonKey_Parms
 struct UTgUILoginMenu_execOnQuitButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.OnLoginButtonKey
@@ -12258,7 +12258,7 @@ struct UTgUILoginMenu_execOnQuitButtonKey_Parms
 struct UTgUILoginMenu_execOnLoginButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.OnStatusCancelButtonKey
@@ -12266,7 +12266,7 @@ struct UTgUILoginMenu_execOnLoginButtonKey_Parms
 struct UTgUILoginMenu_execOnStatusCancelButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.OnStatusOKButtonKey
@@ -12274,7 +12274,7 @@ struct UTgUILoginMenu_execOnStatusCancelButtonKey_Parms
 struct UTgUILoginMenu_execOnStatusOKButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.OnSceneInputKeyDelegate
@@ -12282,7 +12282,7 @@ struct UTgUILoginMenu_execOnStatusOKButtonKey_Parms
 struct UTgUILoginMenu_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.TickVisuals
@@ -12298,8 +12298,8 @@ struct UTgUILoginMenu_execOnCrawlScrollOverride_Parms
 {
 	class UUIScreenObject*                             Sender;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              Nudges;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bMaxedOut : 1;                                    		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bMaxedOut    ;                                    		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.OnCrawlButtonClick
@@ -12307,7 +12307,7 @@ struct UTgUILoginMenu_execOnCrawlScrollOverride_Parms
 struct UTgUILoginMenu_execOnCrawlButtonClick_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.StartWebLink
@@ -12338,16 +12338,16 @@ struct UTgUILoginMenu_execHandleStatusOK_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgUILoginMenu_execUpdateSavedLoginInfo_Parms
 {
-	unsigned long                                      bLog : 1;                                         		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bLog    ;                                         		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgUILoginMenu.UpdateStatusPanel
 // [0x00024400] ( FUNC_Native )
 struct UTgUILoginMenu_execUpdateStatusPanel_Parms
 {
-	unsigned long                                      bEnable : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnable    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	struct FString                                     DisplayString;                                    		// 0x0004 (0x000C) [0x0000000000400090]              ( CPF_OptionalParm | CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      bFadeOut : 1;                                     		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bFadeOut    ;                                     		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgUILoginMenu.TickStatusPanel
@@ -12372,7 +12372,7 @@ struct UTgUILoginMenu_execTriggerLogin_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUILoginMenu_execIsProcessing_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.GetProcessingState
@@ -12435,7 +12435,7 @@ struct UTgUILoginMenu_execFixupWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUILoginMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUILoginMenu.FixupTgUIScene
@@ -12503,7 +12503,7 @@ struct UTgUIMailMenu_eventSetMailItemSelect_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIMailMenu_execValidateMailFeature_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.SetFocusedWidget
@@ -12511,7 +12511,7 @@ struct UTgUIMailMenu_execValidateMailFeature_Parms
 struct UTgUIMailMenu_execSetFocusedWidget_Parms
 {
 	class UUIScreenObject*                             NewFocus;                                         		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OnConfirmNoClicked
@@ -12519,7 +12519,7 @@ struct UTgUIMailMenu_execSetFocusedWidget_Parms
 struct UTgUIMailMenu_execOnConfirmNoClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OnConfirmYesClicked
@@ -12527,7 +12527,7 @@ struct UTgUIMailMenu_execOnConfirmNoClicked_Parms
 struct UTgUIMailMenu_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OpenCODConfirmPopup
@@ -12567,7 +12567,7 @@ struct UTgUIMailMenu_execResizeDisplayList_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIMailMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.FixupWidgets
@@ -12622,7 +12622,7 @@ struct UTgUIMailMenu_execOnToSubmitText_Parms
 {
 	class UUIEditBox*                                  ebox;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                PlayerIndex;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OnToValueChanged
@@ -12666,7 +12666,7 @@ struct UTgUIMailMenu_execOnAttachmentStateChange_Parms
 struct UTgUIMailMenu_execOnMailItemSelect_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OnDetailAttachmentSelect
@@ -12674,7 +12674,7 @@ struct UTgUIMailMenu_execOnMailItemSelect_Parms
 struct UTgUIMailMenu_execOnDetailAttachmentSelect_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OnAttachmentSelect
@@ -12682,7 +12682,7 @@ struct UTgUIMailMenu_execOnDetailAttachmentSelect_Parms
 struct UTgUIMailMenu_execOnAttachmentSelect_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OnInboxItemSelect
@@ -12690,7 +12690,7 @@ struct UTgUIMailMenu_execOnAttachmentSelect_Parms
 struct UTgUIMailMenu_execOnInboxItemSelect_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OnSelectMailTab
@@ -12698,7 +12698,7 @@ struct UTgUIMailMenu_execOnInboxItemSelect_Parms
 struct UTgUIMailMenu_execOnSelectMailTab_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OnSendButton
@@ -12706,7 +12706,7 @@ struct UTgUIMailMenu_execOnSelectMailTab_Parms
 struct UTgUIMailMenu_execOnSendButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OnCancelButton
@@ -12714,7 +12714,7 @@ struct UTgUIMailMenu_execOnSendButton_Parms
 struct UTgUIMailMenu_execOnCancelButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OnRemoveButton
@@ -12722,7 +12722,7 @@ struct UTgUIMailMenu_execOnCancelButton_Parms
 struct UTgUIMailMenu_execOnRemoveButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OnAttachButton
@@ -12730,7 +12730,7 @@ struct UTgUIMailMenu_execOnRemoveButton_Parms
 struct UTgUIMailMenu_execOnAttachButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OnReplyButton
@@ -12738,7 +12738,7 @@ struct UTgUIMailMenu_execOnAttachButton_Parms
 struct UTgUIMailMenu_execOnReplyButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OnTakeButton
@@ -12746,7 +12746,7 @@ struct UTgUIMailMenu_execOnReplyButton_Parms
 struct UTgUIMailMenu_execOnTakeButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OnReturnButton
@@ -12754,7 +12754,7 @@ struct UTgUIMailMenu_execOnTakeButton_Parms
 struct UTgUIMailMenu_execOnReturnButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OnDeleteButton
@@ -12762,7 +12762,7 @@ struct UTgUIMailMenu_execOnReturnButton_Parms
 struct UTgUIMailMenu_execOnDeleteButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OnCloseButton
@@ -12770,7 +12770,7 @@ struct UTgUIMailMenu_execOnDeleteButton_Parms
 struct UTgUIMailMenu_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMailMenu.OnMailMenuKey
@@ -12778,7 +12778,7 @@ struct UTgUIMailMenu_execOnCloseButton_Parms
 struct UTgUIMailMenu_execOnMailMenuKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMainMenu.ExitQuitMode
@@ -12798,7 +12798,7 @@ struct UTgUIMainMenu_execEnterQuitMode_Parms
 struct UTgUIMainMenu_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMainMenu.SetUpMenuButtons
@@ -12863,7 +12863,7 @@ struct UTgUIMainMenu_execGetOverrideSceneReference_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgUIMainMenu_execCloseManagedScene_Parms
 {
-	unsigned long                                      bPreserveVolumeFlag : 1;                          		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bPreserveVolumeFlag    ;                          		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgUIMainMenu.GetOpenManagedScene
@@ -12878,8 +12878,8 @@ struct UTgUIMainMenu_execGetOpenManagedScene_Parms
 struct UTgUIMainMenu_execOpenManagedSceneByName_Parms
 {
 	struct FName                                       ClassName;                                        		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bToggle : 1;                                      		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bDevForce : 1;                                    		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bToggle    ;                                      		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bDevForce    ;                                    		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class UTgUISceneDriver*                            ReturnValue;                                      		// 0x0010 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -12888,9 +12888,9 @@ struct UTgUIMainMenu_execOpenManagedSceneByName_Parms
 struct UTgUIMainMenu_execOpenManagedScene_Parms
 {
 	int                                                sceneReference;                                   		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bToggle : 1;                                      		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bDevForce : 1;                                    		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bIgnoreOverride : 1;                              		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bToggle    ;                                      		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bDevForce    ;                                    		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreOverride    ;                              		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class UTgUISceneDriver*                            ReturnValue;                                      		// 0x0010 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -12915,7 +12915,7 @@ struct UTgUIMainMenu_execOnButtonMouseOverDelegate_Parms
 struct UTgUIMainMenu_execOnMainMenuExitMissionKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMainMenu.OnMainMenuQuitKey
@@ -12923,7 +12923,7 @@ struct UTgUIMainMenu_execOnMainMenuExitMissionKey_Parms
 struct UTgUIMainMenu_execOnMainMenuQuitKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMainMenu.OnFixedPurposeButton
@@ -12931,7 +12931,7 @@ struct UTgUIMainMenu_execOnMainMenuQuitKey_Parms
 struct UTgUIMainMenu_execOnFixedPurposeButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMainMenu.OnMainMenuButtonKey
@@ -12939,7 +12939,7 @@ struct UTgUIMainMenu_execOnFixedPurposeButton_Parms
 struct UTgUIMainMenu_execOnMainMenuButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMainMenu.OnMainMenuSceneKey
@@ -12947,14 +12947,14 @@ struct UTgUIMainMenu_execOnMainMenuButtonKey_Parms
 struct UTgUIMainMenu_execOnMainMenuSceneKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMainMenu.TickTgUIScene
 // [0x00020400] ( FUNC_Native )
 struct UTgUIMainMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMainMenu.PostOpenScene
@@ -12996,7 +12996,7 @@ struct UTgUIMissionScene_eventFixupWidgetsUC_Parms
 struct UTgUIMissionScene_execCheckStopBriefing_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene.GetQueueListCallback
@@ -13031,7 +13031,7 @@ struct UTgUIMissionScene_execOnButtonStateChangeDelegate_Parms
 struct UTgUIMissionScene_execOnLocationPrevButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene.OnLocationNextButton
@@ -13039,7 +13039,7 @@ struct UTgUIMissionScene_execOnLocationPrevButton_Parms
 struct UTgUIMissionScene_execOnLocationNextButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene.OnSelectDifficultyDelegate
@@ -13047,7 +13047,7 @@ struct UTgUIMissionScene_execOnLocationNextButton_Parms
 struct UTgUIMissionScene_execOnSelectDifficultyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene.OnSelectTeamTypeDelegate
@@ -13055,7 +13055,7 @@ struct UTgUIMissionScene_execOnSelectDifficultyDelegate_Parms
 struct UTgUIMissionScene_execOnSelectTeamTypeDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene.OnSelectGameTypeDelegate
@@ -13063,7 +13063,7 @@ struct UTgUIMissionScene_execOnSelectTeamTypeDelegate_Parms
 struct UTgUIMissionScene_execOnSelectGameTypeDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene.OnTabClickDelegate
@@ -13071,7 +13071,7 @@ struct UTgUIMissionScene_execOnSelectGameTypeDelegate_Parms
 struct UTgUIMissionScene_execOnTabClickDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene.OnPreferenceChangeDelegate
@@ -13079,7 +13079,7 @@ struct UTgUIMissionScene_execOnTabClickDelegate_Parms
 struct UTgUIMissionScene_execOnPreferenceChangeDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene.OnBriefingButtonDelegate
@@ -13087,7 +13087,7 @@ struct UTgUIMissionScene_execOnPreferenceChangeDelegate_Parms
 struct UTgUIMissionScene_execOnBriefingButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene.OnCloseButtonDelegate
@@ -13095,7 +13095,7 @@ struct UTgUIMissionScene_execOnBriefingButtonDelegate_Parms
 struct UTgUIMissionScene_execOnCloseButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene.OnLeaveQueueDelegate
@@ -13103,7 +13103,7 @@ struct UTgUIMissionScene_execOnCloseButtonDelegate_Parms
 struct UTgUIMissionScene_execOnLeaveQueueDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene.OnJoinQueueDelegate
@@ -13111,7 +13111,7 @@ struct UTgUIMissionScene_execOnLeaveQueueDelegate_Parms
 struct UTgUIMissionScene_execOnJoinQueueDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene.OnSelectQueueDelegate
@@ -13119,7 +13119,7 @@ struct UTgUIMissionScene_execOnJoinQueueDelegate_Parms
 struct UTgUIMissionScene_execOnSelectQueueDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene.OnSceneKeyDelegate
@@ -13127,7 +13127,7 @@ struct UTgUIMissionScene_execOnSelectQueueDelegate_Parms
 struct UTgUIMissionScene_execOnSceneKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene.SelectTeamType
@@ -13167,7 +13167,7 @@ struct UTgUIMissionScene_execPostRender_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIMissionScene_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene.FixupTgUIScene
@@ -13199,7 +13199,7 @@ struct UTgUIMissionScene_Zone_eventFixupWidgetsUC_Parms
 struct UTgUIMissionScene_Zone_execOnTabClickDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene_Zone.OnMapClickDelegate
@@ -13207,7 +13207,7 @@ struct UTgUIMissionScene_Zone_execOnTabClickDelegate_Parms
 struct UTgUIMissionScene_Zone_execOnMapClickDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene_Zone.OnCloseButtonDelegate
@@ -13215,7 +13215,7 @@ struct UTgUIMissionScene_Zone_execOnMapClickDelegate_Parms
 struct UTgUIMissionScene_Zone_execOnCloseButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene_Zone.OnSceneKeyDelegate
@@ -13223,7 +13223,7 @@ struct UTgUIMissionScene_Zone_execOnCloseButtonDelegate_Parms
 struct UTgUIMissionScene_Zone_execOnSceneKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene_Zone.PreCloseScene
@@ -13243,7 +13243,7 @@ struct UTgUIMissionScene_Zone_execTickVisual_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIMissionScene_Zone_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIMissionScene_Zone.FixupTgUIScene
@@ -13257,7 +13257,7 @@ struct UTgUIMissionScene_Zone_execFixupTgUIScene_Parms
 struct UTgUINewPlayerHelp_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUINewPlayerHelp.PostOpenScene
@@ -13271,7 +13271,7 @@ struct UTgUINewPlayerHelp_execPostOpenScene_Parms
 struct UTgUIQuestDialog_execCheckTutorialTypeDisabled_Parms
 {
 	unsigned char                                      eType;                                            		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQuestDialog.CheckTutorialDisabled
@@ -13279,7 +13279,7 @@ struct UTgUIQuestDialog_execCheckTutorialTypeDisabled_Parms
 struct UTgUIQuestDialog_execCheckTutorialDisabled_Parms
 {
 	unsigned char                                      Step;                                             		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQuestDialog.CheckTutorialStep
@@ -13287,7 +13287,7 @@ struct UTgUIQuestDialog_execCheckTutorialDisabled_Parms
 struct UTgUIQuestDialog_execCheckTutorialStep_Parms
 {
 	unsigned char                                      Step;                                             		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQuestDialog.UpdateTutorialProgress
@@ -13330,7 +13330,7 @@ struct UTgUIQuestDialog_execActiveTooltipChanged_Parms
 struct UTgUIQuestDialog_execDefaultSceneHandler_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQuestDialog.OnBuyNowButton
@@ -13338,7 +13338,7 @@ struct UTgUIQuestDialog_execDefaultSceneHandler_Parms
 struct UTgUIQuestDialog_execOnBuyNowButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQuestDialog.OnQuestButton
@@ -13346,7 +13346,7 @@ struct UTgUIQuestDialog_execOnBuyNowButton_Parms
 struct UTgUIQuestDialog_execOnQuestButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQuestDialog.OnItemButton
@@ -13354,7 +13354,7 @@ struct UTgUIQuestDialog_execOnQuestButton_Parms
 struct UTgUIQuestDialog_execOnItemButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQuestDialog.OnDialogButton
@@ -13362,7 +13362,7 @@ struct UTgUIQuestDialog_execOnItemButton_Parms
 struct UTgUIQuestDialog_execOnDialogButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQuestDialog.OnCloseButton
@@ -13370,7 +13370,7 @@ struct UTgUIQuestDialog_execOnDialogButton_Parms
 struct UTgUIQuestDialog_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQuestDialog.PreCloseScene
@@ -13400,7 +13400,7 @@ struct UTgUIQuestLog_execActiveTooltipChanged_Parms
 struct UTgUIQuestLog_execDefaultSceneHandler_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQuestLog.OnSceneButton
@@ -13408,7 +13408,7 @@ struct UTgUIQuestLog_execDefaultSceneHandler_Parms
 struct UTgUIQuestLog_execOnSceneButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQuestLog.OnConfirmNoClicked
@@ -13416,7 +13416,7 @@ struct UTgUIQuestLog_execOnSceneButton_Parms
 struct UTgUIQuestLog_execOnConfirmNoClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQuestLog.OnConfirmYesClicked
@@ -13424,7 +13424,7 @@ struct UTgUIQuestLog_execOnConfirmNoClicked_Parms
 struct UTgUIQuestLog_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIQuestLog.PostOpenScene
@@ -13438,7 +13438,7 @@ struct UTgUIQuestLog_execPostOpenScene_Parms
 struct UTgUIRewardScreen_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRewardScreen.FixupWidgetsUC
@@ -13469,7 +13469,7 @@ struct UTgUIRewardScreen_execBeginAutoDismiss_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIRewardScreen_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIRewardScreen.FixupTgUIScene
@@ -13495,7 +13495,7 @@ struct UTgUIRewardScreen_execPostOpenScene_Parms
 struct UTgUIRewardScreen_execOnSceneKeyPressed_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIReceivedItemScreen.SetItemStateChange
@@ -13525,7 +13525,7 @@ struct UTgUIReceivedItemScreen_execRevealHiddenReward_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIReceivedItemScreen_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIReceivedItemScreen.FixupTgUIScene
@@ -13604,7 +13604,7 @@ struct UTgUISettingsMenu_General_execOnMouseSensitivitySubmit_Parms
 {
 	class UUIEditBox*                                  ebox;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                PlayerIndex;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_General.OnCloseButton
@@ -13612,7 +13612,7 @@ struct UTgUISettingsMenu_General_execOnMouseSensitivitySubmit_Parms
 struct UTgUISettingsMenu_General_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_General.OnTabClickedDelegate
@@ -13620,7 +13620,7 @@ struct UTgUISettingsMenu_General_execOnCloseButton_Parms
 struct UTgUISettingsMenu_General_execOnTabClickedDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_General.OnApplyButtonKey
@@ -13628,7 +13628,7 @@ struct UTgUISettingsMenu_General_execOnTabClickedDelegate_Parms
 struct UTgUISettingsMenu_General_execOnApplyButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_General.PopulateSiteList
@@ -13689,7 +13689,7 @@ struct UTgUISettingsMenu_General_execFixupWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUISettingsMenu_General_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_General.FixupTgUIScene
@@ -13717,7 +13717,7 @@ struct UTgUISettingsMenu_Sound_execOnEnableAudioChanged_Parms
 struct UTgUISettingsMenu_Sound_execShowHideAudioPanel_Parms
 {
 	// int                                             I;                                                		// 0x0000 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bEnableAudio : 1;                                 		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bEnableAudio    ;                                 		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgClient.TgUISettingsMenu_Sound.OnEnableVoipChanged
@@ -13733,7 +13733,7 @@ struct UTgUISettingsMenu_Sound_execOnEnableVoipChanged_Parms
 struct UTgUISettingsMenu_Sound_execShowHideVoipPanel_Parms
 {
 	// int                                             I;                                                		// 0x0000 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bEnableVoip : 1;                                  		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bEnableVoip    ;                                  		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgClient.TgUISettingsMenu_Sound.OnConfirmNoClicked
@@ -13741,7 +13741,7 @@ struct UTgUISettingsMenu_Sound_execShowHideVoipPanel_Parms
 struct UTgUISettingsMenu_Sound_execOnConfirmNoClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Sound.OnConfirmYesClicked
@@ -13749,7 +13749,7 @@ struct UTgUISettingsMenu_Sound_execOnConfirmNoClicked_Parms
 struct UTgUISettingsMenu_Sound_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Sound.OpenRestartConfirmPopup
@@ -13763,7 +13763,7 @@ struct UTgUISettingsMenu_Sound_execOpenRestartConfirmPopup_Parms
 struct UTgUISettingsMenu_Sound_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Sound.OnTabClickedDelegate
@@ -13771,7 +13771,7 @@ struct UTgUISettingsMenu_Sound_execOnCloseButton_Parms
 struct UTgUISettingsMenu_Sound_execOnTabClickedDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Sound.OnApplyButtonKey
@@ -13779,7 +13779,7 @@ struct UTgUISettingsMenu_Sound_execOnTabClickedDelegate_Parms
 struct UTgUISettingsMenu_Sound_execOnApplyButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Sound.ApplyVoiceSliders
@@ -13810,7 +13810,7 @@ struct UTgUISettingsMenu_Sound_execFixupWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUISettingsMenu_Sound_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Sound.FixupTgUIScene
@@ -13862,7 +13862,7 @@ struct UTgUISettingsMenu_Video_execCBoxChanged_Parms
 struct UTgUISettingsMenu_Video_execConfirmHandler_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Video.ButtonHandler
@@ -13870,7 +13870,7 @@ struct UTgUISettingsMenu_Video_execConfirmHandler_Parms
 struct UTgUISettingsMenu_Video_execButtonHandler_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Video.TabHandler
@@ -13878,14 +13878,14 @@ struct UTgUISettingsMenu_Video_execButtonHandler_Parms
 struct UTgUISettingsMenu_Video_execTabHandler_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Video.TickTgUIScene
 // [0x00020400] ( FUNC_Native )
 struct UTgUISettingsMenu_Video_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Video.FixupTgUIScene
@@ -13919,7 +13919,7 @@ struct UTgUITeamDetailMenu_eventFixupWidgetsUC_Parms
 struct UTgUITeamDetailMenu_execSelectMemberByButton_Parms
 {
 	class UUIButton*                                   Button;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamDetailMenu.OnSceneMapDelegate
@@ -13927,7 +13927,7 @@ struct UTgUITeamDetailMenu_execSelectMemberByButton_Parms
 struct UTgUITeamDetailMenu_execOnSceneMapDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamDetailMenu.OnSceneManageDelegate
@@ -13935,7 +13935,7 @@ struct UTgUITeamDetailMenu_execOnSceneMapDelegate_Parms
 struct UTgUITeamDetailMenu_execOnSceneManageDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamDetailMenu.OnSceneCargoDelegate
@@ -13943,7 +13943,7 @@ struct UTgUITeamDetailMenu_execOnSceneManageDelegate_Parms
 struct UTgUITeamDetailMenu_execOnSceneCargoDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamDetailMenu.OnSceneTeamDelegate
@@ -13951,7 +13951,7 @@ struct UTgUITeamDetailMenu_execOnSceneCargoDelegate_Parms
 struct UTgUITeamDetailMenu_execOnSceneTeamDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamDetailMenu.OnSceneRaidDelegate
@@ -13959,7 +13959,7 @@ struct UTgUITeamDetailMenu_execOnSceneTeamDelegate_Parms
 struct UTgUITeamDetailMenu_execOnSceneRaidDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamDetailMenu.OnSceneStrikeForceDelegate
@@ -13967,7 +13967,7 @@ struct UTgUITeamDetailMenu_execOnSceneRaidDelegate_Parms
 struct UTgUITeamDetailMenu_execOnSceneStrikeForceDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamDetailMenu.OnTeamMemberDelegate
@@ -13975,7 +13975,7 @@ struct UTgUITeamDetailMenu_execOnSceneStrikeForceDelegate_Parms
 struct UTgUITeamDetailMenu_execOnTeamMemberDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamDetailMenu.OnSceneLeaveDelegate
@@ -13983,7 +13983,7 @@ struct UTgUITeamDetailMenu_execOnTeamMemberDelegate_Parms
 struct UTgUITeamDetailMenu_execOnSceneLeaveDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamDetailMenu.OnScenePromoteDelegate
@@ -13991,7 +13991,7 @@ struct UTgUITeamDetailMenu_execOnSceneLeaveDelegate_Parms
 struct UTgUITeamDetailMenu_execOnScenePromoteDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamDetailMenu.OnSceneRemoveDelegate
@@ -13999,7 +13999,7 @@ struct UTgUITeamDetailMenu_execOnScenePromoteDelegate_Parms
 struct UTgUITeamDetailMenu_execOnSceneRemoveDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamDetailMenu.OnCloseButtonDelegate
@@ -14007,7 +14007,7 @@ struct UTgUITeamDetailMenu_execOnSceneRemoveDelegate_Parms
 struct UTgUITeamDetailMenu_execOnCloseButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamDetailMenu.OnSceneInputKeyDelegate
@@ -14015,14 +14015,14 @@ struct UTgUITeamDetailMenu_execOnCloseButtonDelegate_Parms
 struct UTgUITeamDetailMenu_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamDetailMenu.TickTgUIScene
 // [0x00020400] ( FUNC_Native )
 struct UTgUITeamDetailMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamDetailMenu.FixupTgUIScene
@@ -14064,7 +14064,7 @@ struct UTgUITeamMenu_execGetPlayerSearchCallback_Parms
 struct UTgUITeamMenu_execSelectPlayerByButton_Parms
 {
 	class UUIButton*                                   Button;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.SelectMemberByButton
@@ -14072,7 +14072,7 @@ struct UTgUITeamMenu_execSelectPlayerByButton_Parms
 struct UTgUITeamMenu_execSelectMemberByButton_Parms
 {
 	class UUIButton*                                   Button;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnSceneSortDelegate
@@ -14080,7 +14080,7 @@ struct UTgUITeamMenu_execSelectMemberByButton_Parms
 struct UTgUITeamMenu_execOnSceneSortDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnSceneMapDelegate
@@ -14088,7 +14088,7 @@ struct UTgUITeamMenu_execOnSceneSortDelegate_Parms
 struct UTgUITeamMenu_execOnSceneMapDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnSceneManageDelegate
@@ -14096,7 +14096,7 @@ struct UTgUITeamMenu_execOnSceneMapDelegate_Parms
 struct UTgUITeamMenu_execOnSceneManageDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnSceneDetailDelegate
@@ -14104,7 +14104,7 @@ struct UTgUITeamMenu_execOnSceneManageDelegate_Parms
 struct UTgUITeamMenu_execOnSceneDetailDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnSceneCargoDelegate
@@ -14112,7 +14112,7 @@ struct UTgUITeamMenu_execOnSceneDetailDelegate_Parms
 struct UTgUITeamMenu_execOnSceneCargoDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnSceneRaidDelegate
@@ -14120,7 +14120,7 @@ struct UTgUITeamMenu_execOnSceneCargoDelegate_Parms
 struct UTgUITeamMenu_execOnSceneRaidDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnSceneStrikeForceDelegate
@@ -14128,7 +14128,7 @@ struct UTgUITeamMenu_execOnSceneRaidDelegate_Parms
 struct UTgUITeamMenu_execOnSceneStrikeForceDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnSelectPlayer
@@ -14136,7 +14136,7 @@ struct UTgUITeamMenu_execOnSceneStrikeForceDelegate_Parms
 struct UTgUITeamMenu_execOnSelectPlayer_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnTeamMemberDelegate
@@ -14144,7 +14144,7 @@ struct UTgUITeamMenu_execOnSelectPlayer_Parms
 struct UTgUITeamMenu_execOnTeamMemberDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnSceneLeaveDelegate
@@ -14152,7 +14152,7 @@ struct UTgUITeamMenu_execOnTeamMemberDelegate_Parms
 struct UTgUITeamMenu_execOnSceneLeaveDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnScenePromoteDelegate
@@ -14160,7 +14160,7 @@ struct UTgUITeamMenu_execOnSceneLeaveDelegate_Parms
 struct UTgUITeamMenu_execOnScenePromoteDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnSceneRemoveDelegate
@@ -14168,7 +14168,7 @@ struct UTgUITeamMenu_execOnScenePromoteDelegate_Parms
 struct UTgUITeamMenu_execOnSceneRemoveDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnSceneMessageDelegate
@@ -14176,7 +14176,7 @@ struct UTgUITeamMenu_execOnSceneRemoveDelegate_Parms
 struct UTgUITeamMenu_execOnSceneMessageDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnSceneInviteDelegate
@@ -14184,7 +14184,7 @@ struct UTgUITeamMenu_execOnSceneMessageDelegate_Parms
 struct UTgUITeamMenu_execOnSceneInviteDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnSceneSearchDelegate
@@ -14192,7 +14192,7 @@ struct UTgUITeamMenu_execOnSceneInviteDelegate_Parms
 struct UTgUITeamMenu_execOnSceneSearchDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnSceneResetDelegate
@@ -14200,7 +14200,7 @@ struct UTgUITeamMenu_execOnSceneSearchDelegate_Parms
 struct UTgUITeamMenu_execOnSceneResetDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnCloseButtonDelegate
@@ -14208,7 +14208,7 @@ struct UTgUITeamMenu_execOnSceneResetDelegate_Parms
 struct UTgUITeamMenu_execOnCloseButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.OnSceneInputKeyDelegate
@@ -14216,7 +14216,7 @@ struct UTgUITeamMenu_execOnCloseButtonDelegate_Parms
 struct UTgUITeamMenu_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.SortSearchResults
@@ -14263,7 +14263,7 @@ struct UTgUITeamMenu_execPrepopulatedSearch_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUITeamMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITeamMenu.FixupTgUIScene
@@ -14289,14 +14289,14 @@ struct UTgUITeamMenu_execPostInitSceneDriver_Parms
 struct UTgUITutorialItem_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITutorialItem.TickTgUIScene
 // [0x00020400] ( FUNC_Native )
 struct UTgUITutorialItem_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUITutorialItem.PostOpenScene
@@ -14315,7 +14315,7 @@ struct UTgUIVendorBase_execPostOpenScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUISteamTxnStatus_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISteamTxnStatus.PreCloseScene
@@ -14335,7 +14335,7 @@ struct UTgUISteamTxnStatus_execPostOpenScene_Parms
 struct UTgUISteamTxnStatus_execOnButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUpdateFaceMenu.OnInkSliderChanged
@@ -14377,7 +14377,7 @@ struct UTgUIUpdateFaceMenu_execOnDetailButtonMouseOver_Parms
 struct UTgUIUpdateFaceMenu_execOnRandomButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUpdateFaceMenu.OnDetailButton
@@ -14385,7 +14385,7 @@ struct UTgUIUpdateFaceMenu_execOnRandomButton_Parms
 struct UTgUIUpdateFaceMenu_execOnDetailButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUpdateFaceMenu.OnLockButton
@@ -14393,7 +14393,7 @@ struct UTgUIUpdateFaceMenu_execOnDetailButton_Parms
 struct UTgUIUpdateFaceMenu_execOnLockButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUpdateFaceMenu.OnSubmitButton
@@ -14401,7 +14401,7 @@ struct UTgUIUpdateFaceMenu_execOnLockButton_Parms
 struct UTgUIUpdateFaceMenu_execOnSubmitButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUpdateFaceMenu.OnCancelButton
@@ -14409,7 +14409,7 @@ struct UTgUIUpdateFaceMenu_execOnSubmitButton_Parms
 struct UTgUIUpdateFaceMenu_execOnCancelButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUpdateFaceMenu.OnCloseButton
@@ -14417,7 +14417,7 @@ struct UTgUIUpdateFaceMenu_execOnCancelButton_Parms
 struct UTgUIUpdateFaceMenu_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUpdateFaceMenu.OnConfirmNoClicked
@@ -14425,7 +14425,7 @@ struct UTgUIUpdateFaceMenu_execOnCloseButton_Parms
 struct UTgUIUpdateFaceMenu_execOnConfirmNoClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUpdateFaceMenu.OnConfirmYesClicked
@@ -14433,7 +14433,7 @@ struct UTgUIUpdateFaceMenu_execOnConfirmNoClicked_Parms
 struct UTgUIUpdateFaceMenu_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUpdateFaceMenu.UpdateCreditsInfo
@@ -14458,7 +14458,7 @@ struct UTgUIUpdateFaceMenu_execPreCloseScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIUpdateFaceMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUpdateFaceMenu.PostOpenScene
@@ -14472,7 +14472,7 @@ struct UTgUIUpdateFaceMenu_execPostOpenScene_Parms
 struct UTgUIUpdateHairMenu_execOnSubmitButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUpdateHairMenu.OnCancelButton
@@ -14480,7 +14480,7 @@ struct UTgUIUpdateHairMenu_execOnSubmitButton_Parms
 struct UTgUIUpdateHairMenu_execOnCancelButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUpdateHairMenu.OnCloseButton
@@ -14488,7 +14488,7 @@ struct UTgUIUpdateHairMenu_execOnCancelButton_Parms
 struct UTgUIUpdateHairMenu_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUpdateHairMenu.InitializeUpdateHairMenu
@@ -14508,7 +14508,7 @@ struct UTgUIUpdateHairMenu_eventFixupWidgetsUC_Parms
 struct UTgUIUpdateHairMenu_execOnConfirmNoClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUpdateHairMenu.OnConfirmYesClicked
@@ -14516,7 +14516,7 @@ struct UTgUIUpdateHairMenu_execOnConfirmNoClicked_Parms
 struct UTgUIUpdateHairMenu_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUpdateHairMenu.CompleteTransaction
@@ -14599,7 +14599,7 @@ struct UTgUIUpdateHairMenu_execSubmitButtonPressed_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIUpdateHairMenu_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUpdateHairMenu.PostOpenScene
@@ -14635,7 +14635,7 @@ struct UTgUIVendorPaymentPopup_execOnInvItemStateChange_Parms
 struct UTgUIVendorPaymentPopup_execOnButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIVendorScene.FixupWidgetsUC
@@ -14649,7 +14649,7 @@ struct UTgUIVendorScene_eventFixupWidgetsUC_Parms
 struct UTgUIVendorScene_execOnTogglePreviewInvButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIVendorScene.OnResetPreviewButton
@@ -14657,7 +14657,7 @@ struct UTgUIVendorScene_execOnTogglePreviewInvButton_Parms
 struct UTgUIVendorScene_execOnResetPreviewButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIVendorScene.OnVendorPrevButton
@@ -14665,7 +14665,7 @@ struct UTgUIVendorScene_execOnResetPreviewButton_Parms
 struct UTgUIVendorScene_execOnVendorPrevButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIVendorScene.OnVendorNextButton
@@ -14673,7 +14673,7 @@ struct UTgUIVendorScene_execOnVendorPrevButton_Parms
 struct UTgUIVendorScene_execOnVendorNextButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIVendorScene.OnInvItemStateChange
@@ -14707,7 +14707,7 @@ struct UTgUIVendorScene_execOnFilterChangedDelegate_Parms
 struct UTgUIVendorScene_execOnConfirmYesClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIVendorScene.OnSortVendorDelegate
@@ -14715,7 +14715,7 @@ struct UTgUIVendorScene_execOnConfirmYesClicked_Parms
 struct UTgUIVendorScene_execOnSortVendorDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIVendorScene.OnSortInventoryDelegate
@@ -14723,7 +14723,7 @@ struct UTgUIVendorScene_execOnSortVendorDelegate_Parms
 struct UTgUIVendorScene_execOnSortInventoryDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIVendorScene.OnDeleteInventoryItemDelegate
@@ -14731,7 +14731,7 @@ struct UTgUIVendorScene_execOnSortInventoryDelegate_Parms
 struct UTgUIVendorScene_execOnDeleteInventoryItemDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIVendorScene.OnCloseButtonDelegate
@@ -14739,7 +14739,7 @@ struct UTgUIVendorScene_execOnDeleteInventoryItemDelegate_Parms
 struct UTgUIVendorScene_execOnCloseButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIVendorScene.OnSelectInventoryItemDelegate
@@ -14747,7 +14747,7 @@ struct UTgUIVendorScene_execOnCloseButtonDelegate_Parms
 struct UTgUIVendorScene_execOnSelectInventoryItemDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIVendorScene.OnVendorItemSellDelegate
@@ -14755,7 +14755,7 @@ struct UTgUIVendorScene_execOnSelectInventoryItemDelegate_Parms
 struct UTgUIVendorScene_execOnVendorItemSellDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIVendorScene.OnVendorItemPurchaseDelegate
@@ -14763,7 +14763,7 @@ struct UTgUIVendorScene_execOnVendorItemSellDelegate_Parms
 struct UTgUIVendorScene_execOnVendorItemPurchaseDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIVendorScene.OnVendorItemSelectDelegate
@@ -14771,7 +14771,7 @@ struct UTgUIVendorScene_execOnVendorItemPurchaseDelegate_Parms
 struct UTgUIVendorScene_execOnVendorItemSelectDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIVendorScene.OnSceneInputKeyDelegate
@@ -14779,7 +14779,7 @@ struct UTgUIVendorScene_execOnVendorItemSelectDelegate_Parms
 struct UTgUIVendorScene_execOnSceneInputKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIVendorScene.PostRender
@@ -14798,7 +14798,7 @@ struct UTgUIVendorScene_execPostOpenScene_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIVendorScene_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIVendorScene.PreCloseScene
@@ -14812,7 +14812,7 @@ struct UTgUIVendorScene_execPreCloseScene_Parms
 struct UTgUICashShop_execOnVendorItemPurchaseDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIScoreboard.FixupWidgetsUC
@@ -14838,14 +14838,14 @@ struct UTgUIScoreboard_execUpdateLabels_Parms
 struct UTgUIScoreboard_execOnSceneKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIScoreboard.TickTgUIScene
 // [0x00020400] ( FUNC_Native )
 struct UTgUIScoreboard_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIScoreboard.FixupTgUIScene
@@ -14866,7 +14866,7 @@ struct UTgUIScoreDetails_eventFixupWidgetsUC_Parms
 struct UTgUIScoreDetails_execOnEndMissionButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIScoreDetails.OnDeviceStatsButton
@@ -14874,7 +14874,7 @@ struct UTgUIScoreDetails_execOnEndMissionButton_Parms
 struct UTgUIScoreDetails_execOnDeviceStatsButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIScoreDetails.OnSummaryButton
@@ -14882,7 +14882,7 @@ struct UTgUIScoreDetails_execOnDeviceStatsButton_Parms
 struct UTgUIScoreDetails_execOnSummaryButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIScoreDetails.OnCloseButton
@@ -14890,7 +14890,7 @@ struct UTgUIScoreDetails_execOnSummaryButton_Parms
 struct UTgUIScoreDetails_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIScoreDetails.OnFieldClicked
@@ -14898,7 +14898,7 @@ struct UTgUIScoreDetails_execOnCloseButton_Parms
 struct UTgUIScoreDetails_execOnFieldClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIScoreDetails.OnSceneKey
@@ -14906,14 +14906,14 @@ struct UTgUIScoreDetails_execOnFieldClicked_Parms
 struct UTgUIScoreDetails_execOnSceneKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIScoreDetails.TickTgUIScene
 // [0x00020400] ( FUNC_Native )
 struct UTgUIScoreDetails_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIScoreDetails.FixupTgUIScene
@@ -14927,7 +14927,7 @@ struct UTgUIScoreDetails_execFixupTgUIScene_Parms
 struct UTgUISelectionList_execSelectSelectionRow9_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISelectionList.SelectSelectionRow8
@@ -14935,7 +14935,7 @@ struct UTgUISelectionList_execSelectSelectionRow9_Parms
 struct UTgUISelectionList_execSelectSelectionRow8_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISelectionList.SelectSelectionRow7
@@ -14943,7 +14943,7 @@ struct UTgUISelectionList_execSelectSelectionRow8_Parms
 struct UTgUISelectionList_execSelectSelectionRow7_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISelectionList.SelectSelectionRow6
@@ -14951,7 +14951,7 @@ struct UTgUISelectionList_execSelectSelectionRow7_Parms
 struct UTgUISelectionList_execSelectSelectionRow6_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISelectionList.SelectSelectionRow5
@@ -14959,7 +14959,7 @@ struct UTgUISelectionList_execSelectSelectionRow6_Parms
 struct UTgUISelectionList_execSelectSelectionRow5_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISelectionList.SelectSelectionRow4
@@ -14967,7 +14967,7 @@ struct UTgUISelectionList_execSelectSelectionRow5_Parms
 struct UTgUISelectionList_execSelectSelectionRow4_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISelectionList.SelectSelectionRow3
@@ -14975,7 +14975,7 @@ struct UTgUISelectionList_execSelectSelectionRow4_Parms
 struct UTgUISelectionList_execSelectSelectionRow3_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISelectionList.SelectSelectionRow2
@@ -14983,7 +14983,7 @@ struct UTgUISelectionList_execSelectSelectionRow3_Parms
 struct UTgUISelectionList_execSelectSelectionRow2_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISelectionList.SelectSelectionRow1
@@ -14991,7 +14991,7 @@ struct UTgUISelectionList_execSelectSelectionRow2_Parms
 struct UTgUISelectionList_execSelectSelectionRow1_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISelectionList.SelectSelectionRow0
@@ -14999,7 +14999,7 @@ struct UTgUISelectionList_execSelectSelectionRow1_Parms
 struct UTgUISelectionList_execSelectSelectionRow0_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISelectionList.ModifyScrollPos
@@ -15016,7 +15016,7 @@ struct UTgUISelectionList_execModifyScrollPos_Parms
 struct UTgUISelectionList_execScrollListUp_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISelectionList.ScrollListDown
@@ -15024,7 +15024,7 @@ struct UTgUISelectionList_execScrollListUp_Parms
 struct UTgUISelectionList_execScrollListDown_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISelectionList.FixupWidgetsUC
@@ -15047,7 +15047,7 @@ struct UTgUISelectionList_execSelectSelectionRow_Parms
 	struct FName                                       Key;                                              		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
 	unsigned char                                      Event;                                            		// 0x0008 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nIndex;                                           		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISelectionList.PreCloseScene
@@ -15078,7 +15078,7 @@ struct UTgUISelectionList_execFixupWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUISelectionList_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISelectionList.FixupTgUIScene
@@ -15093,7 +15093,7 @@ struct UTgUISettingsMenu_Chat_execOnSubmitText_Parms
 {
 	class UUIEditBox*                                  ebox;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                PlayerIndex;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Chat.OnCloseButton
@@ -15101,7 +15101,7 @@ struct UTgUISettingsMenu_Chat_execOnSubmitText_Parms
 struct UTgUISettingsMenu_Chat_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Chat.OnEboxClicked
@@ -15109,7 +15109,7 @@ struct UTgUISettingsMenu_Chat_execOnCloseButton_Parms
 struct UTgUISettingsMenu_Chat_execOnEboxClicked_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Chat.OnTabClickedDelegate
@@ -15117,7 +15117,7 @@ struct UTgUISettingsMenu_Chat_execOnEboxClicked_Parms
 struct UTgUISettingsMenu_Chat_execOnTabClickedDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Chat.OnApplyButtonKey
@@ -15125,7 +15125,7 @@ struct UTgUISettingsMenu_Chat_execOnTabClickedDelegate_Parms
 struct UTgUISettingsMenu_Chat_execOnApplyButtonKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Chat.OnOpacityValueChanged
@@ -15161,7 +15161,7 @@ struct UTgUISettingsMenu_Controls_eventSetBind_Parms
 {
 	struct FName                                       BindName;                                         		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
 	struct FString                                     Command;                                          		// 0x0008 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      altKey : 1;                                       		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      altKey    ;                                       		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// struct FKeyBind                                 NewBind;                                          		// 0x0018 (0x0018) [0x0000000000400000]              ( CPF_NeedCtorLink )
 };
 
@@ -15176,7 +15176,7 @@ struct UTgUISettingsMenu_Controls_execOnBindingsUpdated_Parms
 struct UTgUISettingsMenu_Controls_execGetBind_Parms
 {
 	struct FName                                       Key;                                              		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bAlt : 1;                                         		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAlt    ;                                         		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	struct FString                                     ReturnValue;                                      		// 0x000C (0x000C) [0x0000000000400580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm | CPF_NeedCtorLink )
 };
 
@@ -15242,7 +15242,7 @@ struct UTgUISettingsMenu_Controls_execFixupWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUISettingsMenu_Controls_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Controls.FixupTgUIScene
@@ -15256,7 +15256,7 @@ struct UTgUISettingsMenu_Controls_execFixupTgUIScene_Parms
 struct UTgUISettingsMenu_Controls_execOnTabClickedDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Controls.OnCloseButton
@@ -15264,7 +15264,7 @@ struct UTgUISettingsMenu_Controls_execOnTabClickedDelegate_Parms
 struct UTgUISettingsMenu_Controls_execOnCloseButton_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Controls.OnKeyBindConfirmNo
@@ -15272,7 +15272,7 @@ struct UTgUISettingsMenu_Controls_execOnCloseButton_Parms
 struct UTgUISettingsMenu_Controls_execOnKeyBindConfirmNo_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Controls.OnKeyBindConfirmYes
@@ -15280,7 +15280,7 @@ struct UTgUISettingsMenu_Controls_execOnKeyBindConfirmNo_Parms
 struct UTgUISettingsMenu_Controls_execOnKeyBindConfirmYes_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Controls.OnKeyBindBase
@@ -15288,7 +15288,7 @@ struct UTgUISettingsMenu_Controls_execOnKeyBindConfirmYes_Parms
 struct UTgUISettingsMenu_Controls_execOnKeyBindBase_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Controls.OnKeyBindDefaults
@@ -15296,7 +15296,7 @@ struct UTgUISettingsMenu_Controls_execOnKeyBindBase_Parms
 struct UTgUISettingsMenu_Controls_execOnKeyBindDefaults_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISettingsMenu_Controls.OnKeyBindMenuKey
@@ -15304,7 +15304,7 @@ struct UTgUISettingsMenu_Controls_execOnKeyBindDefaults_Parms
 struct UTgUISettingsMenu_Controls_execOnKeyBindMenuKey_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUnlockScene.RequestPlayersSkillsFromServer
@@ -15326,7 +15326,7 @@ struct UTgUIUnlockScene_eventFixupWidgetsUC_Parms
 struct UTgUIUnlockScene_execOnNavButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUnlockScene.OnEquipButtonDelegate
@@ -15334,7 +15334,7 @@ struct UTgUIUnlockScene_execOnNavButtonDelegate_Parms
 struct UTgUIUnlockScene_execOnEquipButtonDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUnlockScene.OnSceneKeyDelegate
@@ -15342,7 +15342,7 @@ struct UTgUIUnlockScene_execOnEquipButtonDelegate_Parms
 struct UTgUIUnlockScene_execOnSceneKeyDelegate_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUnlockScene.GetPOIByMsgId
@@ -15363,7 +15363,7 @@ struct UTgUIUnlockScene_execProcessUnlockData_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgUIUnlockScene_execCheckLevelUnlocks_Parms
 {
-	unsigned long                                      bNewLevel : 1;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bNewLevel    ;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgClient.TgUIUnlockScene.PopulateUnlockWidgets
@@ -15376,7 +15376,7 @@ struct UTgUIUnlockScene_execPopulateUnlockWidgets_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIUnlockScene_execTickTgUIScene_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIUnlockScene.FixupTgUIScene
@@ -15390,7 +15390,7 @@ struct UTgUIUnlockScene_execFixupTgUIScene_Parms
 struct UTgUIVoiceSetup_execOnApplyButtonClick_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPlayerController*                      PC;                                               		// 0x0028 (0x0004) [0x0000000000000000]              
 	// class UTgGameViewportClient*                    vpc;                                              		// 0x002C (0x0004) [0x0000000000000000]              
 	// class ATgHUD_Game*                              HUD;                                              		// 0x0030 (0x0004) [0x0000000000000000]              
@@ -15401,7 +15401,7 @@ struct UTgUIVoiceSetup_execOnApplyButtonClick_Parms
 struct UTgUIVoiceSetup_execOnCloseButtonClick_Parms
 {
 	struct FInputEventParameters                       EventParms;                                       		// 0x0000 (0x0024) [0x0000000000000182]              ( CPF_Const | CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUIVoiceSetup.FixupWidgetsUC
@@ -15427,7 +15427,7 @@ struct UTgUISceneManager_execTickOpenScenes_Parms
 struct UTgUISceneManager_execReleaseSceneDriverIfNotOpened_Parms
 {
 	class UTgUISceneDriver*                            SceneDriver;                                      		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgClient.TgUISceneManager.GetSceneDriverNameByResource
@@ -15443,7 +15443,7 @@ struct UTgUISceneManager_execGetSceneDriverNameByResource_Parms
 struct UTgUISceneManager_execGetSceneDriver_Parms
 {
 	struct FName                                       DriverClass;                                      		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      InitOnDemand : 1;                                 		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      InitOnDemand    ;                                 		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	class UTgUISceneDriver*                            ReturnValue;                                      		// 0x000C (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 

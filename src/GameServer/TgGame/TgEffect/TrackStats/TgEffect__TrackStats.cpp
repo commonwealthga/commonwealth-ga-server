@@ -10,6 +10,7 @@
 #include "src/GameServer/TgGame/TgPawn/TrackDamagedBot/TgPawn__TrackDamagedBot.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackDamagedPlayer/TgPawn__TrackDamagedPlayer.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackDamageTaken/TgPawn__TrackDamageTaken.hpp"
+#include "src/GameServer/WorldGroups/WorldGroups.hpp"
 #include "src/GameServer/TgGame/TgPawn/TickMakeVisibleCalculation/TgPawn__TickMakeVisibleCalculation.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackDefense/TgPawn__TrackDefense.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackHealing/TgPawn__TrackHealing.hpp"
@@ -317,12 +318,36 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 	ATgPawn* damageCreditPawn = Instigator;
 	if (Instigator->r_Owner != nullptr) damageCreditPawn = Instigator->r_Owner;
 
+	// Per-character damage/heal tally for world groups (spawn-group).
+	if (targetIsPawn && IsRealPlayer(damageCreditPawn->Controller)) {
+		const int64_t targetCharId = IsRealPlayer(targetPawn->Controller)
+			? (int64_t)((ATgPawn_Character*)targetPawn)->s_nCharacterId : 0;
+		WorldGroups::OnCombat((int64_t)((ATgPawn_Character*)damageCreditPawn)->s_nCharacterId,
+		                      Target, targetCharId, magnitude, isHeal, (AActor*)damageCreditPawn);
+	} else if (!isHeal && targetIsPawn && IsRealPlayer(targetPawn->Controller)) {
+		// A world-group member (or its pet) hurt a player: that player is in the fight.
+		WorldGroups::OnMemberHit((AActor*)damageCreditPawn,
+		                         (int64_t)((ATgPawn_Character*)targetPawn)->s_nCharacterId);
+	}
+	if (isHeal && targetIsPawn && WorldGroups::IsMember(Target))
+		WorldGroups::OnMemberHealed(Target, magnitude, Instigator);  // Allowed HP rise
+
 	// Device that caused this event — same fire-mode reference the kill
 	// attribution below uses (FImpactInfo @ 0x54), resolved to an asm device
 	// id. Drives the end-of-mission Device Stats tab.
 	// skal small optim & clean-up: call ResolveDeviceIdFromFireMode() only once here
 	const int killerDeviceId = ResolveDeviceIdFromFireMode((UObject*)Impact.dw[0x54 / 4]);
 	int creditDeviceId = killerDeviceId;
+
+	// p0994: per-hit damage taken by a player (channel "pvedmg", off by default).
+	if (!isHeal && targetPawn != nullptr && Logger::IsChannelEnabled("pvedmg") &&
+	    IsRealPlayer(targetPawn->Controller)) {
+		const char* iRaw = Instigator->GetName();
+		const std::string iName = iRaw ? iRaw : "<null>";
+		Logger::Log("pvedmg", "[%s] hit player=%p by=%s dev=%d dmg=%.1f hp=%d/%d adj=%.3f enemy=%d\n",
+			Logger::GetTime(), targetPawn, iName.c_str(), killerDeviceId, magnitude,
+			targetPawn->Health, targetPawn->HealthMax, Instigator->s_fDamageAdjustment, (int)bIsEnemy);
+	}
 
 	// Deployable-fired (Medical Station heal, mine blast, force wall): the
 	// fire mode's m_Owner is the ATgDeployable itself, not an ATgDevice, so

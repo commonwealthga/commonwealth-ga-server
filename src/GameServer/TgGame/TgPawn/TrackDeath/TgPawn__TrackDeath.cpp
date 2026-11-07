@@ -4,12 +4,14 @@
 #include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/TgGame/TgGame/TgFindPlayerStart/TgGame__TgFindPlayerStart.hpp"
 
 // Called on the dying pawn from TgPawn::Died().
 // Increments death count in r_Scores[STYPE_DEATHS].
 void __fastcall TgPawn__TrackDeath::Call(ATgPawn* Pawn, void* edx) {
 	LogCallBegin();
 	CallOriginal(Pawn, edx);
+	TgGame__TgFindPlayerStart::NoteDeath(Pawn);  // Open-zone respawn spot
 
 	// -changeteam / autobalance suicide: administrative respawn, not a
 	// death — no counter, no event (design 2026-06-12).

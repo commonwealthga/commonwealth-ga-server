@@ -39,6 +39,12 @@ namespace BotVoice {
 // plain r_nBotSoundCueId write rather than going silent.
 bool PlayPitched(ATgPawn* pawn, int cueId, float pitch, int voiceAsmId = 0);
 
+// Play the cue behind asm resource `resId` (asm_data_set_resources,
+// e.g. 3308 = SND_B_Vox_Agent.A_CUE_Agent_Vox_Help_Big) on `pawn`, positional, for every
+// player whose pawn is within `radius` uu (or who IS the pawn). Same Kismet_ClientPlaySound
+// path as PlayPitched. Returns false if the cue couldn't be loaded or nobody was in range.
+bool PlayResNear(ATgPawn* pawn, int resId, float radius);
+
 // asm_data_set_bots.body_asm_id for `botId` (0 if unknown). Cached. Use to
 // turn a donor bot id into the `voiceAsmId` for a voice transplant.
 int LookupBodyAsmId(int botId);

@@ -1,8 +1,18 @@
+#include "src/ControlServer/ExternalInstances/ExternalInstances.hpp"
+#include "src/ControlServer/PvpParity/PvpParity.hpp"
+#include "src/ControlServer/NodeClaims/NodeClaims.hpp"
+#include "src/ControlServer/ServiceHooks/ServiceHooks.hpp"
+#include "src/ControlServer/AchievementService/AchievementService.hpp"
+#include "src/ControlServer/MissionLoot/MissionLoot.hpp"
+#include "src/ControlServer/EconParity/EconParity.hpp"
+#include "src/ControlServer/Config/EventCalendar.hpp"
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
+#include "src/ControlServer/AvaCargo/AvaCargo.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/ControlServer/InstanceSpawner/InstanceSpawner.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
+#include "src/ControlServer/Social/Friends.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/Shared/IpcFraming.hpp"
 #include "lib/nlohmann/json.hpp"
@@ -11,17 +21,65 @@
 #include <array>
 #include <vector>
 #include <deque>
+#include <map>
+#include <mutex>
+#include <tuple>
+
+namespace {
+// Per-instance budget for reward-bearing GAME_EVENTs from EXTERNAL
+// instances (a modified host could otherwise send unlimited kill/chest events
+// for its own agent). Generous for real play; extra events are dropped.
+struct EventBudget { int used = 0; double tokens = 0; std::chrono::steady_clock::time_point last{}; bool warned = false; };
+std::mutex g_budget_mx;
+std::map<std::tuple<int64_t, int64_t, std::string>, EventBudget> g_budget;
+
+bool ExternalEventAllowed(int64_t inst, int64_t ch, const std::string& subtype) {
+    int cap = 0; double rate = 0, burst = 0;
+    if (subtype == "quest_kill_credit")        { cap = 400; rate = 3.0; burst = 30; }
+    else if (subtype == "chest_loot")          { cap = 12;  rate = 0.5; burst = 4;  }
+    else if (subtype == "quest_script_credit" ||
+             subtype == "quest_volume_use")    { cap = 200; rate = 2.0; burst = 20; }
+    else return true;
+    std::lock_guard<std::mutex> lk(g_budget_mx);
+    if (g_budget.size() > 20000) g_budget.clear();
+    auto& b = g_budget[std::make_tuple(inst, ch, subtype)];
+    const auto now = std::chrono::steady_clock::now();
+    if (b.used == 0 && b.tokens == 0) { b.tokens = burst; b.last = now; }
+    b.tokens = std::min(burst, b.tokens + rate * std::chrono::duration<double>(now - b.last).count());
+    b.last = now;
+    if (b.used >= cap || b.tokens < 1.0) {
+        if (!b.warned) {
+            b.warned = true;
+            Logger::Log("ipc", "[IpcServer] GAME_EVENT %s from external instance %lld char %lld over budget "
+                "(used %d cap %d) -- dropping extras\n", subtype.c_str(), (long long)inst, (long long)ch, b.used, cap);
+        }
+        return false;
+    }
+    b.tokens -= 1.0; b.used++;
+    return true;
+}
+
+void ForgetExternalBudget(int64_t inst) {
+    std::lock_guard<std::mutex> lk(g_budget_mx);
+    for (auto it = g_budget.begin(); it != g_budget.end(); )
+        it = (std::get<0>(it->first) == inst) ? g_budget.erase(it) : std::next(it);
+}
+} // namespace
 #include <string>
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
 #include "src/ControlServer/MmrService/MmrService.hpp"
 #include "src/ControlServer/MatchmakingService/RoleWeightedSplit.hpp"
 #include "src/ControlServer/ChatSession/ChatCommand.hpp"
 #include "src/ControlServer/Database/Database.hpp"
+#include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/SpectatorOverlay/SpectatorOverlayState.hpp"
 #include "src/ControlServer/SpectatorOverlay/MissionProgressState.hpp"
 #include "src/ControlServer/SpectatorOverlay/OverlayIdCatalog.hpp"
 #include "src/ControlServer/OpenWorldTravel/OpenWorldTravel.hpp"
+#include "src/ControlServer/InstanceState/InstanceState.hpp"
+#include "src/ControlServer/ServiceHooks/ServiceHooks.hpp"
 #include <ctime>
+#include "src/ControlServer/Durability/Durability.hpp"
 #include <unordered_set>
 
 namespace {
@@ -162,6 +220,15 @@ private:
     }
 
     void do_read_body(uint32_t len) {
+        // A length header is not trusted with a huge allocation.
+        if (len > (64u << 20)) {
+            Logger::Log("ipc", "[IpcServer] instance %lld sent a %u-byte message (cap 64 MB) - closing\n",
+                (long long)instance_id_, len);
+            asio::error_code ignore;
+            socket_.close(ignore);
+            on_disconnect();
+            return;
+        }
         body_buf_.resize(len);
         auto self = shared_from_this();
         asio::async_read(
@@ -195,6 +262,15 @@ private:
                 std::lock_guard<std::mutex> lock(sessions_mutex_);
                 g_sessions.erase(instance_id_);
             }
+            // An external instance lost before INSTANCE_READY: start it here
+            // instead; the pending match stays and is invited on READY.
+            if (ExternalInstances::IsExternal(instance_id_)) {
+                auto inst = InstanceRegistry::GetInstanceById(instance_id_);
+                if (inst && inst->state == "STARTING" &&
+                    ExternalInstances::FallBackToLocal(instance_id_, "link lost before ready")) {
+                    return;
+                }
+            }
             // Orphan safety net: if this instance had a DRAFTING successor
             // that was waiting for MSG_MISSION_ENDED, the parent just died
             // without firing it. Promote the successor so the matchmaker
@@ -213,6 +289,9 @@ private:
             MatchmakingService::DiscardPendingMatchForDeadInstance(
                 instance_id_, "instance disconnected before INSTANCE_READY");
             InstanceRegistry::MarkStopped(instance_id_);
+            ExternalInstances::Detach(instance_id_);
+            NodeClaims::Forget(instance_id_);
+            ForgetExternalBudget(instance_id_);
             SpectatorOverlayState::ClearInstance(instance_id_);
             MissionProgressState::ClearInstance(instance_id_);
             Logger::Log("ipc", "[IpcServer] Instance %lld disconnected, marked STOPPED\n",
@@ -222,12 +301,33 @@ private:
 
     // ── Dispatch ────────────────────────────────────────────────────────────
 
+    // One bad message (a field of the wrong type makes nlohmann throw)
+    // must never take the whole control server down. External (player-hosted)
+    // links are closed on a bad message; local instances only lose the message.
     void dispatch(const std::string& json_msg) {
+        try {
+            dispatch_checked(json_msg);
+        } catch (const std::exception& e) {
+            Logger::Log("ipc", "[IpcServer] message from instance %lld dropped: %s\n",
+                (long long)instance_id_, e.what());
+            if (instance_id_ != 0 && ExternalInstances::IsExternal(instance_id_)) {
+                asio::error_code ignore;
+                socket_.close(ignore);
+            }
+        }
+    }
+
+    void dispatch_checked(const std::string& json_msg) {
         auto j = nlohmann::json::parse(json_msg, nullptr, /*allow_exceptions=*/false, /*ignore_comments=*/true);
-        if (j.is_discarded()) {
+        if (j.is_discarded() || !j.is_object()) {
             Logger::Log("ipc", "[IpcServer] Malformed JSON from game instance\n");
             return;
         }
+        // An external (player-hosted) instance only ever speaks for
+        // itself - the validated connection id replaces any instance_id it sends.
+        const bool external_link = instance_id_ != 0 && ExternalInstances::IsExternal(instance_id_);
+        if (external_link && j.contains("instance_id"))
+            j["instance_id"] = instance_id_;
 
         std::string type = j.value("type", "");
 
@@ -277,6 +377,17 @@ private:
                 (long long)inst_id, info ? info->queue_id : 0,
                 (int)(IpcServer::stats_device_enabled_ && q_dev),
                 (int)(IpcServer::stats_effectiveness_enabled_ && q_eff));
+            // Sublevels the DLL streams to each client on join (seasonal
+            // decoration; the Christmas window gates the Dome one).
+            {
+                std::string lc = info ? info->map_name : std::string();
+                for (auto& ch : lc) ch = (char)tolower((unsigned char)ch);
+                nlohmann::json lv = nlohmann::json::array();
+                if (lc.rfind("domecity", 0) == 0 && EventCalendar::IsActive("christmas") &&
+                    EventCalendar::IsActive("christmas_dome_stream")) // opt-in kill-switch: a client without the sublevel drops to login
+                    lv.push_back("DomeCity_Christmas");
+                ack["stream_levels"] = lv;
+            }
             send(ack.dump());
             Logger::Log("ipc", "[IpcServer] INSTANCE_HELLO_ACK sent to instance_id=%lld\n",
                 (long long)inst_id);
@@ -291,6 +402,15 @@ private:
                 (long long)inst_id, max_players);
             InstanceRegistry::MarkReady(inst_id, max_players);
 
+            // State queued while starting goes first, so it is in place
+            // before any player registered below joins.
+            auto queued = InstanceState::TakeQueued(inst_id);
+            if (queued.is_object()) {
+                send(queued.dump());
+                Logger::Log("ipc", "[IpcServer] Instance %lld ready — sent queued %s\n",
+                    (long long)inst_id, queued.value("type", std::string()).c_str());
+            }
+
             // Check if this instance was spawned for a pending match
             auto pending = MatchmakingService::ConsumePendingMatch(inst_id);
             if (pending) {
@@ -300,6 +420,7 @@ private:
                     inst_id, pending->queue_id, pending->game_mode,
                     pending->session_guids, pending->task_force_assignments,
                     pending->profile_ids, pending->mmrs, pending->cap);
+                AvaCargo::OnMatchReady(inst_id, pending->queue_id, pending->task_force_assignments);  // AvA cargo
                 for (const auto& guid : pending->session_guids) {
                     int tf = 1;
                     auto tfit = pending->task_force_assignments.find(guid);
@@ -307,6 +428,7 @@ private:
                     TcpSession::DeliverMatchInvitation(guid, inst_id, pending->game_mode, tf);
                 }
             }
+            TcpSession::FlushEarlyMoves(inst_id);
         }
         else if (type == IpcProtocol::MSG_PING) {
             Logger::Log("ipc", "[IpcServer] PING received, sending PONG\n");
@@ -325,6 +447,17 @@ private:
         else if (type == IpcProtocol::MSG_GAME_EVENT) {
             std::string subtype = j.value("subtype", "");
             std::string guid    = j.value("session_guid", "");
+            // An external instance may only report about the agent that
+            // session is playing (no writes to other characters).
+            if (external_link && j.contains("character_id") &&
+                !TcpSession::SessionHasCharacter(guid, j.value("character_id", (int64_t)0))) {
+                Logger::Log("ipc", "[IpcServer] GAME_EVENT %s from external instance %lld: character_id is not "
+                    "guid %s's agent -- dropped\n", subtype.c_str(), (long long)instance_id_, guid.c_str());
+                return;
+            }
+            if (external_link && !ExternalEventAllowed(instance_id_, j.value("character_id", (int64_t)0), subtype))
+                return;
+            if (subtype == "afk_state") { Social::Friends::SetAfk(guid, j.value("afk", false)); return; }   // /afk
             if (subtype == "chat_command_audit") {
                 const std::string player  = j.value("player_name", "");
                 const std::string command = j.value("command", "");
@@ -335,6 +468,18 @@ private:
                     "[ChatCmd] %s player='%s' guid=%s instance=%lld outcome=%s details=%s\n",
                     command.c_str(), player.c_str(), guid.c_str(),
                     (long long)inst_id, outcome.c_str(), details.c_str());
+                return;
+            }
+            if (subtype == "chest_use" || subtype == "chest_status") {
+                // Placed-chest events; forwarded to an optional service.
+                Logger::Log("admin", "[IPC] %s instance=%lld tag=%s char=%lld\n", subtype.c_str(),
+                    (long long)instance_id_, j.value("tag", std::string()).c_str(),
+                    (long long)j.value("character_id", (int64_t)0));
+                nlohmann::json ev = j;
+                ev.erase("type");
+                ev.erase("subtype");
+                ev["instance_id"] = instance_id_;
+                ServiceHooks::Notify(subtype, ev);
                 return;
             }
             Logger::Log("ipc", "[IpcServer] GAME_EVENT subtype=%s guid=%s\n",
@@ -455,6 +600,12 @@ private:
 
             snap.updated_at = (int64_t)std::time(nullptr);
             MissionProgressState::Update(inst_id, snap);
+
+            // Raw copy for state queries; a registered link only reports its own instance.
+            const int64_t state_id = instance_id_ ? instance_id_ : inst_id;
+            InstanceState::SetProgress(state_id, j);
+            if (ServiceHooks::Enabled("instance_state"))
+                ServiceHooks::Notify("instance_state", InstanceState::Get(state_id));
         }
         else if (type == IpcProtocol::MSG_INSTANCE_EMPTY) {
             int64_t inst_id = j.value("instance_id", (int64_t)0);
@@ -538,6 +689,7 @@ private:
             row.beacons_destroyed      = j.value("beacons_destroyed", 0);
             row.time_played_seconds    = j.value("time_played_seconds", 0.0);
             Database::UpsertMatchPlayerStats(row);
+            InstanceState::SetPlayerStats(instance_id_ ? instance_id_ : row.instance_id, row.character_id, j);
         }
         else if (type == IpcProtocol::MSG_MATCH_DEVICE_STATS) {
             if (is_home_map_) return;
@@ -565,6 +717,34 @@ private:
             row.boost_wasted_secs      = j.value("boost_wasted_secs", 0);
             QueueDeviceStatsRow(row);
         }
+        else if (type == IpcProtocol::MSG_TEAM_ROSTER) {
+            // Task-force bot roster from the instance; forwarded to an optional service.
+            Logger::Log("admin", "[IPC] TEAM_ROSTER instance=%lld map=%s result=%s\n",
+                (long long)instance_id_, j.value("map", std::string()).c_str(),
+                j.value("result", std::string()).c_str());
+            nlohmann::json ev = j;
+            ev.erase("type");
+            ev["instance_id"] = instance_id_;
+            ServiceHooks::Notify("team_roster", ev);
+        }
+        else if (type == IpcProtocol::MSG_GROUP_STATUS) {
+            // Bot group state from the instance; forwarded to an optional service.
+            Logger::Log("admin", "[IPC] GROUP_STATUS instance=%lld tag=%s alive=%d/%d\n",
+                (long long)instance_id_, j.value("tag", std::string()).c_str(),
+                j.value("alive", 0), j.value("spawned", 0));
+            nlohmann::json ev = j;
+            ev.erase("type");
+            ev["instance_id"] = instance_id_;
+            ServiceHooks::Notify("group_status", ev);
+        }
+        else if (type == IpcProtocol::MSG_NODE_CLAIM) {
+            // Economy event from an external instance; checked + applied by
+            // NodeClaims. The validated connection id is authoritative.
+            NodeClaims::Handle(instance_id_, j);
+        }
+        else if (type == "AVA_CARGO_RESULT") {  // DLL reports the cargo still untouched at match end
+            AvaCargo::OnResult(j.value("instance_id", (int64_t)instance_id_), j.dump());
+        }
         else if (type == IpcProtocol::MSG_MISSION_ENDED) {
             // BeginEndMission fired on the mission instance. Stamp end_mission_at
             // on the parent row AND promote any DRAFTING successor to READY in
@@ -588,12 +768,146 @@ private:
             // Win/stalemate outcome from the game's own win-state
             // computation (design 2026-06-12). Write-once.
             const std::string outcome = j.value("outcome", "");
-            if (!outcome.empty()) {
+            // External instances: the outcome and its rewards only count
+            // when NodeClaims accepts the mission end.
+            bool defer_results = false;
+            const nlohmann::json report = {{"outcome", outcome},
+                {"winning_task_force", j.value("winning_task_force", 0)},
+                {"count_deaths_attackers", j.value("count_deaths_attackers", 0)},
+                {"count_deaths_defenders", j.value("count_deaths_defenders", 0)}};
+            if (!outcome.empty() && NodeClaims::MissionEndAccepted(inst_id, &defer_results, report)) {
+                // A deferred result keeps its rewards but parks the rating
+                // fold + AvA territory until an admin instance-results commit.
+                if (defer_results)
+                    NodeClaims::DeferResults(inst_id, j.value("winning_task_force", 0));
                 Database::SetInstanceOutcomeIfNull(
                     inst_id, outcome, j.value("winning_task_force", 0));
                 // Fold the just-concluded match into both MMR engines now so
                 // the next matchmaking round sees fresh ratings.
                 MmrService::FoldUnprocessed();
+
+                // Finish PvP Mission (1512) quest credit, win or lose.
+                for (const auto& [cid, moved] : Database::CreditPvpFinishForInstance(inst_id))
+                    for (const auto& pr : moved)
+                        TcpSession::SendQuestProgress(cid, pr.quest_id,
+                                                      pr.quest_requirement_id, pr.count);
+
+                // PvE rewards (queues with a difficulty = PvE).
+                // Players are task force 1 (attackers) in PvE missions.
+                auto inst = InstanceRegistry::GetInstanceById(inst_id);
+                if (inst && inst->queue_id != 0) {
+                    Durability::WearForInstance(inst_id);  // -1 per mission on equipped Uncommon+ gear
+                    auto qc = MatchmakingService::GetQueueConfig(inst->queue_id);
+                    // Defense queues (pinned_2: raids, DDR, night
+                    // defenses) seat the players on TF 2, so a win is TF 2 there.
+                    const int players_tf =
+                        qc && qc->taskforce_policy == TaskforcePolicy::Pinned2 ? 2 : 1;
+                    // Complete Mission (1432) quest credit for every
+                    // agent on the winning task force (PvP: either side).
+                    for (const auto& [cid, moved] : Database::CreditMissionWinForInstance(
+                             inst_id, j.value("winning_task_force", 0),
+                             qc ? (int)qc->difficulty_value_id : 0))
+                        for (const auto& pr : moved)
+                            TcpSession::SendQuestProgress(cid, pr.quest_id,
+                                                          pr.quest_requirement_id, pr.count);
+                    if (qc && qc->difficulty_value_id != 0) {
+                        const auto rw = PlayerSessionStore::AwardPveMissionRewards(
+                            inst_id, qc->difficulty_value_id,
+                            j.value("winning_task_force", 0) == players_tf,
+                            qc->reward_level_max, qc->name, players_tf);
+                        if (!rw.characters.empty())
+                            TcpSession::SendRewardDetails(rw);
+                        if (rw.challenge_bonus)
+                            for (int64_t cid : rw.characters)
+                                TcpSession::SystemMessageToCharacter(cid,
+                                    "*** PvE Challenge Bonus earned (included in your rewards). ***");
+                        if (!rw.over_level.empty()) {
+                            PlayerSessionStore::PveRewardResult none;
+                            none.characters = rw.over_level;
+                            for (int64_t cid : rw.over_level)
+                                none.paid[cid].line = "No rewards: above level " +
+                                    std::to_string(qc->reward_level_max) + " on this difficulty";  // 2 lines
+                            TcpSession::SendRewardDetails(none);
+                            for (int64_t cid : rw.over_level)
+                                TcpSession::SystemMessageToCharacter(cid,
+                                    "*** No mission rewards: this difficulty only rewards agents up to level " +
+                                    std::to_string(qc->reward_level_max) + ". ***");
+                        }
+                        // Achievements - Win / Win with Victory Bonus.
+                        const bool won = j.value("winning_task_force", 0) == players_tf;
+                        // Mission-end awarded loot - one
+                        // gear blueprint roll per winner, granted at next spawn.
+                        // Raid / endgame clear AP.
+                        if (won)
+                            PlayerSessionStore::GrantRaidClearAp(
+                                inst_id, players_tf, qc->difficulty_value_id,
+                                qc->queue_type_value_id == 1454, inst->map_name);
+                        if (won)
+                            MissionLoot::QueueForInstance(inst_id, players_tf,
+                                MissionLoot::TableFor(qc->difficulty_value_id,
+                                                      (int)rw.characters.size(),
+                                                      qc->name, qc->queue_type_value_id),
+                                rw.over_level);
+                        if (won)  // booster = double end-of-mission loot (2nd roll)
+                            EconParity::QueueBoosterLoot(inst_id, players_tf, MissionLoot::TableFor(qc->difficulty_value_id,
+                                (int)rw.characters.size(), qc->name, qc->queue_type_value_id), rw.over_level);
+                        // A Halloween raid win while the halloween
+                        // calendar window is open guarantees one "Seasonal"
+                        // mask per winner (pick-one table 393, 2011 rule).
+                        if (won && inst->map_name == "Raid_Halloween_Oasis_P" &&
+                            EventCalendar::IsActive("halloween"))
+                            MissionLoot::QueueForInstance(inst_id, players_tf, 393,
+                                                          rw.over_level);
+                        // Every other open calendar window with a
+                        // "win_loot_table" gives its seasonal pick-one roll
+                        // (flair / trails) per winner of any mission.
+                        if (won)
+                            for (int t : EventCalendar::ActiveWinTables())
+                                MissionLoot::QueueForInstance(inst_id, players_tf, t,
+                                                              rw.over_level);
+                        std::vector<std::pair<int64_t, int>> unlocks;
+                        for (const auto& u : AchievementService::CreditPveMission(
+                                 inst_id, players_tf, qc->difficulty_value_id,
+                                 qc->max_players_per_team == 1,
+                                 qc->name.rfind("double_agent", 0) == 0,  // flag is set on every queue
+                                 won))
+                            unlocks.emplace_back(u.character_id, u.achievement_id);
+                        for (int64_t cid : rw.characters)
+                            for (const auto& u : AchievementService::CheckStarRating(cid))
+                                unlocks.emplace_back(u.character_id, u.achievement_id);
+                        if (!unlocks.empty()) TcpSession::PushAchievementUnlocks(unlocks);
+                    }
+                    if (!defer_results) PvpParity::OnMatchEnded(inst_id, inst->queue_id);  // challenge achievements
+                    // AvA queues 40-45 (hidden, joined via HEX_CAPTURE).
+                    if (inst->queue_id >= 40 && inst->queue_id <= 45) {
+                        AvaCargo::OnMatchEnded(inst_id);  // close the cargo escrow (no result = all returned)
+                        if (!defer_results)
+                        for (const auto& rw : PlayerSessionStore::ResolveAvaMatch(
+                                 inst_id, j.value("winning_task_force", 0)))
+                            TcpSession::SendRewardDetails(rw);
+                        std::vector<std::pair<int64_t, int>> unlocks;
+                        if (!defer_results)
+                        for (const auto& u : AchievementService::CreditAvaMatch(inst_id))
+                            unlocks.emplace_back(u.character_id, u.achievement_id);
+                        if (!unlocks.empty()) TcpSession::PushAchievementUnlocks(unlocks);
+                    }
+                    // PvP match rewards + performance AP (merc / 1v1 arena / PvP queues).
+                    else if (qc && qc->taskforce_policy == TaskforcePolicy::BalancedPvp
+                             && qc->difficulty_value_id == 0 && qc->reward_level_max > 0) {  // reward_level_max 0 = scrimmage, no reward
+                        std::vector<int64_t> pvp_paid;  // PvP win loot
+                        for (const auto& rw : PlayerSessionStore::AwardPvpMatchRewards(
+                                 inst_id, j.value("winning_task_force", 0),
+                                 (int)qc->max_players_per_team)) {
+                            TcpSession::SendRewardDetails(rw);
+                            pvp_paid.insert(pvp_paid.end(), rw.characters.begin(), rw.characters.end());
+                        }
+                        MissionLoot::QueuePvpWin(inst_id, j.value("winning_task_force", 0),
+                                                 qc->queue_type_value_id == 1421, pvp_paid);
+                        { std::vector<std::pair<int64_t, int>> un;  // PvP top-stats achievements
+                          for (const auto& a : AchievementService::CreditPvpTopStats(inst_id, pvp_paid)) un.emplace_back(a.character_id, a.achievement_id);
+                          if (!un.empty()) TcpSession::PushAchievementUnlocks(un); }
+                    }
+                }
             }
 
             // Populate pre-assigned teams for the successor so each

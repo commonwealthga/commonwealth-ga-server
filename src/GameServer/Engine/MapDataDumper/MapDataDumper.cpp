@@ -108,6 +108,12 @@ void DeletePriorRows(sqlite3* db, const std::string& mapName) {
 void WriteByClass(sqlite3* db, AActor* actor, const std::string& mapName) {
 	if (!actor || !actor->Class) return;
 	std::string cls = ExtractClassName(actor->Class->GetFullName());
+	// City NPCs/vendors have no map_* table (client-side actors); log where
+	// they stand so a test client can be placed next to one.
+	if (cls.find("NPC") != std::string::npos || cls.find("Vendor") != std::string::npos) {
+		Logger::Log("mapdump", "[npc] %s at %.0f %.0f %.0f\n", actor->GetFullName(),
+			actor->Location.X, actor->Location.Y, actor->Location.Z);
+	}
 	if (cls.empty()) return;
 
 	// Per-leaf-class branches inserted incrementally by writer tasks below.

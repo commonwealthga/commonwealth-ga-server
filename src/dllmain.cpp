@@ -1,6 +1,7 @@
 #include "src/pch.hpp"
 
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/Shared/SourceRevision.hpp"
 #include "src/Utils/CrashHandler/CrashHandler.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Config/Config.hpp"
@@ -50,6 +51,7 @@
 #include "src/GameServer/TgGame/TgSeqVar_MapGameId/GetRef/TgSeqVar_MapGameId__GetRef.hpp"
 #include "src/GameServer/TgGame/TgSeqVar_MapGameId/PublishValue/TgSeqVar_MapGameId__PublishValue.hpp"
 #include "src/GameServer/TgGame/TgSeqVar_MapGameId/PopulateValue/TgSeqVar_MapGameId__PopulateValue.hpp"
+#include "src/GameServer/TgGame/TgChestActor/OpenChest/TgChestActor__OpenChest.hpp"
 #include "src/GameServer/TgGame/TgGame_Arena/LoadGameConfig/TgGame_Arena__LoadGameConfig.hpp"
 #include "src/GameServer/TgGame/TgGame_Arena/FinalizeRoundScore/TgGame_Arena__FinalizeRoundScore.hpp"
 #include "src/GameServer/TgGame/TgGame_Arena/FinalizeGameScore/TgGame_Arena__FinalizeGameScore.hpp"
@@ -88,6 +90,8 @@
 #include "src/GameServer/Engine/Pawn/PhysicsRotation/Pawn__PhysicsRotation.hpp"
 #include "src/GameServer/Engine/Pawn/IsNetRelevantFor/Pawn__IsNetRelevantFor.hpp"
 #include "src/GameServer/Engine/GameEngine/Tick/GameEngine__Tick.hpp"
+#include "src/GameServer/Utils/FramePacing/FramePacing.hpp"
+#include "src/GameServer/Utils/ActorTickLod/ActorTickLod.hpp"
 #include "src/GameServer/Engine/AutoReporter/GetLocalPlayerId/AutoReporter__GetLocalPlayerId.hpp"
 #include "src/GameServer/TgGame/TgActorFactory/LoadObjectConfig/TgActorFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgDeployableFactory/SpawnObject/TgDeployableFactory__SpawnObject.hpp"
@@ -127,6 +131,7 @@
 #include "src/GameServer/TgGame/TgEffectManager/RemoveAllEffects/TgEffectManager__RemoveAllEffects.hpp"
 #include "src/GameServer/TgGame/TgDevice/HasMinimumPowerPool/TgDevice__HasMinimumPowerPool.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective_Bot/SetObjectiveActive/TgMissionObjective_Bot__SetObjectiveActive.hpp"
+#include "src/GameServer/GameModes/Acquisition/AssertTrace.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective_Bot/SpawnObjectiveBot/TgMissionObjective_Bot__SpawnObjectiveBot.hpp"
 #include "src/GameServer/TgGame/TgPlayerCountVolume/Update/TgPlayerCountVolume__Update.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective_Bot/LoadObjectConfig/TgMissionObjective_Bot__LoadObjectConfig.hpp"
@@ -160,6 +165,7 @@
 #include "src/GameServer/TgGame/TgBotFactory/UseSpawnTable/TgBotFactory__UseSpawnTable.hpp"
 #include "src/GameServer/TgGame/TgDeployable/AddProperty/TgDeployable__AddProperty.hpp"
 #include "src/GameServer/TgGame/TgDeployable/GetTaskForce/TgDeployable__GetTaskForce.hpp"
+#include "src/GameServer/TgGame/TgRepInfo_Game/CheckIsEnemy/TgRepInfo_Game__CheckIsEnemy.hpp"
 #include "src/GameServer/TgGame/TgDeployable/InitializeDefaultProps/TgDeployable__InitializeDefaultProps.hpp"
 #include "src/GameServer/TgGame/TgDeployable/NotifyGroupChanged/TgDeployable__NotifyGroupChanged.hpp"
 #include "src/GameServer/TgGame/TgDeployable/SetProperty/TgDeployable__SetProperty.hpp"
@@ -335,6 +341,7 @@
 #include "src/GameServer/TgGame/TgPlayerController/ServerCombineItems/TgPlayerController__ServerCombineItems.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/ServerCraftItem/TgPlayerController__ServerCraftItem.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/ServerDestroyInvItem/TgPlayerController__ServerDestroyInvItem.hpp"
+#include "src/GameServer/TgGame/TgPlayerController/ServerCraftItem/TgPlayerController__ServerCraftItem.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/ServerDevGiveXP/TgPlayerController__ServerDevGiveXP.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/ServerGMGiven/TgPlayerController__ServerGMGiven.hpp"
 #include "src/GameServer/TgGame/TgPlayerController/ServerLoadItemProfile/TgPlayerController__ServerLoadItemProfile.hpp"
@@ -426,6 +433,9 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	Pawn__PhysicsRotation::Install();
 	Pawn__IsNetRelevantFor::Install();
 	GameEngine__Tick::Install();
+	// Game-thread Sleep(0) -> short real delay (idle CPU between frames).
+	FramePacing::Install();
+	ActorTickLod::Install();
 	AutoReporter__GetLocalPlayerId::Install();
 
 	// game functions
@@ -494,13 +504,14 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgSeqVar_MapGameId__GetRef::Install();
 	TgSeqVar_MapGameId__PublishValue::Install();
 	TgSeqVar_MapGameId__PopulateValue::Install();
+	TgChestActor__OpenChest::Install();
 	TgDeviceFire__GetEffectGroup::Install();
 	// TgDeviceFire__ApplyFireModeSetup::Install();
 	TgDeviceFire__InitializeProjectile::Install();
 	TgDeviceFire__CustomFire::Install();
 	TgDeviceFire__Deploy::Install();
 	TgDeviceFire__SpawnPet::Install();
-	// TgDeviceFire__CheckTeamPassThrough::Install();
+	TgDeviceFire__CheckTeamPassThrough::Install();
 	// Diagnostic hook (pass-through + channel-gated logging). Re-enabled for
 	// the VR heal pad chain trace — the "healpad" block needs it to see UC's
 	// ApplyHit → IsValidTarget calls.
@@ -521,6 +532,7 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgMissionObjective_Bot__LoadObjectConfig::Install();
 	TgMissionObjective_Bot__SetObjectiveActive::Install();
 	TgMissionObjective_Bot__SpawnObjectiveBot::Install();
+	AssertTrace::Install(); AssertTrace::InstallFirstChance();  // Assert/AV stack scan (diagnostics)
 	TgMissionObjective_Proximity__ScoreObjectiveProgress::Install();
 	TgPlayerCountVolume__Update::Install();
 
@@ -535,6 +547,8 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgBotFactory__UseSpawnTable::Install();
 	TgDeployable__AddProperty::Install();
 	TgDeployable__GetTaskForce::Install();
+	TgRepInfo_Game__CheckIsEnemy::Install();
+	TgRepInfo_GameOpenWorld__CheckIsEnemy::Install();
 	TgDeployable__InitializeDefaultProps::Install();
 	TgDeployable__NotifyGroupChanged::Install();
 	TgDeployable__SetProperty::Install();
@@ -633,8 +647,8 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgPawn__ApplyJetpackTrail::Install();
 	TgPawn__BeginStats::Install();
 	TgPawn__CanMove::Install();
-	// TgAIController__TargetInLOS::Install();   // superseded by LOSTrace
 	TgAIController__LOSTrace::Install();
+	TgAIController__TargetInLOS::Install();
 	// TgAIController__CanBeRepaired::Install();
 	TgAIController__SpawnPets::Install();
 	TgAIController__RadioAlarm::Install();
@@ -709,6 +723,7 @@ DWORD WINAPI ModuleThread(LPVOID) {
 	TgPlayerController__ServerCombineItems::Install();
 	TgPlayerController__ServerCraftItem::Install();
 	TgPlayerController__ServerDestroyInvItem::Install();
+	TgPlayerController__ServerCraftItem::Install();
 	TgPlayerController__ServerDevGiveXP::Install();
 	TgPlayerController__ServerGMGiven::Install();
 	TgPlayerController__ServerLoadItemProfile::Install();
@@ -790,6 +805,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
             if (Config::GetDumpMapData()) {
                 Logger::EnableChannel("mapdump");
             }
+            Logger::Log("main", "%s\n", kGaSourceRevision);
             // Optional: truncate every enabled channel's log file at boot so
             // repeated test runs start from a clean slate. Off by default;
             // turn on with -clearlogs=1 in the launcher invocation.

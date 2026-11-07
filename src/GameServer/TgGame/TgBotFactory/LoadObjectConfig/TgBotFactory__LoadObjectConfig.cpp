@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "src/GameServer/TgGame/TgBotFactory/LoadObjectConfig/TgBotFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/TgGame/TgActorFactory/LoadObjectConfig/TgActorFactory__LoadObjectConfig.hpp"
 #include "src/GameServer/Engine/MapObjectConfig/MapObjectConfig.hpp"
@@ -87,6 +88,17 @@ std::vector<int> GetDifficultyCascade(sqlite3* db, int primaryDifficulty) {
 	// (if any) win over the inherited Ultra-Max roster.
 	if (isCustomTier) {
 		cascade.insert(cascade.begin(), requestedDifficulty);
+	}
+
+	// The solo tier Adept (1468) ships tables for only part of the solo maps
+	// and sits below Medium on the ladder; fill its gaps from Medium Security
+	// (1029, the full solo roster) so no factory stays empty.
+	// p0992: not for Novice (1467): its data rows cover the 1P_CP* maps with
+	// their own bbm 0.65 bots and leave out the same tables Low Security (1028) does.
+	// if ((requestedDifficulty == 1467 || requestedDifficulty == 1468) &&
+	if (requestedDifficulty == 1468 &&
+	    std::find(cascade.begin(), cascade.end(), 1029) == cascade.end()) {
+		cascade.push_back(1029);
 	}
 
 	return cascade;
@@ -358,6 +370,11 @@ void ApplyFactoryFieldOverrides(ATgBotFactory* f) {
 		mid, "s_n_task_force", f->s_nTaskForce);
 	f->s_nTeamNumber = MapObjectConfig::GetInt(
 		mid, "s_n_team_number", f->s_nTeamNumber);
+	// The game copies each factory's coalition onto its task force at match start;
+	// open-world friend/foe compares coalitions, so a map with factories on both
+	// task forces needs them set (0 on both sides = nobody is an enemy).
+	f->s_eCoalition = (unsigned char)MapObjectConfig::GetInt(
+		mid, "s_e_coalition", f->s_eCoalition);
 
 	// Spawn-table id — headline knob. Everything else is meaningless without it.
 	f->nSpawnTableId = MapObjectConfig::GetInt(mid, "n_spawn_table_id", f->nSpawnTableId);

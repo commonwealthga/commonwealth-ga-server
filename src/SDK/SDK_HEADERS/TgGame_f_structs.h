@@ -31,7 +31,7 @@ struct UTgAnimNodeBlendByVerticalAim_eventOnBecomeRelevant_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgAnimNodeBlendByVerticalAim_execPlayAnim_Parms
 {
-	unsigned long                                      bLoop : 1;                                        		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bLoop    ;                                        		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	float                                              Rate;                                             		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              StartTime;                                        		// 0x0008 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
@@ -99,7 +99,7 @@ struct ATgChestActor_eventTouch_Parms
 struct ATgChestActor_execDisplayUseMessage_Parms
 {
 	class ATgPawn*                                     aPawn;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bDisplay : 1;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bDisplay    ;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgPlayerController*                      tgpc;                                             		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -164,19 +164,19 @@ struct ATgChestActor_execLoadMesh_Parms
 struct ATgCollisionProxy_execGetNearByPlayersTaskforce_Parms
 {
 	TArray< int >                                      NearByPlayerTaskForces;                           		// 0x0000 (0x000C) [0x0000000000400180]              ( CPF_Parm | CPF_OutParm | CPF_NeedCtorLink )
-	unsigned long                                      bEndWhenMultipleFound : 1;                        		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bEndWhenMultipleFound    ;                        		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// int                                             I;                                                		// 0x0010 (0x0004) [0x0000000000000000]              
 	// int                                             J;                                                		// 0x0014 (0x0004) [0x0000000000000000]              
 	// int                                             nCurrTaskForce;                                   		// 0x0018 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  P;                                                		// 0x001C (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bFound : 1;                                       		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bFound    ;                                       		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgCollisionProxy.GetNearByPlayers
 // [0x00024102] 
 struct ATgCollisionProxy_execGetNearByPlayers_Parms
 {
-	unsigned long                                      bOnlyValid : 1;                                   		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bOnlyValid    ;                                   		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	int                                                ReturnValue;                                      		// 0x0004 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPawn*                                  P;                                                		// 0x0008 (0x0004) [0x0000000000000000]              
 	// int                                             nCount;                                           		// 0x000C (0x0004) [0x0000000000000000]              
@@ -202,8 +202,8 @@ struct ATgCollisionProxy_execOnPlayerAdded_Parms
 struct ATgCollisionProxy_execCheckNearByPlayers_Parms
 {
 	class ATgPawn*                                     aPawn;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bAdd : 1;                                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	// unsigned long                                   bFound : 1;                                       		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      bAdd    ;                                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	// unsigned long                                   bFound    ;                                       		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 	// int                                             I;                                                		// 0x000C (0x0004) [0x0000000000000000]              
 	// int                                             nLen;                                             		// 0x0010 (0x0004) [0x0000000000000000]              
 };
@@ -220,7 +220,7 @@ struct ATgCollisionProxy_execForceClearNearByPlayersList_Parms
 struct ATgCollisionProxy_eventShouldIgnoreActor_Parms
 {
 	class ATgPawn*                                     aPawn;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgCollisionProxy.UnTouch
@@ -261,8 +261,8 @@ struct ATgCollisionProxy_Vortex_execOnPlayerAdded_Parms
 struct ATgCollisionProxy_Vortex_eventShouldIgnoreActor_Parms
 {
 	class ATgPawn*                                     aPawn;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bIgnore : 1;                                      		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bIgnore    ;                                      		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgPawn*                                  pOwner;                                           		// 0x000C (0x0004) [0x0000000000000000]              
 };
 
@@ -302,7 +302,7 @@ struct ATgDoor_eventReplicatedEvent_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgDoor_eventUpdateState_Parms
 {
-	unsigned long                                      bOpen : 1;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOpen    ;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgDoor.OnToggle
@@ -334,7 +334,7 @@ struct ATgDoor_execBuildDoor_Parms
 // [0x00020002] 
 struct ATgDynamicSMActor_execCanApplyEffects_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDynamicSMActor.Detach
@@ -394,7 +394,7 @@ struct ATgDynamicSMActor_execGetSize_Parms
 struct ATgDynamicSMActor_execProcessEffect_Parms
 {
 	class UTgEffectGroup*                              Effect;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bRemove : 1;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bRemove    ;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	class AActor*                                      aInstigator;                                      		// 0x0008 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	struct FImpactInfo                                 Impact;                                           		// 0x000C (0x0060) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
@@ -416,7 +416,7 @@ struct ATgDynamicSMActor_execDestroyed_Parms
 // [0x00024102] 
 struct ATgDynamicSMActor_execDestroyIt_Parms
 {
-	unsigned long                                      bSkipFx : 1;                                      		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSkipFx    ;                                      		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgDynamicSMActor.TakeDamage
@@ -443,7 +443,7 @@ struct ATgDynamicSMActor_eventReplicatedEvent_Parms
 // [0x00020102] 
 struct ATgDynamicSMActor_execPostBeginPlay_Parms
 {
-	// unsigned long                                   bEnableLE : 1;                                    		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bEnableLE    ;                                    		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDynamicSMActor.Tick
@@ -497,7 +497,7 @@ struct ATgFlagCaptureVolume_execGetDisplayLocation_Parms
 struct ATgFlagCaptureVolume_execCanCapture_Parms
 {
 	class APawn*                                       Pawn;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgRepInfo_Player*                        pawnInfo;                                         		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -532,7 +532,7 @@ struct ATgFlagCaptureVolume_execsetupFlagCapVolume_Parms
 struct ATgFracturedStaticMeshActor_execProcessEffect_Parms
 {
 	class UTgEffectGroup*                              Effect;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bRemove : 1;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bRemove    ;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	class AActor*                                      aInstigator;                                      		// 0x0008 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	struct FImpactInfo                                 Impact;                                           		// 0x000C (0x0060) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
@@ -554,7 +554,7 @@ struct ATgFracturedStaticMeshActor_eventTakeDamage_Parms
 // [0x00020002] 
 struct ATgFracturedStaticMeshActor_execCanApplyEffects_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgFracturedStaticMeshActor.Destroyed
@@ -612,7 +612,7 @@ struct ATgHexLandMarkActor_execLoadMesh_Parms
 // [0x00020800] ( FUNC_Event )
 struct ATgHUD_eventCheckLevelUnlocks_Parms
 {
-	unsigned long                                      bIsTutorial : 1;                                  		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsTutorial    ;                                  		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgHUD.OpenIntroScene
@@ -641,15 +641,15 @@ struct ATgHUD_eventSetTriggeredSceneInfo_Parms
 // [0x00020000] 
 struct ATgHUD_execUpdateScoreBoard_Parms
 {
-	unsigned long                                      bPlayerVictor : 1;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bTie : 1;                                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bPlayerVictor    ;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bTie    ;                                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgHUD.ShowEndRaidScreen
 // [0x00020800] ( FUNC_Event )
 struct ATgHUD_eventShowEndRaidScreen_Parms
 {
-	unsigned long                                      bAttackerWon : 1;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAttackerWon    ;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgHUD.ShowEndTrainingMissionScreen
@@ -663,18 +663,18 @@ struct ATgHUD_execShowEndTrainingMissionScreen_Parms
 // [0x00020000] 
 struct ATgHUD_execShowQuestEndMissionScene_Parms
 {
-	unsigned long                                      MissionVictor : 1;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      PlayerVictor : 1;                                 		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bTie : 1;                                         		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      MissionVictor    ;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      PlayerVictor    ;                                 		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bTie    ;                                         		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgHUD.ShowEndMissionScreen
 // [0x00020000] 
 struct ATgHUD_execShowEndMissionScreen_Parms
 {
-	unsigned long                                      MissionVictor : 1;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      PlayerVictor : 1;                                 		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bTie : 1;                                         		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      MissionVictor    ;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      PlayerVictor    ;                                 		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bTie    ;                                         		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgHUD.OpenScoreboard
@@ -713,10 +713,10 @@ struct ATgHUD_execUpdateReleaseTime_Parms
 // [0x00024000] 
 struct ATgHUD_execShowReleaseDialog_Parms
 {
-	unsigned long                                      bShow : 1;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bShow    ;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	struct FDeathZoomInfo                              Info;                                             		// 0x0004 (0x001C) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              fReleaseTime;                                     		// 0x0020 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bCanManuallyRelease : 1;                          		// 0x0024 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bCanManuallyRelease    ;                          		// 0x0024 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgHUD.TriggerCloseTgUIScene
@@ -724,7 +724,7 @@ struct ATgHUD_execShowReleaseDialog_Parms
 struct ATgHUD_eventTriggerCloseTgUIScene_Parms
 {
 	class UUIScene*                                    Scene;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgHUD.GetTgUISceneDriver
@@ -748,7 +748,7 @@ struct ATgHUD_execTriggerOpenTgUIScene_Parms
 struct ATgHUD_eventIsMissionScene_Parms
 {
 	class UUIScene*                                    Scene;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgHUD.HideWorldInteractionText
@@ -775,7 +775,7 @@ struct ATgHUD_execShowWorldInteractionText_Parms
 // [0x00024000] 
 struct ATgHUD_execHideProgressBar_Parms
 {
-	unsigned long                                      bWorldInteractionBar : 1;                         		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bWorldInteractionBar    ;                         		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgHUD.StartProgressBar
@@ -784,7 +784,7 @@ struct ATgHUD_execStartProgressBar_Parms
 {
 	float                                              fDuration;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FString                                     sLabel;                                           		// 0x0004 (0x000C) [0x0000000000400090]              ( CPF_OptionalParm | CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      bWorldInteractionBar : 1;                         		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bWorldInteractionBar    ;                         		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgHUD.UpdateSelectedDevice
@@ -798,7 +798,7 @@ struct ATgHUD_execUpdateSelectedDevice_Parms
 // [0x00020202] ( FUNC_Exec )
 struct ATgHUD_execUsePickupDevice_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgHUD.UpdateDeployPointCount
@@ -817,8 +817,8 @@ struct ATgHUD_execOpenDeployPointMenu_Parms
 // [0x00020000] 
 struct ATgHUD_execSetReticuleVisibility_Parms
 {
-	unsigned long                                      bCrossHairVisible : 1;                            		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bWeaponStatusVisible : 1;                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bCrossHairVisible    ;                            		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bWeaponStatusVisible    ;                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgHUD.HideTaskForce
@@ -837,7 +837,7 @@ struct ATgHUD_execShowTaskForce_Parms
 // [0x00020002] 
 struct ATgHUD_execShouldDrawPawnHUD_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgHUD.PlayHitEffect
@@ -861,7 +861,7 @@ struct ATgHUD_execAddNewKilledTarget_Parms
 {
 	struct FString                                     KilledName;                                       		// 0x0000 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
 	struct FString                                     KillerName;                                       		// 0x000C (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      KillerWasPlayer : 1;                              		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      KillerWasPlayer    ;                              		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgHUD.CloseGUIItems
@@ -1006,14 +1006,14 @@ struct ATgHUD_execGetMouseHoverLocation_Parms
 // [0x00024000] 
 struct ATgHUD_execSetShowRangeTargeter_Parms
 {
-	unsigned long                                      bInAimingMode : 1;                                		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bInAimingMode    ;                                		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgHUD.CheckShouldSkipEndMission
 // [0x00020400] ( FUNC_Native )
 struct ATgHUD_execCheckShouldSkipEndMission_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgHUD.UpdateRangedTargeterState
@@ -1033,35 +1033,35 @@ struct ATgHUD_execResubmitPopups_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgHUD_execHideObjectiveNames_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgHUD.HideObjectives
 // [0x00020400] ( FUNC_Native )
 struct ATgHUD_execHideObjectives_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgHUD.HideEnemyTags
 // [0x00020400] ( FUNC_Native )
 struct ATgHUD_execHideEnemyTags_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgHUD.ShowCombatText
 // [0x00020400] ( FUNC_Native )
 struct ATgHUD_execShowCombatText_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgHUD.ShowDeployableHealthBars
 // [0x00020400] ( FUNC_Native )
 struct ATgHUD_execShowDeployableHealthBars_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgHUD.UpdateUITextBox
@@ -1326,21 +1326,21 @@ struct ATgRandomSMActor_execSetLightEnvironmentToNotBeDynamic_Parms
 // [0x00020102] 
 struct ATgRandomSMActor_execPostBeginPlay_Parms
 {
-	// unsigned long                                   bEnableLE : 1;                                    		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bEnableLE    ;                                    		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgRandomSMActor.TogglePaths
 // [0x00020400] ( FUNC_Native )
 struct ATgRandomSMActor_execTogglePaths_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgRandomSMActor.ToggleDisplay
 // [0x00020400] ( FUNC_Native )
 struct ATgRandomSMActor_execToggleDisplay_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgRandomSMManager.PostBeginPlay
@@ -1422,7 +1422,7 @@ struct ATgTeleportPlayerVolume_eventTouch_Parms
 	// class ANavigationPoint*                         NavPoint;                                         		// 0x002C (0x0004) [0x0000000000000000]              
 	// struct FRotator                                 Rot;                                              		// 0x0030 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  Loc;                                              		// 0x003C (0x000C) [0x0000000000000000]              
-	// unsigned long                                   bTeleport : 1;                                    		// 0x0048 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bTeleport    ;                                    		// 0x0048 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgTimerManager.ReplicatedEvent
@@ -1436,14 +1436,14 @@ struct ATgTimerManager_eventReplicatedEvent_Parms
 // [0x00024500] ( FUNC_Native )
 struct ATgTimerManager_execCloseAllTimers_Parms
 {
-	unsigned long                                      bFireEvent : 1;                                   		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bFireEvent    ;                                   		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgTimerManager.IsActiveTimers
 // [0x00020500] ( FUNC_Native )
 struct ATgTimerManager_execIsActiveTimers_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgTimerManager.RepEvent
@@ -1451,7 +1451,7 @@ struct ATgTimerManager_execIsActiveTimers_Parms
 struct ATgTimerManager_execRepEvent_Parms
 {
 	struct FName                                       VarName;                                          		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgTimerManager.UnRegisterForEvents
@@ -1460,7 +1460,7 @@ struct ATgTimerManager_execUnRegisterForEvents_Parms
 {
 	unsigned char                                      byTimerIndex;                                     		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	class UObject*                                     HostObject;                                       		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgTimerManager.RegisterForEvents
@@ -1470,7 +1470,7 @@ struct ATgTimerManager_execRegisterForEvents_Parms
 	unsigned char                                      byTimerIndex;                                     		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	class UObject*                                     HostObject;                                       		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FName                                       nmFunc;                                           		// 0x0008 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgTimerManager.GetPercentRemaining
@@ -1502,7 +1502,7 @@ struct ATgTimerManager_execGetTimeElapsed_Parms
 struct ATgTimerManager_execIsPaused_Parms
 {
 	unsigned char                                      byTimerIndex;                                     		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgTimerManager.IsSet
@@ -1510,7 +1510,7 @@ struct ATgTimerManager_execIsPaused_Parms
 struct ATgTimerManager_execIsSet_Parms
 {
 	unsigned char                                      byTimerIndex;                                     		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgTimerManager.Close
@@ -1518,8 +1518,8 @@ struct ATgTimerManager_execIsSet_Parms
 struct ATgTimerManager_execClose_Parms
 {
 	unsigned char                                      byTimerIndex;                                     		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bFireEvent : 1;                                   		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bFireEvent    ;                                   		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgTimerManager.Pause
@@ -1528,7 +1528,7 @@ struct ATgTimerManager_execPause_Parms
 {
 	unsigned char                                      byTimerIndex;                                     		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fTime;                                            		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgTimerManager.Update
@@ -1537,7 +1537,7 @@ struct ATgTimerManager_execUpdate_Parms
 {
 	unsigned char                                      byTimerIndex;                                     		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fTime;                                            		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgTimerManager.Start
@@ -1546,8 +1546,8 @@ struct ATgTimerManager_execStart_Parms
 {
 	unsigned char                                      byTimerIndex;                                     		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fTime;                                            		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bRepeat : 1;                                      		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bRepeat    ;                                      		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgViewportClient.AddDeferredManifest
@@ -1576,7 +1576,7 @@ struct UTgAnimBlendBySpeed_execFindSynchAnimNode_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgAnimBlendPerBone_execPlayAnim_Parms
 {
-	unsigned long                                      bLoop : 1;                                        		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bLoop    ;                                        		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	float                                              Rate;                                             		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              StartTime;                                        		// 0x0008 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
@@ -1636,7 +1636,7 @@ struct UTgAnimNodeBlendList_execSetActiveChild_Parms
 struct UTgAnimBlendBase_execGetBlendTime_Parms
 {
 	int                                                ChildIndex;                                       		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bGetDefault : 1;                                  		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bGetDefault    ;                                  		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	float                                              ReturnValue;                                      		// 0x0008 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -1645,7 +1645,7 @@ struct UTgAnimBlendBase_execGetBlendTime_Parms
 struct UTgAnimBlendByFall_execGetBlendTime_Parms
 {
 	int                                                ChildIndex;                                       		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bGetDefault : 1;                                  		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bGetDefault    ;                                  		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	float                                              ReturnValue;                                      		// 0x0008 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -1673,7 +1673,7 @@ struct UTgAnimNodeBlendByHanging_execSetHangSurfaceType_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgAnimNodeBlendByKnockdown_execSetDownStateAnim_Parms
 {
-	unsigned long                                      bFaceDown : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bFaceDown    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgAnimBlendByDeviceType.SetActiveChild
@@ -1881,7 +1881,7 @@ struct UTgAnimNodeSlot_execPlayLoopingCustomAnimWithTransition_Parms
 struct UTgMorphNodePose_execIsMatchingHeadPoseID_Parms
 {
 	int                                                IdToMatch;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgMorphNodePose.IsMatchingUIName
@@ -1889,14 +1889,14 @@ struct UTgMorphNodePose_execIsMatchingHeadPoseID_Parms
 struct UTgMorphNodePose_execIsMatchingUIName_Parms
 {
 	struct FName                                       IdToMatch;                                        		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgMorphNodePose.RandomizeWeight
 // [0x00024400] ( FUNC_Native )
 struct UTgMorphNodePose_execRandomizeWeight_Parms
 {
-	unsigned long                                      bForceRandom : 1;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForceRandom    ;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgMorphNodePose.GetRandomizedWeight
@@ -1923,7 +1923,7 @@ struct UTgMorphNodeBlendList_execSetMaterialParameters_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgMorphNodeBlendList_execRandomizeWeight_Parms
 {
-	unsigned long                                      bForceRandom : 1;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForceRandom    ;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgMorphNodeBlendList.SetActiveChild
@@ -1950,7 +1950,7 @@ struct UTgMorphNodeBlendList_ByHairStyle_execSetMaterialParameters_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgMorphNodeBlendList_ByHairStyle_execRandomizeWeight_Parms
 {
-	unsigned long                                      bForceRandom : 1;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForceRandom    ;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgMorphNodeBlendList_ByHairStyle.SetActiveChild
@@ -1964,7 +1964,7 @@ struct UTgMorphNodeBlendList_ByHairStyle_execSetActiveChild_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgMorphNodeBlendPoses_execRandomizeWeight_Parms
 {
-	unsigned long                                      bForceRandom : 1;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForceRandom    ;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgMorphNodeBlendPoses.SetSecondaryMorphTarget
@@ -1978,7 +1978,7 @@ struct UTgMorphNodeBlendPoses_execSetSecondaryMorphTarget_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgMorphNodeMasterSlider_execRandomizeWeight_Parms
 {
-	unsigned long                                      bForceRandom : 1;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForceRandom    ;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgMorphNodePresets.GetHairPoseIDFromPreset
@@ -1993,7 +1993,7 @@ struct UTgMorphNodePresets_execGetHairPoseIDFromPreset_Parms
 // [0x00024400] ( FUNC_Native )
 struct UTgMorphNodePresets_execRandomizeWeight_Parms
 {
-	unsigned long                                      bForceRandom : 1;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForceRandom    ;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgMorphNodePresets.SetActiveChild
@@ -2015,14 +2015,14 @@ struct UTgSkelCon_SpinControl_execSpinToTargetRotation_Parms
 {
 	struct FRotator                                    TargetRotation;                                   		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	float                                              Time;                                             		// 0x000C (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bReset : 1;                                       		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bReset    ;                                       		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgSkelCon_SpinControl.Spin
 // [0x00020400] ( FUNC_Native )
 struct UTgSkelCon_SpinControl_execSpin_Parms
 {
-	unsigned long                                      bEnabled : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnabled    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgSkelCon_Twist.UnlockLook
@@ -2084,15 +2084,15 @@ struct UTgSocketOffsetInfo_execGetInterpLocation_Parms
 	struct FVector2D                                   Aim;                                              		// 0x000C (0x0008) [0x0000000000000080]              ( CPF_Parm )
 	struct FName                                       SocketName;                                       		// 0x0014 (0x0008) [0x0000000000000080]              ( CPF_Parm )
 	struct FName                                       ProfileName;                                      		// 0x001C (0x0008) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.ApplyGlobalOffhandCooldown
 // [0x00020102] 
 struct ATgDevice_execApplyGlobalOffhandCooldown_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bIsOffhandCooldown : 1;                           		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bIsOffhandCooldown    ;                           		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDevice.GetStartTraceLocation
@@ -2128,7 +2128,7 @@ struct ATgDevice_execOnBuffChange_Parms
 // [0x00020102] 
 struct ATgDevice_execIsRightClickAimMode_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.UpdateIndex
@@ -2141,7 +2141,7 @@ struct ATgDevice_execUpdateIndex_Parms
 // [0x00020102] 
 struct ATgDevice_execIsMovementDevice_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.RefireCheckTimer
@@ -2185,7 +2185,7 @@ struct ATgDevice_execPauseFiringInHandWeapon_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgDevice_eventIsOffhand_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.NotifySwitchMode
@@ -2326,12 +2326,12 @@ struct ATgDevice_execGetProjectileTraceImpact_Parms
 {
 	struct FVector                                     StartTrace;                                       		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     AimDir;                                           		// 0x000C (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bTracking : 1;                                    		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bTracking    ;                                    		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	struct FImpactInfo                                 TraceImpact;                                      		// 0x001C (0x0060) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x007C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x007C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class UTgDeviceFire*                            currDevFire;                                      		// 0x0080 (0x0004) [0x0000000000000000]              
 	// struct FVector                                  EndTrace;                                         		// 0x0084 (0x000C) [0x0000000000000000]              
-	// unsigned long                                   bSuccess : 1;                                     		// 0x0090 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bSuccess    ;                                     		// 0x0090 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDevice.GetTrackingTarget
@@ -2364,13 +2364,13 @@ struct ATgDevice_execProjectileFire_Parms
 	// class AProjectile*                              SpawnedProjectile;                                		// 0x007C (0x0004) [0x0000000000000000]              
 	// class ATgProj_Missile*                          SpawnedMissile;                                   		// 0x0080 (0x0004) [0x0000000000000000]              
 	// struct FVector                                  HitLocation;                                      		// 0x0084 (0x000C) [0x0000000000000000]              
-	// unsigned long                                   bCanFireProjectile : 1;                           		// 0x0090 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bCanFireProjectile    ;                           		// 0x0090 (0x0004) [0x0000000000000000] [0x00000001] 
 	// int                                             nShotsFired;                                      		// 0x0094 (0x0004) [0x0000000000000000]              
 	// class UClass*                                   projClass;                                        		// 0x0098 (0x0004) [0x0000000000000000]              
 	// struct FVector                                  SocketLocation;                                   		// 0x009C (0x000C) [0x0000000000000000]              
 	// struct FRotator                                 SocketRotation;                                   		// 0x00A8 (0x000C) [0x0000000000000000]              
 	// class ATgPawn*                                  InstigatorPawn;                                   		// 0x00B4 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bConsiderSocketAim : 1;                           		// 0x00B8 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bConsiderSocketAim    ;                           		// 0x00B8 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDevice.CustomFire
@@ -2492,8 +2492,8 @@ struct ATgDevice_execStopFire_Parms
 struct ATgDevice_execServerStartFire_Parms
 {
 	class ATgPawn*                                     TargetPawn;                                       		// 0x0000 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bIsBlockBreaker : 1;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	// unsigned long                                   Success : 1;                                      		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      bIsBlockBreaker    ;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	// unsigned long                                   Success    ;                                      		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDevice.ServerStartFireAsEvent
@@ -2534,8 +2534,8 @@ struct ATgDevice_execGlobalOffhandCooldownCompleteServer_Parms
 // [0x00024902] ( FUNC_Event )
 struct ATgDevice_eventStartFire_Parms
 {
-	unsigned long                                      bIsBlockBreaker : 1;                              		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bIsBlockBreaker    ;                              		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPawn*                                  TargetPawn;                                       		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  ownerPawn;                                        		// 0x000C (0x0004) [0x0000000000000000]              
 	// class ATgPlayerController*                      tgpc;                                             		// 0x0010 (0x0004) [0x0000000000000000]              
@@ -2562,15 +2562,15 @@ struct ATgDevice_execClientSetTrackingTarget_Parms
 // [0x00020102] 
 struct ATgDevice_execCheckCustomStartFire_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bNeedServerDetonate : 1;                          		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bNeedServerDetonate    ;                          		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDevice.NeedCustomLeftClickBehavior
 // [0x00020102] 
 struct ATgDevice_execNeedCustomLeftClickBehavior_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class UTgDeviceFire*                            altDevFire;                                       		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -2579,17 +2579,17 @@ struct ATgDevice_execNeedCustomLeftClickBehavior_Parms
 struct ATgDevice_eventCanDeviceStartFiringNow_Parms
 {
 	unsigned char                                      FireModeNum;                                      		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bDebugRelevant : 1;                               		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   Success : 1;                                      		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bDeviceFailLog : 1;                               		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      bDebugRelevant    ;                               		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   Success    ;                                      		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bDeviceFailLog    ;                               		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDevice.CacheDeviceCanFire
 // [0x00020102] 
 struct ATgDevice_execCacheDeviceCanFire_Parms
 {
-	unsigned long                                      bDeviceCanFire : 1;                               		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bDeviceCanFire    ;                               		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgDevice.CanDeviceFireNow
@@ -2597,9 +2597,9 @@ struct ATgDevice_execCacheDeviceCanFire_Parms
 struct ATgDevice_eventCanDeviceFireNow_Parms
 {
 	unsigned char                                      FireModeNum;                                      		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bDeviceFailLog : 1;                               		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   Success : 1;                                      		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      bDeviceFailLog    ;                               		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   Success    ;                                      		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgPawn*                                  P;                                                		// 0x0010 (0x0004) [0x0000000000000000]              
 	// class ATgPlayerController*                      PC;                                               		// 0x0014 (0x0004) [0x0000000000000000]              
 	// class ATgDevice*                                InHand;                                           		// 0x0018 (0x0004) [0x0000000000000000]              
@@ -2609,14 +2609,14 @@ struct ATgDevice_eventCanDeviceFireNow_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgDevice_execIsNonCombatJetpack_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.IsMoraleDevice
 // [0x00020902] ( FUNC_Event )
 struct ATgDevice_eventIsMoraleDevice_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.AmountCurrentlyOffOfTargetAccuracy
@@ -2632,7 +2632,7 @@ struct ATgDevice_eventAmountCurrentlyOffOfTargetAccuracy_Parms
 // [0x00020102] 
 struct ATgDevice_execCanFireWhileHanging_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.CanFireWhileDoingRoutineTasks
@@ -2640,7 +2640,7 @@ struct ATgDevice_execCanFireWhileHanging_Parms
 struct ATgDevice_execCanFireWhileDoingRoutineTasks_Parms
 {
 	int                                                FireModeNum;                                      		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.CanUseDeviceInThisPhysicsState
@@ -2648,7 +2648,7 @@ struct ATgDevice_execCanFireWhileDoingRoutineTasks_Parms
 struct ATgDevice_execCanUseDeviceInThisPhysicsState_Parms
 {
 	int                                                FireModeNum;                                      		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             pmode;                                            		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -2668,7 +2668,7 @@ struct ATgDevice_eventConsumeDevice_Parms
 // [0x00020102] 
 struct ATgDevice_execUsesPower_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class UTgDeviceFire*                            FireMode;                                         		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -2695,8 +2695,8 @@ struct ATgDevice_execInterruptFiring_Parms
 // [0x00024102] 
 struct ATgDevice_execDeviceShutDown_Parms
 {
-	unsigned long                                      bDeactiveMode : 1;                                		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bResetCooldowns : 1;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bDeactiveMode    ;                                		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bResetCooldowns    ;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// class ATgTimerManager*                          TimerManager;                                     		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class UTgDeviceFire*                            FireMode;                                         		// 0x000C (0x0004) [0x0000000000000000]              
 };
@@ -2717,7 +2717,7 @@ struct ATgDevice_eventEnterDeployMode_Parms
 // [0x00020102] 
 struct ATgDevice_execCanEnterDeployMode_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.ServerDoRemoteDetonation
@@ -2806,14 +2806,14 @@ struct ATgDevice_execGetRange_Parms
 // [0x00020102] 
 struct ATgDevice_execIsEquipping_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.IsFiring
 // [0x00020902] ( FUNC_Event )
 struct ATgDevice_eventIsFiring_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.GetRestrictType
@@ -2859,14 +2859,14 @@ struct ATgDevice_eventReplicatedEvent_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgDevice_execIsGameTypeDisabled_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.ShowUICanFire
 // [0x00020400] ( FUNC_Native )
 struct ATgDevice_execShowUICanFire_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.GetCooldownTimerManager
@@ -2880,7 +2880,7 @@ struct ATgDevice_execGetCooldownTimerManager_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgDevice_execIsDeviceRefiring_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.IsDeviceCoolingDown
@@ -2888,7 +2888,7 @@ struct ATgDevice_execIsDeviceRefiring_Parms
 struct ATgDevice_execIsDeviceCoolingDown_Parms
 {
 	unsigned char                                      FireModeNum;                                      		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.HasMinimumPowerPool
@@ -2896,14 +2896,14 @@ struct ATgDevice_execIsDeviceCoolingDown_Parms
 struct ATgDevice_execHasMinimumPowerPool_Parms
 {
 	unsigned char                                      FireModeNum;                                      		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.HasEnoughPowerPoolToBlock
 // [0x00020400] ( FUNC_Native )
 struct ATgDevice_execHasEnoughPowerPoolToBlock_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.HasEnoughPowerPool
@@ -2911,21 +2911,21 @@ struct ATgDevice_execHasEnoughPowerPoolToBlock_Parms
 struct ATgDevice_execHasEnoughPowerPool_Parms
 {
 	unsigned char                                      FireModeNum;                                      		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.IsMeleeAttack
 // [0x00020400] ( FUNC_Native )
 struct ATgDevice_execIsMeleeAttack_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.IsRangedAttack
 // [0x00020400] ( FUNC_Native )
 struct ATgDevice_execIsRangedAttack_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.GetModeRange
@@ -2942,14 +2942,14 @@ struct ATgDevice_execCheckModeRange_Parms
 {
 	int                                                nMode;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     vDelta;                                           		// 0x0004 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.IsOffhandJetpack
 // [0x00020400] ( FUNC_Native )
 struct ATgDevice_execIsOffhandJetpack_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.SetHexItem
@@ -2963,21 +2963,21 @@ struct ATgDevice_execSetHexItem_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgDevice_execApplyInventoryEquipEffects_Parms
 {
-	unsigned long                                      bRemove : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bRemove    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgDevice.IsAPickupFlagDevice
 // [0x00020400] ( FUNC_Native )
 struct ATgDevice_execIsAPickupFlagDevice_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.IsRestDevice
 // [0x00020400] ( FUNC_Native )
 struct ATgDevice_execIsRestDevice_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.GetDeviceFire
@@ -3019,7 +3019,7 @@ struct ATgDevice_execPopulateInstigatorEquippedDevices_Parms
 struct ATgDevice_execNeedServerDetonate_Parms
 {
 	int                                                nFireMode;                                        		// 0x0000 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.ServerDetonate
@@ -3027,21 +3027,21 @@ struct ATgDevice_execNeedServerDetonate_Parms
 struct ATgDevice_execServerDetonate_Parms
 {
 	int                                                nFireMode;                                        		// 0x0000 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.LogDebugInfo
 // [0x00020400] ( FUNC_Native )
 struct ATgDevice_execLogDebugInfo_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.IsABeaconPlacingDevice
 // [0x00020400] ( FUNC_Native )
 struct ATgDevice_execIsABeaconPlacingDevice_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice.RemoveConsumableFromOwnerInventory
@@ -3096,7 +3096,7 @@ struct ATgDevice_execQueryProjectileClass_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgDevice_execApplyDeviceSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice_Grenade.GetAdjustedAim
@@ -3126,8 +3126,8 @@ struct ATgDevice_HitPulse_execPersistTimer_Parms
 // [0x00024902] ( FUNC_Event )
 struct ATgDevice_HitPulse_eventStartFire_Parms
 {
-	unsigned long                                      bIsBlockBreaker : 1;                              		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bIsBlockBreaker    ;                              		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice_Morale.Destroyed
@@ -3141,8 +3141,8 @@ struct ATgDevice_Morale_execDestroyed_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgDevice_Morale_eventHasEnoughMorale_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   Success : 1;                                      		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   Success    ;                                      		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgPawn*                                  P;                                                		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -3151,15 +3151,15 @@ struct ATgDevice_Morale_eventHasEnoughMorale_Parms
 struct ATgDevice_Morale_eventCanDeviceStartFiringNow_Parms
 {
 	unsigned char                                      FireModeNum;                                      		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bDebugRelevant : 1;                               		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bDebugRelevant    ;                               		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice_Morale.CanFireMoraleDevice
 // [0x00020102] 
 struct ATgDevice_Morale_execCanFireMoraleDevice_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPawn*                                  theOwner;                                         		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -3167,14 +3167,14 @@ struct ATgDevice_Morale_execCanFireMoraleDevice_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgDevice_Morale_eventIsMoraleDevice_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice_Morale.ShowUICanFire
 // [0x00020400] ( FUNC_Native )
 struct ATgDevice_Morale_execShowUICanFire_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDevice_Morale.SetRequiredMoralePoints
@@ -3228,7 +3228,7 @@ struct ATgDevice_NewMelee_execProcessInstantHit_Parms
 	unsigned char                                      FiringMode;                                       		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	struct FImpactInfo                                 Impact;                                           		// 0x0004 (0x0060) [0x0000000000000080]              ( CPF_Parm )
 	// class UTgDeviceFire*                            BlockDeviceFire;                                  		// 0x0064 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   attackFailsAltogether : 1;                        		// 0x0068 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   attackFailsAltogether    ;                        		// 0x0068 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgPawn*                                  BlockerPawn;                                      		// 0x006C (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  AttackingPawn;                                    		// 0x0070 (0x0004) [0x0000000000000000]              
 	// class ATgDevice*                                BlockerDevice;                                    		// 0x0074 (0x0004) [0x0000000000000000]              
@@ -3254,14 +3254,14 @@ struct ATgDevice_NewMelee_execFireAmmunition_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgDevice_NewMelee_eventIsFiring_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.SpawnPetFire
 // [0x00020102] 
 struct UTgDeviceFire_execSpawnPetFire_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.GetConeAttackAngle
@@ -3360,28 +3360,28 @@ struct UTgDeviceFire_execGetEquipModeTime_Parms
 // [0x00020102] 
 struct UTgDeviceFire_execUseRemoteTrigger_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.IsConeAttack
 // [0x00020102] 
 struct UTgDeviceFire_execIsConeAttack_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.IsSelfTargeter
 // [0x00020102] 
 struct UTgDeviceFire_execIsSelfTargeter_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.IsFreeTargetMode
 // [0x00020902] ( FUNC_Event )
 struct UTgDeviceFire_eventIsFreeTargetMode_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.CheckForShieldHitAvoidance
@@ -3390,10 +3390,10 @@ struct UTgDeviceFire_execCheckForShieldHitAvoidance_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class UTgEffectGroup*                              EffectGroup;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPawn*                                  oPawn;                                            		// 0x000C (0x0004) [0x0000000000000000]              
 	// int                                             nRoll;                                            		// 0x0010 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bEvaded : 1;                                      		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bEvaded    ;                                      		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDeviceFire.ShouldSituationalApplyEffect
@@ -3402,7 +3402,7 @@ struct UTgDeviceFire_execShouldSituationalApplyEffect_Parms
 {
 	class ATgPawn*                                     TargetPawn;                                       		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class UTgEffectGroup*                              EffectGroup;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.ValidateApplyHit
@@ -3410,8 +3410,8 @@ struct UTgDeviceFire_execShouldSituationalApplyEffect_Parms
 struct UTgDeviceFire_execValidateApplyHit_Parms
 {
 	struct FImpactInfo                                 Impact;                                           		// 0x0000 (0x0060) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0060 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bApplyHit : 1;                                    		// 0x0064 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0060 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bApplyHit    ;                                    		// 0x0064 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgAIController*                          AIController;                                     		// 0x0068 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  aPawn;                                            		// 0x006C (0x0004) [0x0000000000000000]              
 };
@@ -3442,8 +3442,8 @@ struct UTgDeviceFire_execApplyHit_Parms
 	// int                                             nIndex;                                           		// 0x0068 (0x0004) [0x0000000000000000]              
 	// float                                           fNetDamageReduction;                              		// 0x006C (0x0004) [0x0000000000000000]              
 	// int                                             SituationalMeleeGroupToApply;                     		// 0x0070 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bHitPlayer : 1;                                   		// 0x0074 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bIsInBackstabPosition : 1;                        		// 0x0078 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bHitPlayer    ;                                   		// 0x0074 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsInBackstabPosition    ;                        		// 0x0078 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgPawn*                                  HittingPawn;                                      		// 0x007C (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  TargetPawn;                                       		// 0x0080 (0x0004) [0x0000000000000000]              
 	// struct FImpactInfo                              OwnerImpact;                                      		// 0x0084 (0x0060) [0x0000000000000000]              
@@ -3455,7 +3455,7 @@ struct UTgDeviceFire_execTrackDeviceModeHit_Parms
 {
 	class ATgPawn*                                     Hitter;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fDistance;                                        		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bHitPlayer : 1;                                   		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bHitPlayer    ;                                   		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgPawn*                                  ResponsiblePawn;                                  		// 0x000C (0x0004) [0x0000000000000000]              
 	// int                                             nDeviceModeID;                                    		// 0x0010 (0x0004) [0x0000000000000000]              
 };
@@ -3467,8 +3467,8 @@ struct UTgDeviceFire_execIsValidAOETarget_Parms
 	class ATgPawn*                                     P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     vHitLocation;                                     		// 0x0004 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fRadius;                                          		// 0x0010 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bValid : 1;                                       		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bValid    ;                                       		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDeviceFire.RemoveEffectType
@@ -3476,7 +3476,7 @@ struct UTgDeviceFire_execIsValidAOETarget_Parms
 struct UTgDeviceFire_execRemoveEffectType_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bForceRemove : 1;                                 		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bForceRemove    ;                                 		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	int                                                nEffectGroupType;                                 		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	// struct FImpactInfo                              Impact;                                           		// 0x000C (0x0060) [0x0000000000000000]              
 	// int                                             nIndex;                                           		// 0x006C (0x0004) [0x0000000000000000]              
@@ -3527,7 +3527,7 @@ struct UTgDeviceFire_execIsInConeWithDir_Parms
 	class AActor*                                      TargetActor;                                      		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     StartCone;                                        		// 0x0010 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	float                                              coneHalf;                                         		// 0x001C (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0020 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0020 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// struct FVector                                  LookingDir;                                       		// 0x0024 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  FacingDir;                                        		// 0x0030 (0x000C) [0x0000000000000000]              
 	// float                                           Orientation;                                      		// 0x003C (0x0004) [0x0000000000000000]              
@@ -3542,7 +3542,7 @@ struct UTgDeviceFire_execIsInCone_Parms
 	class AActor*                                      TargetActor;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     StartCone;                                        		// 0x0008 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	float                                              coneHalf;                                         		// 0x0014 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0018 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0018 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// struct FVector                                  LookingDir;                                       		// 0x001C (0x000C) [0x0000000000000000]              
 	// struct FVector                                  FacingDir;                                        		// 0x0028 (0x000C) [0x0000000000000000]              
 	// float                                           Orientation;                                      		// 0x0034 (0x0004) [0x0000000000000000]              
@@ -3558,7 +3558,7 @@ struct UTgDeviceFire_execCalcAoeFire_Parms
 	// float                                           Radius;                                           		// 0x0010 (0x0004) [0x0000000000000000]              
 	// class AActor*                                   A;                                                		// 0x0014 (0x0004) [0x0000000000000000]              
 	// struct FImpactInfo                              Impact;                                           		// 0x0018 (0x0060) [0x0000000000000000]              
-	// unsigned long                                   bIsValid : 1;                                     		// 0x0078 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsValid    ;                                     		// 0x0078 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgPawn*                                  P;                                                		// 0x007C (0x0004) [0x0000000000000000]              
 };
 
@@ -3568,7 +3568,7 @@ struct UTgDeviceFire_execIsTraceBlocked_Parms
 {
 	class AActor*                                      DamageInstigator;                                 		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class AActor*                                      Target;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// struct FVector                                  HitLocation;                                      		// 0x000C (0x000C) [0x0000000000000000]              
 	// struct FVector                                  HitNormal;                                        		// 0x0018 (0x000C) [0x0000000000000000]              
 	// class AActor*                                   HitActor;                                         		// 0x0024 (0x0004) [0x0000000000000000]              
@@ -3587,7 +3587,7 @@ struct UTgDeviceFire_execCalcConeFire_Parms
 	// class AActor*                                   P;                                                		// 0x0024 (0x0004) [0x0000000000000000]              
 	// struct FImpactInfo                              Impact;                                           		// 0x0028 (0x0060) [0x0000000000000000]              
 	// struct FVector                                  vTargetDir;                                       		// 0x0088 (0x000C) [0x0000000000000000]              
-	// unsigned long                                   bTargetInFrontOfMe : 1;                           		// 0x0094 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bTargetInFrontOfMe    ;                           		// 0x0094 (0x0004) [0x0000000000000000] [0x00000001] 
 	// struct FVector                                  vPawnFacingDir;                                   		// 0x0098 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  cameraLoc;                                        		// 0x00A4 (0x000C) [0x0000000000000000]              
 	// struct FRotator                                 cameraRot;                                        		// 0x00B0 (0x000C) [0x0000000000000000]              
@@ -3616,7 +3616,7 @@ struct UTgDeviceFire_execCalcArcingFire_Parms
 	// class AActor*                                   JumpActor;                                        		// 0x01C0 (0x0004) [0x0000000000000000]              
 	// class AActor*                                   prevJumpActor;                                    		// 0x01C4 (0x0004) [0x0000000000000000]              
 	// float                                           fMinDistThisJump;                                 		// 0x01C8 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bInitialHit : 1;                                  		// 0x01CC (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bInitialHit    ;                                  		// 0x01CC (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDeviceFire.CalcInstantFire
@@ -3629,8 +3629,8 @@ struct UTgDeviceFire_execCalcInstantFire_Parms
 	TArray< struct FImpactInfo >                       ImpactList;                                       		// 0x001C (0x000C) [0x0000000000400180]              ( CPF_Parm | CPF_OutParm | CPF_NeedCtorLink )
 	struct FImpactInfo                                 ReturnValue;                                      		// 0x0028 (0x0060) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// struct FImpactInfo                              TraceImpact;                                      		// 0x0088 (0x0060) [0x0000000000000000]              
-	// unsigned long                                   bLockOnPassThrough : 1;                           		// 0x00E8 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bLockOnInRange : 1;                               		// 0x00EC (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bLockOnPassThrough    ;                           		// 0x00E8 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bLockOnInRange    ;                               		// 0x00EC (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgPawn*                                  InstigatorPawn;                                   		// 0x00F0 (0x0004) [0x0000000000000000]              
 	// class AActor*                                   LockOnPassThroughTarget;                          		// 0x00F4 (0x0004) [0x0000000000000000]              
 };
@@ -3677,7 +3677,7 @@ struct UTgDeviceFire_execDrawPie_Parms
 	// struct FVector                                  pt2;                                              		// 0x0030 (0x000C) [0x0000000000000000]              
 	// float                                           halfAngle;                                        		// 0x003C (0x0004) [0x0000000000000000]              
 	// float                                           nextAngle;                                        		// 0x0040 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   done : 1;                                         		// 0x0044 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   done    ;                                         		// 0x0044 (0x0004) [0x0000000000000000] [0x00000001] 
 	// struct FRotator                                 rot1;                                             		// 0x0048 (0x000C) [0x0000000000000000]              
 	// int                                             I;                                                		// 0x0054 (0x0004) [0x0000000000000000]              
 };
@@ -3687,7 +3687,7 @@ struct UTgDeviceFire_execDrawPie_Parms
 struct UTgDeviceFire_execIsValidTraceTarget_Parms
 {
 	class AActor*                                      P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.DisplayMessage
@@ -3752,7 +3752,7 @@ struct UTgDeviceFire_execSubmitEffect_Parms
 {
 	struct FImpactInfo                                 Impact;                                           		// 0x0000 (0x0060) [0x0000000000000080]              ( CPF_Parm )
 	class UTgEffectGroup*                              EffectGroup;                                      		// 0x0060 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bRemove : 1;                                      		// 0x0064 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bRemove    ;                                      		// 0x0064 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// class AActor*                                   EffectInstigator;                                 		// 0x0068 (0x0004) [0x0000000000000000]              
 };
 
@@ -3760,7 +3760,7 @@ struct UTgDeviceFire_execSubmitEffect_Parms
 // [0x00020002] 
 struct UTgDeviceFire_execIsDecoyEffect_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class AActor*                                   EffectInstigator;                                 		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -3801,21 +3801,21 @@ struct UTgDeviceFire_execGetShotPowerCost_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgDeviceFire_execIsArcingAttack_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.IsRangedAttack
 // [0x00020400] ( FUNC_Native )
 struct UTgDeviceFire_execIsRangedAttack_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.IsMeleeAttack
 // [0x00020400] ( FUNC_Native )
 struct UTgDeviceFire_execIsMeleeAttack_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.ShouldAddToImpactList
@@ -3824,7 +3824,7 @@ struct UTgDeviceFire_execShouldAddToImpactList_Parms
 {
 	class AActor*                                      HitActor;                                         		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	TArray< struct FImpactInfo >                       ImpactList;                                       		// 0x0004 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.IsInSlice
@@ -3836,7 +3836,7 @@ struct UTgDeviceFire_execIsInSlice_Parms
 	struct FVector                                     StartCone;                                        		// 0x0008 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	float                                              ConeAngle;                                        		// 0x0014 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              Radius;                                           		// 0x0018 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x001C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x001C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.CalcMeleeAttack
@@ -3855,7 +3855,7 @@ struct UTgDeviceFire_execIsBlockedByBlocker_Parms
 	class AActor*                                      DamageInstigator;                                 		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class AActor*                                      Target;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class AActor*                                      OriginActor;                                      		// 0x0008 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.GetTraceImpact
@@ -3873,7 +3873,7 @@ struct UTgDeviceFire_execGetTraceImpact_Parms
 struct UTgDeviceFire_execIsEnemy_Parms
 {
 	class AActor*                                      TargetActor;                                      		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.IsSelfOrOwner
@@ -3881,7 +3881,7 @@ struct UTgDeviceFire_execIsEnemy_Parms
 struct UTgDeviceFire_execIsSelfOrOwner_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.IsValidTarget
@@ -3890,7 +3890,7 @@ struct UTgDeviceFire_execIsValidTarget_Parms
 {
 	class AActor*                                      P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	unsigned char                                      eTargeterType;                                    		// 0x0004 (0x0001) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.CheckTeamPassThrough
@@ -3898,7 +3898,7 @@ struct UTgDeviceFire_execIsValidTarget_Parms
 struct UTgDeviceFire_execCheckTeamPassThrough_Parms
 {
 	class AActor*                                      HitActor;                                         		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.IsWithinEffectiveRange
@@ -3906,7 +3906,7 @@ struct UTgDeviceFire_execCheckTeamPassThrough_Parms
 struct UTgDeviceFire_execIsWithinEffectiveRange_Parms
 {
 	float                                              fDistance;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.IsWithinRange
@@ -3914,7 +3914,7 @@ struct UTgDeviceFire_execIsWithinEffectiveRange_Parms
 struct UTgDeviceFire_execIsWithinRange_Parms
 {
 	float                                              fDistance;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.GetEffectiveRange
@@ -4019,21 +4019,21 @@ struct UTgDeviceFire_execGetAccuracy_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgDeviceFire_execWillFireTrackingMissile_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.WillSpawnStickyProjectile
 // [0x00020400] ( FUNC_Native )
 struct UTgDeviceFire_execWillSpawnStickyProjectile_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.LogDebugInfo
 // [0x00020400] ( FUNC_Native )
 struct UTgDeviceFire_execLogDebugInfo_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.VerifyProjectile
@@ -4055,7 +4055,7 @@ struct UTgDeviceFire_execIsBlockedByGeometry_Parms
 {
 	class AActor*                                      SourceActor;                                      		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class AActor*                                      TargetActor;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceFire.QueryClass
@@ -4111,7 +4111,7 @@ struct UTgDeviceFire_execCustomFire_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgDeviceFire_execSpawnPet_Parms
 {
-	unsigned long                                      bPet : 1;                                         		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bPet    ;                                         		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgDeviceFire.Deploy
@@ -4172,7 +4172,7 @@ struct UTgDeviceForm_execEndCurrentState_Parms
 // [0x00020902] ( FUNC_Event )
 struct UTgDeviceForm_eventAttachAndDeploy_DA_Parms
 {
-	// unsigned long                                   didAttach : 1;                                    		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   didAttach    ;                                    		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDeviceForm.DeviceAnimNotify
@@ -4230,8 +4230,8 @@ struct UTgDeviceForm_eventFire_Parms
 	int                                                seqIndex;                                         		// 0x0010 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	int                                                nEquipSlot;                                       		// 0x0014 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	int                                                nSocketIndex;                                     		// 0x0018 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bSuccessfulHit : 1;                               		// 0x001C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bSecondaryShotOfMultiFire : 1;                    		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSuccessfulHit    ;                               		// 0x001C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSecondaryShotOfMultiFire    ;                    		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	int                                                SituationalAttackType;                            		// 0x0024 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              fRefireTime;                                      		// 0x0028 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
@@ -4245,8 +4245,8 @@ struct UTgDeviceForm_eventStartFire_Parms
 	int                                                seqIndex;                                         		// 0x0010 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	int                                                nEquipSlot;                                       		// 0x0014 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	int                                                nSocketIndex;                                     		// 0x0018 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bSuccessfulHit : 1;                               		// 0x001C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bSecondaryShotOfMultiFire : 1;                    		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSuccessfulHit    ;                               		// 0x001C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSecondaryShotOfMultiFire    ;                    		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	int                                                SituationalAttackType;                            		// 0x0024 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              fRefireTime;                                      		// 0x0028 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	// class UTgSpecialFx*                             Fx;                                               		// 0x002C (0x0004) [0x0000000000000000]              
@@ -4264,7 +4264,7 @@ struct UTgDeviceForm_execSetNameOfFireAnimation_Parms
 // [0x00020902] ( FUNC_Event )
 struct UTgDeviceForm_eventIsCurrentInHandWeapon_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceForm.InHandWeaponForm
@@ -4290,7 +4290,7 @@ struct UTgDeviceForm_eventBuildUp_Parms
 struct UTgDeviceForm_eventSetFireMode_Parms
 {
 	int                                                nFireMode;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      Force : 1;                                        		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      Force    ;                                        		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgDeviceForm.ExitDeployMode
@@ -4323,7 +4323,7 @@ struct UTgDeviceForm_execPutAway_Parms
 struct UTgDeviceForm_eventBeginDeviceTakingOut_Parms
 {
 	int                                                DesiredInHandMode;                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      PlayEquipAnim : 1;                                		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      PlayEquipAnim    ;                                		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgDeviceForm.BeginActive
@@ -4340,7 +4340,7 @@ struct UTgDeviceForm_eventPlayImpactEffects_Parms
 	struct FVector                                     HitLocation;                                      		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nEquipSlot;                                       		// 0x000C (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	int                                                nSocketIndex;                                     		// 0x0010 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bSuccessfulHit : 1;                               		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSuccessfulHit    ;                               		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	struct FVector                                     FireOrigin;                                       		// 0x0018 (0x000C) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	// class AVehicle*                                 V;                                                		// 0x0024 (0x0004) [0x0000000000000000]              
 	// float                                           Dist;                                             		// 0x0028 (0x0004) [0x0000000000000000]              
@@ -4386,7 +4386,7 @@ struct UTgDeviceForm_eventUpdateContinuousFireFx_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgDeviceForm_execIsOffhandJetpack_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceForm.GetCurrentUsedResourceList
@@ -4460,7 +4460,7 @@ struct UTgDeviceForm_execAllowImpactEffects_Parms
 	class AActor*                                      HitActor;                                         		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     HitLocation;                                      		// 0x0004 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     HitNormal;                                        		// 0x0010 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x001C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x001C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceForm.SpawnArcingTracer
@@ -4469,7 +4469,7 @@ struct UTgDeviceForm_execSpawnArcingTracer_Parms
 {
 	struct FVector                                     HitLocation;                                      		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     HitOrigin;                                        		// 0x000C (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bSuccessfulHit : 1;                               		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bSuccessfulHit    ;                               		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgDeviceForm.SpawnFxTracer
@@ -4480,7 +4480,7 @@ struct UTgDeviceForm_execSpawnFxTracer_Parms
 	struct FVector                                     HitLocation;                                      		// 0x0004 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nEquipSlot;                                       		// 0x0010 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	int                                                nSocketIndex;                                     		// 0x0014 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bHitTracer : 1;                                   		// 0x0018 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bHitTracer    ;                                   		// 0x0018 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgDeviceForm.DeactivateFxGroup
@@ -4499,7 +4499,7 @@ struct UTgDeviceForm_execActivateFxIndependent_Parms
 {
 	struct FName                                       nmGroup;                                          		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nFireModeNum;                                     		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bSkipActivate : 1;                                		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSkipActivate    ;                                		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	int                                                nHideMask;                                        		// 0x0010 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	class UTgSpecialFx*                                ReturnValue;                                      		// 0x0014 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
@@ -4519,35 +4519,35 @@ struct UTgDeviceForm_execActivateFxGroup_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgDeviceForm_execUsesSuitDye_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceForm.IsBackpack
 // [0x00020400] ( FUNC_Native )
 struct UTgDeviceForm_execIsBackpack_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceForm.IsJetpack
 // [0x00020400] ( FUNC_Native )
 struct UTgDeviceForm_execIsJetpack_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceForm.LogDebugInfo
 // [0x00020400] ( FUNC_Native )
 struct UTgDeviceForm_execLogDebugInfo_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceForm.FormManageFirstPersonWeapon
 // [0x00020400] ( FUNC_Native )
 struct UTgDeviceForm_execFormManageFirstPersonWeapon_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgDeviceForm.ResetDeviceAnimNodes
@@ -4561,7 +4561,7 @@ struct UTgDeviceForm_execResetDeviceAnimNodes_Parms
 struct UTgDeviceForm_execDeviceAddRemoveAnimSet_Parms
 {
 	class UAnimSet*                                    pAnimSet;                                         		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bAdd : 1;                                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAdd    ;                                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgDeviceForm.InitDeviceAnimNodes
@@ -4574,7 +4574,7 @@ struct UTgDeviceForm_execInitDeviceAnimNodes_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgDeviceForm_execSetVisibility_Parms
 {
-	unsigned long                                      bVisible : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bVisible    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgDeviceForm.DetachInHandDevice_DA
@@ -4595,8 +4595,8 @@ struct UTgDeviceForm_execDetachDevice_DA_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgDeviceForm_execAttachInHandDevice_DA_Parms
 {
-	unsigned long                                      bFirstPerson : 1;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bFirstPerson    ;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceForm.AttachDevice_DA
@@ -4649,8 +4649,8 @@ struct UTgDeviceForm_NewMelee_execPutAway_Parms
 struct UTgDeviceForm_NewMelee_eventBeginDeviceTakingOut_Parms
 {
 	int                                                DesiredInHandMode;                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      PlayEquipAnim : 1;                                		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	// unsigned long                                   didAttach : 1;                                    		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      PlayEquipAnim    ;                                		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	// unsigned long                                   didAttach    ;                                    		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDeviceForm_NewMelee.StopFire
@@ -4669,8 +4669,8 @@ struct UTgDeviceForm_NewMelee_eventFire_Parms
 	int                                                seqIndex;                                         		// 0x0010 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	int                                                nEquipSlot;                                       		// 0x0014 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	int                                                nSocketIndex;                                     		// 0x0018 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bSuccessfulHit : 1;                               		// 0x001C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bSecondaryShotOfMultiFire : 1;                    		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSuccessfulHit    ;                               		// 0x001C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSecondaryShotOfMultiFire    ;                    		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	int                                                SituationalAttackType;                            		// 0x0024 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              fRefireTime;                                      		// 0x0028 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
@@ -4680,14 +4680,14 @@ struct UTgDeviceForm_NewMelee_eventFire_Parms
 struct UTgDeviceForm_NewMelee_eventSetFireMode_Parms
 {
 	int                                                nFireMode;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      Force : 1;                                        		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      Force    ;                                        		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgDeviceForm_MeleeDualWield.SetVisibility
 // [0x00020400] ( FUNC_Native )
 struct UTgDeviceForm_MeleeDualWield_execSetVisibility_Parms
 {
-	unsigned long                                      bVisible : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bVisible    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgDeviceForm_MeleeDualWield.DetachInHandDevice_DA
@@ -4700,8 +4700,8 @@ struct UTgDeviceForm_MeleeDualWield_execDetachInHandDevice_DA_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgDeviceForm_MeleeDualWield_execAttachInHandDevice_DA_Parms
 {
-	unsigned long                                      bFirstPerson : 1;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bFirstPerson    ;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeviceForm_NewRange.BeginActive
@@ -4723,7 +4723,7 @@ struct UTgDeviceForm_NewRange_execPutAway_Parms
 struct UTgDeviceForm_NewRange_eventBeginDeviceTakingOut_Parms
 {
 	int                                                DesiredInHandMode;                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      PlayEquipAnim : 1;                                		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      PlayEquipAnim    ;                                		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgDeviceForm_NewRange.StopFire
@@ -4742,8 +4742,8 @@ struct UTgDeviceForm_NewRange_eventFire_Parms
 	int                                                seqIndex;                                         		// 0x0010 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	int                                                nEquipSlot;                                       		// 0x0014 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	int                                                nSocketIndex;                                     		// 0x0018 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bSuccessfulHit : 1;                               		// 0x001C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bSecondaryShotOfMultiFire : 1;                    		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSuccessfulHit    ;                               		// 0x001C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSecondaryShotOfMultiFire    ;                    		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	int                                                SituationalAttackType;                            		// 0x0024 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              fRefireTime;                                      		// 0x0028 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	// class USkeletalMeshComponent*                   WeaponMesh;                                       		// 0x002C (0x0004) [0x0000000004000000]              ( CPF_EditInline )
@@ -4763,7 +4763,7 @@ struct UTgDeviceForm_NewRange_eventBuildUp_Parms
 struct UTgDeviceForm_NewRange_eventSetFireMode_Parms
 {
 	int                                                nFireMode;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      Force : 1;                                        		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      Force    ;                                        		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgDeployable.UpdateHealth
@@ -4783,7 +4783,7 @@ struct ATgDeployable_eventInitReplicationInfo_Parms
 // [0x00020002] 
 struct ATgDeployable_execCanBeRepaired_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeployable.GetSaveHealthPercent
@@ -4798,7 +4798,7 @@ struct ATgDeployable_execGetSaveHealthPercent_Parms
 struct ATgDeployable_execPickUpDeployable_Parms
 {
 	class ATgPawn*                                     pReceiver;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgInventoryManager*                      TgInvManager;                                     		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgDevice*                                NewDevice;                                        		// 0x000C (0x0004) [0x0000000000000000]              
 };
@@ -4814,14 +4814,14 @@ struct ATgDeployable_eventGetPickupEquipPoint_Parms
 // [0x00020002] 
 struct ATgDeployable_execCanBePickedUp_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeployable.CanApplyEffects
 // [0x00020002] 
 struct ATgDeployable_execCanApplyEffects_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeployable.HideMesh
@@ -4839,8 +4839,8 @@ struct ATgDeployable_execDrawDeployableIcon_Parms
 	class UCanvas*                                     Canvas;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     ScreenLoc;                                        		// 0x0008 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	float                                              ScaleFactor;                                      		// 0x0014 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	// unsigned long                                   bIsFriendly : 1;                                  		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bDrawDistance : 1;                                		// 0x001C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsFriendly    ;                                  		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bDrawDistance    ;                                		// 0x001C (0x0004) [0x0000000000000000] [0x00000001] 
 	// float                                           fIconDimension;                                   		// 0x0020 (0x0004) [0x0000000000000000]              
 	// float                                           XL;                                               		// 0x0024 (0x0004) [0x0000000000000000]              
 	// float                                           YL;                                               		// 0x0028 (0x0004) [0x0000000000000000]              
@@ -4853,7 +4853,7 @@ struct ATgDeployable_execDrawDeployableIcon_Parms
 // [0x00020102] 
 struct ATgDeployable_execLoadDeployableIcon_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class UMaterialInstanceConstant*                parentMIC;                                        		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -4861,7 +4861,7 @@ struct ATgDeployable_execLoadDeployableIcon_Parms
 // [0x00020102] 
 struct ATgDeployable_execShouldDrawIcon_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             I;                                                		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -4895,9 +4895,9 @@ struct ATgDeployable_eventPostRenderFor_Parms
 	// float                                           FOVAngle;                                         		// 0x008C (0x0004) [0x0000000000000000]              
 	// struct FColor                                   TimeColor;                                        		// 0x0090 (0x0004) [0x0000000000000000]              
 	// class UFont*                                    FontUsed;                                         		// 0x0094 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bFriendly : 1;                                    		// 0x0098 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bDisplayHealth : 1;                               		// 0x009C (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   isSeenByLocalPlayer : 1;                          		// 0x00A0 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bFriendly    ;                                    		// 0x0098 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bDisplayHealth    ;                               		// 0x009C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   isSeenByLocalPlayer    ;                          		// 0x00A0 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDeployable.GetDeployableNameById
@@ -4926,7 +4926,7 @@ struct ATgDeployable_execDrawNewHealth_Parms
 	// float                                           fTempYBack;                                       		// 0x003C (0x0004) [0x0000000000000000]              
 	// float                                           XL;                                               		// 0x0040 (0x0004) [0x0000000000000000]              
 	// float                                           YL;                                               		// 0x0044 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bIsFriendly : 1;                                  		// 0x0048 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsFriendly    ;                                  		// 0x0048 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDeployable.DrawHealth
@@ -4940,7 +4940,7 @@ struct ATgDeployable_execDrawHealth_Parms
 	// float                                           HealthX;                                          		// 0x0018 (0x0004) [0x0000000000000000]              
 	// float                                           XL;                                               		// 0x001C (0x0004) [0x0000000000000000]              
 	// float                                           YL;                                               		// 0x0020 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bIsFriendly : 1;                                  		// 0x0024 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsFriendly    ;                                  		// 0x0024 (0x0004) [0x0000000000000000] [0x00000001] 
 	// float                                           fHealthBarWidth;                                  		// 0x0028 (0x0004) [0x0000000000000000]              
 	// float                                           fHealthBarHeight;                                 		// 0x002C (0x0004) [0x0000000000000000]              
 	// float                                           fHealthFrameEdge;                                 		// 0x0030 (0x0004) [0x0000000000000000]              
@@ -4989,7 +4989,7 @@ struct ATgDeployable_execCheckLocalPlayerWithinProximity_Parms
 	// class ATgPawn*                                  P;                                                		// 0x0000 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  TgPawn;                                           		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class ATgPlayerController*                      PC;                                               		// 0x0008 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bInRange : 1;                                     		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bInRange    ;                                     		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDeployable.Tick
@@ -5003,7 +5003,7 @@ struct ATgDeployable_execTick_Parms
 // [0x00824902] ( FUNC_Event )
 struct ATgDeployable_eventDestroyIt_Parms
 {
-	unsigned long                                      bSkipFx : 1;                                      		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSkipFx    ;                                      		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// struct FVector                                  vRotation;                                        		// 0x0004 (0x000C) [0x0000000000000000]              
 };
 
@@ -5079,8 +5079,8 @@ struct ATgDeployable_eventStartDeploy_Parms
 // [0x00020102] 
 struct ATgDeployable_execCheckTargetWithinProximity_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bHasTarget : 1;                                   		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bHasTarget    ;                                   		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class APawn*                                    P;                                                		// 0x0008 (0x0004) [0x0000000000000000]              
 	// float                                           Radius;                                           		// 0x000C (0x0004) [0x0000000000000000]              
 };
@@ -5101,7 +5101,7 @@ struct ATgDeployable_execTimeDeviceFiring_Parms
 // [0x00020102] 
 struct ATgDeployable_execIsFiring_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeployable.FlashLocationUpdated
@@ -5170,7 +5170,7 @@ struct ATgDeployable_execFireAmmunitionDeployable_Parms
 // [0x00020102] 
 struct ATgDeployable_execShouldRefire_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeployable.GetPhysicalFireAimDirection
@@ -5252,8 +5252,8 @@ struct ATgDeployable_eventStartFire_Parms
 // [0x00020002] 
 struct ATgDeployable_execShouldStartFire_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bIsEnemy : 1;                                     		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bIsEnemy    ;                                     		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDeployable.GetLocalPlayerController
@@ -5276,7 +5276,7 @@ struct ATgDeployable_execOnGetTaskForceNumber_Parms
 struct ATgDeployable_execCheckPlayerInfo_Parms
 {
 	class ATgRepInfo_Player*                           PlayerInfo;                                       		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeployable.CheckTouchedPlayer
@@ -5308,7 +5308,7 @@ struct ATgDeployable_eventTouch_Parms
 struct ATgDeployable_execProcessEffect_Parms
 {
 	class UTgEffectGroup*                              Effect;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bRemove : 1;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bRemove    ;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	class AActor*                                      aInstigator;                                      		// 0x0008 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	struct FImpactInfo                                 Impact;                                           		// 0x000C (0x0060) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
@@ -5336,7 +5336,7 @@ struct ATgDeployable_eventPostBeginPlay_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgDeployable_execIsFriendlyWithLocalPawn_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeployable.DisplayDamageInfo
@@ -5449,7 +5449,7 @@ struct ATgDeployable_execAdjustMeshToGround_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgDeployable_execRecalculateMaterial_Parms
 {
-	unsigned long                                      bIsFriendlyWithLocalPawn : 1;                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsFriendlyWithLocalPawn    ;                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgDeployable.NotifyGroupChanged
@@ -5483,7 +5483,7 @@ struct ATgDeployable_execDeployableDestroyed_Parms
 struct ATgDeployable_execIsInLOS_Parms
 {
 	class AActor*                                      TouchedActor;                                     		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeployable.SwapMeshToDestroyed
@@ -5535,7 +5535,7 @@ struct ATgDeployable_execInitializeDefaultProps_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgDeployable_execApplyDeployableSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeploy_Artillery.GetPhysicalFireAimDirection
@@ -5577,7 +5577,7 @@ struct ATgDeploy_Artillery_execFireAmmunitionDeployable_Parms
 // [0x00020002] 
 struct ATgDeploy_Artillery_execShouldStartFire_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeploy_Artillery.DeployComplete
@@ -5612,7 +5612,7 @@ struct ATgDeploy_Artillery_execFindTarget_Parms
 struct ATgDeploy_Beacon_execPickUpDeployable_Parms
 {
 	class ATgPawn*                                     pReceiver;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgInventoryManager*                      TgInvManager;                                     		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgDevice*                                NewDevice;                                        		// 0x000C (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_Game*                          GRI;                                              		// 0x0010 (0x0004) [0x0000000000000000]              
@@ -5659,7 +5659,7 @@ struct ATgDeploy_Beacon_execDestroyed_Parms
 // [0x00024102] 
 struct ATgDeploy_Beacon_execDestroyIt_Parms
 {
-	unsigned long                                      bSkipFx : 1;                                      		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSkipFx    ;                                      		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// class ATgRepInfo_TaskForce*                     tfri;                                             		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class ATgTeamBeaconManager*                     beaconManager;                                    		// 0x0008 (0x0004) [0x0000000000000000]              
 };
@@ -5683,7 +5683,7 @@ struct ATgDeploy_BeaconEntrance_execRecheckActiveTimer_Parms
 // [0x00020002] 
 struct ATgDeploy_BeaconEntrance_execHasExit_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgRepInfo_Game*                          GRI;                                              		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_TaskForce*                     tfri;                                             		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgTeamBeaconManager*                     beaconManager;                                    		// 0x000C (0x0004) [0x0000000000000000]              
@@ -5732,7 +5732,7 @@ struct ATgDeploy_BeaconEntrance_execPostBeginPlay_Parms
 struct ATgDeploy_DestructibleCover_execShouldTakeDamageFromAttack_Parms
 {
 	int                                                nDeviceAttackType;                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             nVulnerableAttackType;                            		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -5740,7 +5740,7 @@ struct ATgDeploy_DestructibleCover_execShouldTakeDamageFromAttack_Parms
 // [0x00020002] 
 struct ATgDeploy_DestructibleCover_execShouldStartFire_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeploy_DestructibleCover.CheckDeathBehavior
@@ -5759,7 +5759,7 @@ struct ATgDeploy_DestructibleCover_execStartFire_Parms
 // [0x00024102] 
 struct ATgDeploy_DestructibleCover_execDestroyIt_Parms
 {
-	unsigned long                                      SkipFx : 1;                                       		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      SkipFx    ;                                       		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgDeploy_DestructibleCover.SpawnLoot
@@ -5772,7 +5772,7 @@ struct ATgDeploy_DestructibleCover_execSpawnLoot_Parms
 // [0x00020002] 
 struct ATgDeploy_ForceField_execCanBeRepaired_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeploy_ForceField.Touch
@@ -5856,14 +5856,14 @@ struct ATgDeploy_Sensor_execSendWarning_Parms
 // [0x00024102] 
 struct ATgDeploy_Sensor_execDestroyIt_Parms
 {
-	unsigned long                                      bSkipFx : 1;                                      		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSkipFx    ;                                      		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgDeploy_Sensor.RemoveAllPlayersFromList
 // [0x00024002] 
 struct ATgDeploy_Sensor_execRemoveAllPlayersFromList_Parms
 {
-	unsigned long                                      bForceClear : 1;                                  		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForceClear    ;                                  		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// int                                             I;                                                		// 0x0004 (0x0004) [0x0000000000000000]              
 	// int                                             nIndx;                                            		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  Pawn;                                             		// 0x000C (0x0004) [0x0000000000000000]              
@@ -5877,7 +5877,7 @@ struct ATgDeploy_Sensor_execRecalcSensorAlertLevel_Parms
 	class ATgPawn*                                     Pawn;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nActionFlag;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nTriggerEventFlag;                                		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bRemove : 1;                                      		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bRemove    ;                                      		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// int                                             I;                                                		// 0x0010 (0x0004) [0x0000000000000000]              
 	// int                                             nAlertLevel;                                      		// 0x0014 (0x0004) [0x0000000000000000]              
 };
@@ -5897,9 +5897,9 @@ struct ATgDeploy_Sensor_execRemovePlayerFromList_Parms
 {
 	class ATgPawn*                                     Pawn;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                indx;                                             		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             I;                                                		// 0x000C (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bRemoved : 1;                                     		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bRemoved    ;                                     		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDeploy_Sensor.AddPlayerToList
@@ -5908,8 +5908,8 @@ struct ATgDeploy_Sensor_execAddPlayerToList_Parms
 {
 	class ATgPawn*                                     P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                indx;                                             		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bShouldAdd : 1;                                   		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bShouldAdd    ;                                   		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
 	// int                                             I;                                                		// 0x0010 (0x0004) [0x0000000000000000]              
 	// int                                             nDisplayStealthedInGame;                          		// 0x0014 (0x0004) [0x0000000000000000]              
 	// int                                             nSeeStealthed;                                    		// 0x0018 (0x0004) [0x0000000000000000]              
@@ -5921,7 +5921,7 @@ struct ATgDeploy_Sensor_execShouldPawnTriggerSensor_Parms
 {
 	int                                                nPawnFlag;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                indx;                                             		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeploy_Sensor.ClearCounter
@@ -5949,7 +5949,7 @@ struct ATgDeploy_Sensor_eventShouldTriggerAudioWarning_Parms
 {
 	class ATgPawn*                                     P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nActionFlag;                                      		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDeploy_Sensor.CheckPlayersWithInProximity
@@ -6023,11 +6023,11 @@ struct ATgDeploy_SweepSensor_eventUnTouch_Parms
 // [0x00020002] 
 struct ATgDeploy_SweepSensor_execShouldStartFire_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// float                                           fCurrTime;                                        		// 0x0004 (0x0004) [0x0000000000000000]              
 	// int                                             I;                                                		// 0x0008 (0x0004) [0x0000000000000000]              
 	// int                                             nIndx;                                            		// 0x000C (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bShouldFire : 1;                                  		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bShouldFire    ;                                  		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgDeploy_SweepSensor.Destroyed
@@ -6121,7 +6121,7 @@ struct ATgDeploy_SweepSensor_execDrawClientDebug_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgDeploy_SweepSensor_execApplyDeployableSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgProjectile.PlayLandingSound
@@ -6157,7 +6157,7 @@ struct ATgProjectile_execProjectileCalcCamera_Parms
 	struct FVector                                     out_CamLoc;                                       		// 0x0004 (0x000C) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
 	struct FRotator                                    out_CamRot;                                       		// 0x0010 (0x000C) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
 	float                                              out_FOV;                                          		// 0x001C (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0020 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0020 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// float                                           CollisionHeight;                                  		// 0x0024 (0x0004) [0x0000000000000000]              
 };
 
@@ -6254,7 +6254,7 @@ struct ATgProjectile_execApplyHit_Parms
 struct ATgProjectile_execCheckTeamPassThrough_Parms
 {
 	class AActor*                                      Other;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgDeploy_ForceField*                     ff;                                               		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgTeamBlocker*                           Blocker;                                          		// 0x000C (0x0004) [0x0000000000000000]              
 	// class ATgKAsset_ClientSideSim*                  ClientSideKAsset;                                 		// 0x0010 (0x0004) [0x0000000000000000]              
@@ -6262,8 +6262,8 @@ struct ATgProjectile_execCheckTeamPassThrough_Parms
 	// struct FVector                                  HitLocation;                                      		// 0x0030 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  HitNormal;                                        		// 0x003C (0x000C) [0x0000000000000000]              
 	// float                                           fDistance;                                        		// 0x0048 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bIsFriendly : 1;                                  		// 0x004C (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bAllowTeamPass : 1;                               		// 0x0050 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsFriendly    ;                                  		// 0x004C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAllowTeamPass    ;                               		// 0x0050 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgProjectile.Touch
@@ -6298,7 +6298,7 @@ struct ATgProjectile_eventHitWall_Parms
 // [0x00020102] 
 struct ATgProjectile_execIsOutsideMinRange_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// float                                           fDistanceTraveled;                                		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -6313,8 +6313,8 @@ struct ATgProjectile_execSetAcceleration_Parms
 struct ATgProjectile_execProximityReached_Parms
 {
 	class ATgPawn*                                     P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bValidTarget : 1;                                 		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bValidTarget    ;                                 		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 	// struct FVector                                  HitNormal;                                        		// 0x000C (0x000C) [0x0000000000000000]              
 };
 
@@ -6322,7 +6322,7 @@ struct ATgProjectile_execProximityReached_Parms
 // [0x00020102] 
 struct ATgProjectile_execIsInsideMinProxyRange_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// float                                           fDistanceTraveled;                                		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -6438,7 +6438,7 @@ struct ATgProj_Bounce_execSuggestProjVelocity_Parms
 	struct FVector                                     Start;                                            		// 0x000C (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	float                                              projSpeed;                                        		// 0x0018 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              BaseTossZ;                                        		// 0x001C (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0020 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0020 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// struct FVector                                  Flight;                                           		// 0x0024 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  FlightDir;                                        		// 0x0030 (0x000C) [0x0000000000000000]              
 	// float                                           FlightZ;                                          		// 0x003C (0x0004) [0x0000000000000000]              
@@ -6838,7 +6838,7 @@ struct UTgImpactFx_execIsEffectRelevant_Parms
 {
 	class AActor*                                      Viewer;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     HitLocation;                                      		// 0x0004 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgSoundGroup.PlayFootStepSound
@@ -6923,7 +6923,7 @@ struct UTgSpecialFx_execGetHitActor_Parms
 // [0x00020002] 
 struct UTgSpecialFx_execHasSoundCue_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgSpecialFx.StopSound
@@ -6955,7 +6955,7 @@ struct UTgSpecialFx_execOnParticleSystemFinished_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgSpecialFx_execDeactivate_Parms
 {
-	unsigned long                                      bForceDeactivate : 1;                             		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bForceDeactivate    ;                             		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgSpecialFx.Activate
@@ -6963,7 +6963,7 @@ struct UTgSpecialFx_execDeactivate_Parms
 struct UTgSpecialFx_execActivate_Parms
 {
 	struct FVector                                     HitLocation;                                      		// 0x0000 (0x000C) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bSkipRelevantChecking : 1;                        		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSkipRelevantChecking    ;                        		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	float                                              ReturnValue;                                      		// 0x0010 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -7009,7 +7009,7 @@ struct UTgSpecialFx_execFindLocalPlayerController_Parms
 struct UTgSpecialFx_execIsFxRelevant_Parms
 {
 	struct FVector                                     SpawnLocation;                                    		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgSpecialFx.SetHitEffectScaleBasedOnDamage
@@ -7048,14 +7048,14 @@ struct UTgSpecialFx_execCleanupRunningState_Parms
 struct UTgSpecialFx_execSetPSCRunning_Parms
 {
 	class UParticleSystemComponent*                    pPSC;                                             		// 0x0000 (0x0004) [0x0000000004000080]              ( CPF_Parm | CPF_EditInline )
-	unsigned long                                      bOn : 1;                                          		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgSpecialFx.AreAnyPSCRunning
 // [0x00020400] ( FUNC_Native )
 struct UTgSpecialFx_execAreAnyPSCRunning_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgSpecialFx.ResetParticles
@@ -7075,22 +7075,22 @@ struct UTgSpecialFx_execPlaySoundAt_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgSpecialFx_execShouldShowWhenStealthed_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgSpecialFx.SetHidden
 // [0x00020400] ( FUNC_Native )
 struct UTgSpecialFx_execSetHidden_Parms
 {
-	unsigned long                                      bNewHidden : 1;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bNewHidden    ;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgSpecialFx.AdjustHidden
 // [0x00024400] ( FUNC_Native )
 struct UTgSpecialFx_execAdjustHidden_Parms
 {
-	unsigned long                                      bStealthed : 1;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bFirstPerson : 1;                                 		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bStealthed    ;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bFirstPerson    ;                                 		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgSpecialFx.OnActiveTimeExpired
@@ -7122,7 +7122,7 @@ struct UTgSpecialFx_execSpawnActor_Parms
 struct UTgSpecialFx_execSetPSCHideMask_Parms
 {
 	class UParticleSystemComponent*                    PSC;                                              		// 0x0000 (0x0004) [0x0000000004000080]              ( CPF_Parm | CPF_EditInline )
-	unsigned long                                      bOnlyAllowNonZeroMask : 1;                        		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bOnlyAllowNonZeroMask    ;                        		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgSpecialFx.ActivateLocalPlayerFx
@@ -7137,7 +7137,7 @@ struct UTgSpecialFx_execActivateLocalPlayerFx_Parms
 struct UTgSpecialFx_execRepairCulledFx_Parms
 {
 	class UParticleSystemComponent*                    ActivePSC;                                        		// 0x0000 (0x0004) [0x0000000004000080]              ( CPF_Parm | CPF_EditInline )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgSpecialFx.CullFxUsingMask
@@ -7255,7 +7255,7 @@ struct UTgEffect_execChargeModifier_Parms
 struct UTgEffect_eventRemove_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bResetToFollow : 1;                               		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bResetToFollow    ;                               		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// class ATgPawn*                                  PawnTarget;                                       		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -7270,7 +7270,7 @@ struct UTgEffect_execReapply_Parms
 // [0x00024002] 
 struct UTgEffect_execGetProratedValue_Parms
 {
-	unsigned long                                      bConvertDOT : 1;                                  		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bConvertDOT    ;                                  		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	float                                              ReturnValue;                                      		// 0x0004 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// float                                           fProratedAmount;                                  		// 0x0008 (0x0004) [0x0000000000000000]              
 };
@@ -7291,7 +7291,7 @@ struct UTgEffect_execApplyToProperty_Parms
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nPropertyId;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fProratedAmount;                                  		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bRemove : 1;                                      		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bRemove    ;                                      		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// class UTgProperty*                              TargetProp;                                       		// 0x0010 (0x0004) [0x0000000000000000]              
 	// float                                           NewValue;                                         		// 0x0014 (0x0004) [0x0000000000000000]              
 };
@@ -7311,8 +7311,8 @@ struct UTgEffect_execApplyEffect_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FImpactInfo                                 Impact;                                           		// 0x0004 (0x0060) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bConvertDOT : 1;                                  		// 0x0064 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0068 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bConvertDOT    ;                                  		// 0x0064 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0068 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// float                                           fProratedAmount;                                  		// 0x006C (0x0004) [0x0000000000000000]              
 	// float                                           fPercReduction;                                   		// 0x0070 (0x0004) [0x0000000000000000]              
 	// struct FVector                                  KnockbackVelocity;                                		// 0x0074 (0x000C) [0x0000000000000000]              
@@ -7322,7 +7322,7 @@ struct UTgEffect_execApplyEffect_Parms
 	// int                                             nAttackRating;                                    		// 0x009C (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  Instigator;                                       		// 0x00A0 (0x0004) [0x0000000000000000]              
 	// int                                             nMsgId;                                           		// 0x00A4 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bAllowPushback : 1;                               		// 0x00A8 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAllowPushback    ;                               		// 0x00A8 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class UTgProperty*                              GroundSpeedProp;                                  		// 0x00AC (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  PawnTarget;                                       		// 0x00B0 (0x0004) [0x0000000000000000]              
 };
@@ -7332,7 +7332,7 @@ struct UTgEffect_execApplyEffect_Parms
 struct UTgEffect_execIsValidInstigator_Parms
 {
 	class ATgPawn*                                     InstigatorPawn;                                   		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgEffect.GetDeviceIdFromMode
@@ -7348,7 +7348,7 @@ struct UTgEffect_execGetDeviceIdFromMode_Parms
 struct UTgEffect_execCanBeApplied_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgEffect.SetProperty
@@ -7369,7 +7369,7 @@ struct UTgEffect_execTrackStats_Parms
 	struct FImpactInfo                                 Impact;                                           		// 0x0008 (0x0060) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fDamage;                                          		// 0x0068 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                iTargetDeviceModeId;                              		// 0x006C (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bIsEnemy : 1;                                     		// 0x0070 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsEnemy    ;                                     		// 0x0070 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	float                                              fMissingHealth;                                   		// 0x0074 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
 
@@ -7422,13 +7422,13 @@ struct UTgEffectDamage_execProtectionModifier_Parms
 	struct FImpactInfo                                 Impact;                                           		// 0x0000 (0x0060) [0x0000000000000080]              ( CPF_Parm )
 	float                                              NewValue;                                         		// 0x0060 (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
 	float                                              fPercReduction;                                   		// 0x0064 (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      bSubmitMitigation : 1;                            		// 0x0068 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSubmitMitigation    ;                            		// 0x0068 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// class UTgDeviceFire*                            FiredDevice;                                      		// 0x006C (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  TargetPawn;                                       		// 0x0070 (0x0004) [0x0000000000000000]              
 	// class ATgDeployable*                            TargetDeployable;                                 		// 0x0074 (0x0004) [0x0000000000000000]              
 	// class AActor*                                   Target;                                           		// 0x0078 (0x0004) [0x0000000000000000]              
 	// int                                             nAttackRating;                                    		// 0x007C (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bMitigationDebug : 1;                             		// 0x0080 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bMitigationDebug    ;                             		// 0x0080 (0x0004) [0x0000000000000000] [0x00000001] 
 	// float                                           preMitigationValue;                               		// 0x0084 (0x0004) [0x0000000000000000]              
 };
 
@@ -7447,13 +7447,13 @@ struct UTgEffectDamage_execApplyEffect_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FImpactInfo                                 Impact;                                           		// 0x0004 (0x0060) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bConvertDOT : 1;                                  		// 0x0064 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0068 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bConvertDOT    ;                                  		// 0x0064 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0068 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// float                                           fProratedAmount;                                  		// 0x006C (0x0004) [0x0000000000000000]              
 	// float                                           fPrevious;                                        		// 0x0070 (0x0004) [0x0000000000000000]              
 	// float                                           fHealthChange;                                    		// 0x0074 (0x0004) [0x0000000000000000]              
 	// float                                           fThreat;                                          		// 0x0078 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bIsPawnTarget : 1;                                		// 0x007C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsPawnTarget    ;                                		// 0x007C (0x0004) [0x0000000000000000] [0x00000001] 
 	// float                                           fBaseAmount;                                      		// 0x0080 (0x0004) [0x0000000000000000]              
 	// class AActor*                                   Instigator;                                       		// 0x0084 (0x0004) [0x0000000000000000]              
 	// int                                             iTargetDeviceModeId;                              		// 0x0088 (0x0004) [0x0000000000000000]              
@@ -7464,9 +7464,9 @@ struct UTgEffectDamage_execApplyEffect_Parms
 	// int                                             nHealthCapEnd;                                    		// 0x009C (0x0004) [0x0000000000000000]              
 	// int                                             DEFAULT_ANIM_HIT_TYPE;                            		// 0x00A0 (0x0004) [0x0000000000000000]              
 	// float                                           fPercReduction;                                   		// 0x00A4 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bHasBeacon : 1;                                   		// 0x00A8 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bIsEnemy : 1;                                     		// 0x00AC (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bDamageDebugLog : 1;                              		// 0x00B0 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bHasBeacon    ;                                   		// 0x00A8 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsEnemy    ;                                     		// 0x00AC (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bDamageDebugLog    ;                              		// 0x00B0 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgAIController*                          aic;                                              		// 0x00B4 (0x0004) [0x0000000000000000]              
 	// class UTgDeviceFire*                            targetfiremode;                                   		// 0x00B8 (0x0004) [0x0000000000000000]              
 };
@@ -7488,7 +7488,7 @@ struct UTgEffectDamage_execSendDamageMessages_Parms
 struct UTgEffectDamage_execCanBeApplied_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgEffectDamage.PostDamageHandler
@@ -7525,18 +7525,18 @@ struct UTgEffectHeal_execApplyEffect_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FImpactInfo                                 Impact;                                           		// 0x0004 (0x0060) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bConvertDOT : 1;                                  		// 0x0064 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0068 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bConvertDOT    ;                                  		// 0x0064 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0068 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class UTgProperty*                              prop;                                             		// 0x006C (0x0004) [0x0000000000000000]              
 	// float                                           fProratedAmount;                                  		// 0x0070 (0x0004) [0x0000000000000000]              
 	// float                                           NewValue;                                         		// 0x0074 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bAppliedToMissingHealth : 1;                      		// 0x0078 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAppliedToMissingHealth    ;                      		// 0x0078 (0x0004) [0x0000000000000000] [0x00000001] 
 	// float                                           fMissingHealth;                                   		// 0x007C (0x0004) [0x0000000000000000]              
 	// float                                           fHealthChange;                                    		// 0x0080 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  TargetPawn;                                       		// 0x0084 (0x0004) [0x0000000000000000]              
 	// class ATgDeployable*                            TargetDeployable;                                 		// 0x0088 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  InstigatorPawn;                                   		// 0x008C (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bIsEnemy : 1;                                     		// 0x0090 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsEnemy    ;                                     		// 0x0090 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgEffectHeal.CanTargetBeRepaired
@@ -7544,7 +7544,7 @@ struct UTgEffectHeal_execApplyEffect_Parms
 struct UTgEffectHeal_execCanTargetBeRepaired_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgEffectHeal.CanBeApplied
@@ -7552,7 +7552,7 @@ struct UTgEffectHeal_execCanTargetBeRepaired_Parms
 struct UTgEffectHeal_execCanBeApplied_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgEffectHeal.AddHealingThreat
@@ -7593,7 +7593,7 @@ struct UTgEffectSensor_execGetPawnScannerSettingIndex_Parms
 struct UTgEffectSensor_execRemove_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bResetToFollow : 1;                               		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bResetToFollow    ;                               		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// class ATgPawn*                                  PawnTarget;                                       		// 0x0008 (0x0004) [0x0000000000000000]              
 	// int                                             Index;                                            		// 0x000C (0x0004) [0x0000000000000000]              
 };
@@ -7604,8 +7604,8 @@ struct UTgEffectSensor_execApplyEffect_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FImpactInfo                                 Impact;                                           		// 0x0004 (0x0060) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bConvertDOT : 1;                                  		// 0x0064 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0068 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bConvertDOT    ;                                  		// 0x0064 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0068 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPawn*                                  PawnTarget;                                       		// 0x006C (0x0004) [0x0000000000000000]              
 };
 
@@ -7622,7 +7622,7 @@ struct UTgEffectSensor_execGetSensorVisConfig_Parms
 struct UTgEffectVisibility_execRemove_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bResetToFollow : 1;                               		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bResetToFollow    ;                               		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgEffectVisibility.GetTargetProperty
@@ -7642,8 +7642,8 @@ struct UTgEffectVisibility_execApplyEffect_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FImpactInfo                                 Impact;                                           		// 0x0004 (0x0060) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bConvertDOT : 1;                                  		// 0x0064 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0068 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bConvertDOT    ;                                  		// 0x0064 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0068 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgEffectForm.AdjustHidden
@@ -7668,7 +7668,7 @@ struct UTgEffectForm_execHideEffectForm_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgEffectForm_execShowEffectForm_Parms
 {
-	unsigned long                                      bLocal : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bLocal    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgEffectForm.RecalculateFx
@@ -7681,8 +7681,8 @@ struct UTgEffectForm_execRecalculateFx_Parms
 // [0x00020002] 
 struct UTgEffectGroup_execIsBuff_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bBuff : 1;                                        		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bBuff    ;                                        		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgEffectGroup.LifeDone
@@ -7716,7 +7716,7 @@ struct UTgEffectGroup_execCalcProtection_Parms
 	int                                                nDeviceRating;                                    		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fValue;                                           		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fPercReduction;                                   		// 0x0010 (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      bSubmitMitigation : 1;                            		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSubmitMitigation    ;                            		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	float                                              ReturnValue;                                      		// 0x0018 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// float                                           fNewValue;                                        		// 0x001C (0x0004) [0x0000000000000000]              
 	// int                                             nProtection;                                      		// 0x0020 (0x0004) [0x0000000000000000]              
@@ -7732,7 +7732,7 @@ struct UTgEffectGroup_execCalcAttackTypeProtection_Parms
 	int                                                nAttackRating;                                    		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fValue;                                           		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fPercReduction;                                   		// 0x000C (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      bSubmitMitigation : 1;                            		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSubmitMitigation    ;                            		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	float                                              ReturnValue;                                      		// 0x0014 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// float                                           fNewValue;                                        		// 0x0018 (0x0004) [0x0000000000000000]              
 };
@@ -7745,7 +7745,7 @@ struct UTgEffectGroup_execCalcDamageTypeProtection_Parms
 	int                                                nAttackRating;                                    		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fValue;                                           		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fPercReduction;                                   		// 0x000C (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      bSubmitMitigation : 1;                            		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSubmitMitigation    ;                            		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	float                                              ReturnValue;                                      		// 0x0014 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// float                                           fNewValue;                                        		// 0x0018 (0x0004) [0x0000000000000000]              
 	// class ATgPawn_CTR*                              immuneRobot;                                      		// 0x001C (0x0004) [0x0000000000000000]              
@@ -7759,7 +7759,7 @@ struct UTgEffectGroup_execCalcCategoryProtection_Parms
 	int                                                nAttackRating;                                    		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fValue;                                           		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fPercReduction;                                   		// 0x000C (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      bSubmitMitigation : 1;                            		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSubmitMitigation    ;                            		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	float                                              ReturnValue;                                      		// 0x0014 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// float                                           fNewValue;                                        		// 0x0018 (0x0004) [0x0000000000000000]              
 };
@@ -7784,11 +7784,11 @@ struct UTgEffectGroup_execProtectionModifier_Parms
 struct UTgEffectGroup_execStartInterval_Parms
 {
 	struct FImpactInfo                                 Impact;                                           		// 0x0000 (0x0060) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0060 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bTimersRunning : 1;                               		// 0x0064 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bCanEffectsBeApplied : 1;                         		// 0x0068 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0060 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bTimersRunning    ;                               		// 0x0064 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bCanEffectsBeApplied    ;                         		// 0x0068 (0x0004) [0x0000000000000000] [0x00000001] 
 	// int                                             I;                                                		// 0x006C (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bStartLifeTimer : 1;                              		// 0x0070 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bStartLifeTimer    ;                              		// 0x0070 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgEffectGroup.ReapplyEffects
@@ -7796,7 +7796,7 @@ struct UTgEffectGroup_execStartInterval_Parms
 struct UTgEffectGroup_execReapplyEffects_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             I;                                                		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -7820,9 +7820,9 @@ struct UTgEffectGroup_execApplyEventBasedEffects_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FImpactInfo                                 Impact;                                           		// 0x0004 (0x0060) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0064 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0064 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             I;                                                		// 0x0068 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bEffectsApplied : 1;                              		// 0x006C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bEffectsApplied    ;                              		// 0x006C (0x0004) [0x0000000000000000] [0x00000001] 
 	// float                                           fLifeTime;                                        		// 0x0070 (0x0004) [0x0000000000000000]              
 };
 
@@ -7831,9 +7831,9 @@ struct UTgEffectGroup_execApplyEventBasedEffects_Parms
 struct UTgEffectGroup_execApplyEffects_Parms
 {
 	struct FImpactInfo                                 Impact;                                           		// 0x0000 (0x0060) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0060 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0060 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             I;                                                		// 0x0064 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bEffectApplied : 1;                               		// 0x0068 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bEffectApplied    ;                               		// 0x0068 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgEffectGroup.ContagiousPulse
@@ -7911,7 +7911,7 @@ struct UTgEffectGroup_execGetBuffValueApplied_Parms
 struct UTgEffectGroup_eventTrackBuffValue_Parms
 {
 	struct FImpactInfo                                 Impact;                                           		// 0x0000 (0x0060) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bRefresh : 1;                                     		// 0x0060 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bRefresh    ;                                     		// 0x0060 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgPawn*                                  PlayerBuffer;                                     		// 0x0064 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  BufferPawn;                                       		// 0x0068 (0x0004) [0x0000000000000000]              
 	// class ATgDeployable*                            BufferDeployable;                                 		// 0x006C (0x0004) [0x0000000000000000]              
@@ -7934,7 +7934,7 @@ struct UTgEffectGroup_execInitInstance_Parms
 struct UTgEffectGroup_execEffectExists_Parms
 {
 	int                                                nPropId;                                          		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgEffectGroup.QueryFxTransitionTime
@@ -7957,7 +7957,7 @@ struct UTgEffectGroup_execTotalPropertyEffectAmt_Parms
 struct UTgEffectGroup_execRemoveEffects_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bResetToFollow : 1;                               		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bResetToFollow    ;                               		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgEffectGroup.CloneEffectGroup
@@ -7997,7 +7997,7 @@ struct ATgEffectManager_execGetRefreshedEffectGroup_Parms
 	int                                                nRefreshCode;                                     		// 0x0004 (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
 	class UTgEffectGroup*                              ReturnValue;                                      		// 0x0008 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             I;                                                		// 0x000C (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bFoundGreater : 1;                                		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bFoundGreater    ;                                		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgEffectManager.GetStackingEffectGroup
@@ -8039,7 +8039,7 @@ struct ATgEffectManager_execDidEffectGroupHit_Parms
 	class UTgEffectGroup*                              eg;                                               		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FImpactInfo                                 Impact;                                           		// 0x0004 (0x0060) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	class AActor*                                      aInstigator;                                      		// 0x0064 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0068 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0068 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// float                                           fAppChance;                                       		// 0x006C (0x0004) [0x0000000000000000]              
 	// int                                             nAppChance;                                       		// 0x0070 (0x0004) [0x0000000000000000]              
 	// int                                             nDice;                                            		// 0x0074 (0x0004) [0x0000000000000000]              
@@ -8052,21 +8052,21 @@ struct ATgEffectManager_execDidEffectGroupHit_Parms
 struct ATgEffectManager_eventProcessEffect_Parms
 {
 	class UTgEffectGroup*                              EffectGroup;                                      		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bRemove : 1;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bRemove    ;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	class UTgEffectGroup*                              Buffers;                                          		// 0x0008 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	class AActor*                                      aInstigator;                                      		// 0x000C (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	struct FImpactInfo                                 Impact;                                           		// 0x0010 (0x0060) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	// unsigned long                                   bEffectApplied : 1;                               		// 0x0070 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bEffectApplied    ;                               		// 0x0070 (0x0004) [0x0000000000000000] [0x00000001] 
 	// int                                             nHealthBefore;                                    		// 0x0074 (0x0004) [0x0000000000000000]              
 	// int                                             nHealthAfter;                                     		// 0x0078 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bEventApplied : 1;                                		// 0x007C (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bTimerStarted : 1;                                		// 0x0080 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bEventApplied    ;                                		// 0x007C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bTimerStarted    ;                                		// 0x0080 (0x0004) [0x0000000000000000] [0x00000001] 
 	// int                                             nMsgId;                                           		// 0x0084 (0x0004) [0x0000000000000000]              
 	// float                                           fProtectedLifetime;                               		// 0x0088 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bCanApplyEffects : 1;                             		// 0x008C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bCanApplyEffects    ;                             		// 0x008C (0x0004) [0x0000000000000000] [0x00000001] 
 	// int                                             nShouldAddEffectGrp;                              		// 0x0090 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  pOwner;                                           		// 0x0094 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bCategoryExisted : 1;                             		// 0x0098 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bCategoryExisted    ;                             		// 0x0098 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgEffectManager.GetHealth
@@ -8124,7 +8124,7 @@ struct ATgEffectManager_execGetCombatMsgIdFromEffectGroup_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgEffectManager_execIsInvulnerable_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgEffectManager.SubmitMitigationDamage
@@ -8145,14 +8145,14 @@ struct ATgEffectManager_execClearAllClientEffectForms_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgEffectManager_execConfigureEffectFormsForFirstPerson_Parms
 {
-	unsigned long                                      bIsFirstPerson : 1;                               		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsFirstPerson    ;                               		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgEffectManager.ConfigureEffectFormsForStealth
 // [0x00020400] ( FUNC_Native )
 struct ATgEffectManager_execConfigureEffectFormsForStealth_Parms
 {
-	unsigned long                                      bIsStealthed : 1;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsStealthed    ;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgEffectManager.ProcessReactiveSkillBasedEffectGroup
@@ -8160,7 +8160,7 @@ struct ATgEffectManager_execConfigureEffectFormsForStealth_Parms
 struct ATgEffectManager_execProcessReactiveSkillBasedEffectGroup_Parms
 {
 	int                                                nCategory;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bRemove : 1;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bRemove    ;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgEffectManager.GetSkillBasedEffectGroup
@@ -8213,8 +8213,8 @@ struct ATgEffectManager_execRemoveAllEffects_Parms
 struct ATgEffectManager_execIsStrongest_Parms
 {
 	class UTgEffectGroup*                              eg;                                               		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bConsiderLifetime : 1;                            		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bConsiderLifetime    ;                            		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgEffectManager.RemoveAllEffectGroups
@@ -8222,7 +8222,7 @@ struct ATgEffectManager_execIsStrongest_Parms
 struct ATgEffectManager_execRemoveAllEffectGroups_Parms
 {
 	class UTgEffectGroup*                              eg;                                               		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgEffectManager.RemoveEffectGroupsByCategory
@@ -8231,7 +8231,7 @@ struct ATgEffectManager_execRemoveEffectGroupsByCategory_Parms
 {
 	int                                                nCategoryCode;                                    		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nQuantity;                                        		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgEffectManager.RemoveEffectGroup
@@ -8239,7 +8239,7 @@ struct ATgEffectManager_execRemoveEffectGroupsByCategory_Parms
 struct ATgEffectManager_execRemoveEffectGroup_Parms
 {
 	class UTgEffectGroup*                              EffectGroup;                                      		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgEffectManager.UpdateManagedEffectForms
@@ -8282,7 +8282,7 @@ struct ATgEffectManager_execSetEffectRep_Parms
 {
 	int                                                nEffectGroupID;                                   		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              nTime;                                            		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bIsBuff : 1;                                      		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsBuff    ;                                      		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	int                                                nHealthChange;                                    		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                ReturnValue;                                      		// 0x0010 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
@@ -8305,7 +8305,7 @@ struct ATgActorFactory_execPreBeginPlay_Parms
 struct ATgActorFactory_execCalcFactoryPlacement_Parms
 {
 	struct FVector                                     Extent;                                           		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bCenterOnGround : 1;                              		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bCenterOnGround    ;                              		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	struct FVector                                     OutLocation;                                      		// 0x0010 (0x000C) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
 	struct FRotator                                    OutRotation;                                      		// 0x001C (0x000C) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
 };
@@ -8376,7 +8376,7 @@ struct ATgBotFactory_execOnHackBot_Parms
 	// class ATgAIController*                          aic;                                              		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  ControlPawn;                                      		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  BotToHack;                                        		// 0x000C (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bFoundBotToHack : 1;                              		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bFoundBotToHack    ;                              		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgBotFactory.SetTarget
@@ -8384,7 +8384,7 @@ struct ATgBotFactory_execOnHackBot_Parms
 struct ATgBotFactory_eventSetTarget_Parms
 {
 	class ATgPawn*                                     Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bAlarmBot : 1;                                    		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAlarmBot    ;                                    		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgAIController*                          aic;                                              		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -8417,7 +8417,7 @@ struct ATgBotFactory_execOnJoinTeam_Parms
 // [0x00020802] ( FUNC_Event )
 struct ATgBotFactory_eventKillBots_Parms
 {
-	unsigned long                                      bDespawn : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bDespawn    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgAIController*                          aic;                                              		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  Pawn;                                             		// 0x0008 (0x0004) [0x0000000000000000]              
 };
@@ -8641,7 +8641,7 @@ struct ATgHexItemFactory_execSpawnObject_Parms
 struct ATgHexItemFactory_execCanSpawn_Parms
 {
 	class UTgHexItemInstance*                          newHexItem;                                       		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgHexItemFactory.SetHexItem
@@ -8671,7 +8671,7 @@ struct ATgDroppedItem_eventReplicatedEvent_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgDroppedItem_execApplyItemSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDroppedItem.GetEffectGroup
@@ -8740,11 +8740,11 @@ struct ATgInventoryManager_execSetCurrentWeapon_Parms
 {
 	class ATgDevice*                                   DesiredWeapon;                                    		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                DesiredMode;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bMessageFromNetwork : 1;                          		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bForceFastClear : 1;                              		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bRightWeaponInHand : 1;                           		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bRightMode : 1;                                   		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      bMessageFromNetwork    ;                          		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bForceFastClear    ;                              		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bRightWeaponInHand    ;                           		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bRightMode    ;                                   		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgDevice*                                OldDevice;                                        		// 0x001C (0x0004) [0x0000000000000000]              
 	// class UTgDeviceFire*                            NewMode;                                          		// 0x0020 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  PawnInstigator;                                   		// 0x0024 (0x0004) [0x0000000000000000]              
@@ -8793,7 +8793,7 @@ struct ATgInventoryManager_execTestShowInventory_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgInventoryManager_execApplyAllEnhancementEffects_Parms
 {
-	unsigned long                                      bRemove : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bRemove    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgInventoryManager.SetInventoryDirty
@@ -8806,7 +8806,7 @@ struct ATgInventoryManager_execSetInventoryDirty_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgInventoryManager_execIsValid_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgInventoryManager.GetDeviceByInstanceId
@@ -8844,14 +8844,14 @@ struct UTgInventoryObject_execGetInventoryData_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgInventoryObject_execIsEquippableType_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgInventoryObject.IsUsableType
 // [0x00020400] ( FUNC_Native )
 struct UTgInventoryObject_execIsUsableType_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgInventoryObject_HexItem.FindInstance
@@ -8889,7 +8889,7 @@ struct UTgInventoryObject_HexItem_execSetTaskForce_Parms
 struct ATgPickupFactory_execStopsProjectile_Parms
 {
 	class AProjectile*                                 P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class UCylinderComponent*                       CylComp;                                          		// 0x0008 (0x0004) [0x0000000004000000]              ( CPF_EditInline )
 	// class AActor*                                   HitActor;                                         		// 0x000C (0x0004) [0x0000000000000000]              
 	// struct FVector                                  HitNormal;                                        		// 0x0010 (0x000C) [0x0000000000000000]              
@@ -8915,7 +8915,7 @@ struct ATgPickupFactory_execShouldCamp_Parms
 {
 	class ATgAIController*                             B;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              MaxWait;                                          		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgSeqAct_EndMission.GetObjClassVersion
@@ -8929,7 +8929,7 @@ struct UTgSeqAct_EndMission_eventGetObjClassVersion_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgSeqEvent_MissionTimer_execUpdateChallengerWonValue_Parms
 {
-	unsigned long                                      bValue : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bValue    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgSeqEvent_ObjectiveAssignmentChanged.GetObjClassVersion
@@ -9010,8 +9010,8 @@ struct ATgTrigger_Use_eventTouch_Parms
 	struct FVector                                     HitLocation;                                      		// 0x0008 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     HitNormal;                                        		// 0x0014 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	// class ATgPawn*                                  P;                                                		// 0x0020 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bTriggerUsed : 1;                                 		// 0x0024 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   foundTouch : 1;                                   		// 0x0028 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bTriggerUsed    ;                                 		// 0x0024 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   foundTouch    ;                                   		// 0x0028 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class AActor*                                   A;                                                		// 0x002C (0x0004) [0x0000000000000000]              
 };
 
@@ -9026,7 +9026,7 @@ struct ATgTrigger_Use_execGetMsgIdToDisplay_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgTrigger_Use_execIsUsedEnabled_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgTrigger_Use.UsedByPawn
@@ -9056,8 +9056,8 @@ struct ATgDoorMarker_execCalculateDoorStatus_Parms
 // [0x00020002] 
 struct ATgDoorMarker_execShouldDoorBeClosed_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bShouldClose : 1;                                 		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bShouldClose    ;                                 		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 	// TArray< int >                                   NearByPlayerTaskForces;                           		// 0x0008 (0x000C) [0x0000000000400000]              ( CPF_NeedCtorLink )
 	// int                                             I;                                                		// 0x0014 (0x0004) [0x0000000000000000]              
 };
@@ -9066,8 +9066,8 @@ struct ATgDoorMarker_execShouldDoorBeClosed_Parms
 // [0x00020002] 
 struct ATgDoorMarker_execShouldDoorBeOpened_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bShouldOpen : 1;                                  		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bShouldOpen    ;                                  		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 	// TArray< int >                                   NearByPlayerTaskForces;                           		// 0x0008 (0x000C) [0x0000000000400000]              ( CPF_NeedCtorLink )
 	// int                                             I;                                                		// 0x0014 (0x0004) [0x0000000000000000]              
 };
@@ -9167,7 +9167,7 @@ struct ATgSkeletalMeshActor_execCreateMeshComponent_Parms
 {
 	int                                                MeshAsmId;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class UMeshComponent*                              DestComponent;                                    		// 0x0004 (0x0004) [0x0000000004000090]              ( CPF_OptionalParm | CPF_Parm | CPF_EditInline )
-	unsigned long                                      bPartialFixup : 1;                                		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bPartialFixup    ;                                		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class UMeshComponent*                              ReturnValue;                                      		// 0x000C (0x0004) [0x0000000004000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm | CPF_EditInline )
 };
 
@@ -9186,7 +9186,7 @@ struct ATgSkeletalMeshActor_execCreateSkeletalMeshComponent_Parms
 {
 	int                                                MeshAsmId;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class UTgSkeletalMeshComponent*                    DestComponent;                                    		// 0x0004 (0x0004) [0x0000000004000090]              ( CPF_OptionalParm | CPF_Parm | CPF_EditInline )
-	unsigned long                                      bPartialFixup : 1;                                		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bPartialFixup    ;                                		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class UTgSkeletalMeshComponent*                    ReturnValue;                                      		// 0x000C (0x0004) [0x0000000004000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm | CPF_EditInline )
 };
 
@@ -9196,7 +9196,7 @@ struct ATgSkeletalMeshActor_execAttachToSocket_Parms
 {
 	class AActor*                                      Attachment;                                       		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FName                                       BoneName;                                         		// 0x0004 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgNavRouteIndicator.StartNextPath
@@ -9232,7 +9232,7 @@ struct ATgNavRouteIndicator_execDestroyed_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgNavRouteIndicator_execAdvanceWayPoint_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgNavRouteIndicator.GetCurrentWayPoint
@@ -9333,7 +9333,7 @@ struct ATgTeamPlayerStart_execLoadObjectConfig_Parms
 struct ATgTeleporter_eventUsePlayerStart_Parms
 {
 	class AActor*                                      Other;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ANavigationPoint*                         Start;                                            		// 0x0008 (0x0004) [0x0000000000000000]              
 	// struct FRotator                                 NewRot;                                           		// 0x000C (0x000C) [0x0000000000000000]              
 	// class APawn*                                    P;                                                		// 0x0018 (0x0004) [0x0000000000000000]              
@@ -9369,7 +9369,7 @@ struct ATgTeleporter_execLoadObjectConfig_Parms
 struct ATgTeleporter_execHandlePostTouch_Parms
 {
 	class AActor*                                      Other;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgObjectiveAttachActor.ClientOnStatusChange
@@ -9377,7 +9377,7 @@ struct ATgTeleporter_execHandlePostTouch_Parms
 struct ATgObjectiveAttachActor_execClientOnStatusChange_Parms
 {
 	unsigned char                                      Status;                                           		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bIsLocalPawnAttacker : 1;                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsLocalPawnAttacker    ;                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgObjectiveAttachActor.EncroachingOn
@@ -9385,8 +9385,8 @@ struct ATgObjectiveAttachActor_execClientOnStatusChange_Parms
 struct ATgObjectiveAttachActor_eventEncroachingOn_Parms
 {
 	class AActor*                                      Other;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   toReturn : 1;                                     		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   toReturn    ;                                     		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgObjectiveAttachActor.RanInto
@@ -9421,7 +9421,7 @@ struct ATgObjectiveAttachActor_execDrawHealth_Parms
 struct ATgObjectiveAttachActor_execProcessEffect_Parms
 {
 	class UTgEffectGroup*                              Effect;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bRemove : 1;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bRemove    ;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	class AActor*                                      aInstigator;                                      		// 0x0008 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	struct FImpactInfo                                 Impact;                                           		// 0x000C (0x0060) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
@@ -9496,22 +9496,22 @@ struct ATgMissionObjective_eventSelectObjective_Parms
 // [0x00020802] ( FUNC_Event )
 struct ATgMissionObjective_eventLockObjective_Parms
 {
-	// unsigned long                                   bPrevLocked : 1;                                  		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bPrevLocked    ;                                  		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgMissionObjective.UnlockObjective
 // [0x00024802] ( FUNC_Event )
 struct ATgMissionObjective_eventUnlockObjective_Parms
 {
-	unsigned long                                      bActivateObjective : 1;                           		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	// unsigned long                                   bPrevLocked : 1;                                  		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      bActivateObjective    ;                           		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	// unsigned long                                   bPrevLocked    ;                                  		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgMissionObjective.ShouldBlockNextObjective
 // [0x00020802] ( FUNC_Event )
 struct ATgMissionObjective_eventShouldBlockNextObjective_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgMissionObjective.OnObjectiveStatusChange
@@ -9520,8 +9520,8 @@ struct ATgMissionObjective_execOnObjectiveStatusChange_Parms
 {
 	// class ATgGame*                                  theGame;                                          		// 0x0000 (0x0004) [0x0000000000000000]              
 	// int                                             nStatusEventIndex;                                		// 0x0004 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bIsFinalObjective : 1;                            		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bAttackerCaptured : 1;                            		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsFinalObjective    ;                            		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAttackerCaptured    ;                            		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
 	// int                                             nTimeDelta;                                       		// 0x0010 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_Game*                          GRI;                                              		// 0x0014 (0x0004) [0x0000000000000000]              
 };
@@ -9545,7 +9545,7 @@ struct ATgMissionObjective_execOnActivateObjective_Parms
 struct ATgMissionObjective_eventUpdateObjectiveStatus_Parms
 {
 	unsigned char                                      eStatus;                                          		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgGame*                                  Game;                                             		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -9609,8 +9609,8 @@ struct ATgMissionObjective_eventDrawTaggedElements_Parms
 // [0x00024902] ( FUNC_Event )
 struct ATgMissionObjective_eventIsLocalPlayerAttacker_Parms
 {
-	unsigned long                                      bForceEvaluate : 1;                               		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bForceEvaluate    ;                               		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPawn*                                  P;                                                		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_Player*                        PRI;                                              		// 0x000C (0x0004) [0x0000000000000000]              
 };
@@ -9619,29 +9619,29 @@ struct ATgMissionObjective_eventIsLocalPlayerAttacker_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgMissionObjective_eventIsCapturePaused_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgMissionObjective.IsCaptureInProgress
 // [0x00020902] ( FUNC_Event )
 struct ATgMissionObjective_eventIsCaptureInProgress_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgMissionObjective.IsContested
 // [0x00020902] ( FUNC_Event )
 struct ATgMissionObjective_eventIsContested_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgMissionObjective.IsFriendlyWithLocalPawn
 // [0x00020902] ( FUNC_Event )
 struct ATgMissionObjective_eventIsFriendlyWithLocalPawn_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bIsFriendly : 1;                                  		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bIsFriendly    ;                                  		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgPawn*                                  P;                                                		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -9671,7 +9671,7 @@ struct ATgMissionObjective_execFindLocalPlayerPawn_Parms
 // [0x00020102] 
 struct ATgMissionObjective_execInitLocalPawnForActiveState_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPawn*                                  Pawn;                                             		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_Player*                        PRI;                                              		// 0x0008 (0x0004) [0x0000000000000000]              
 };
@@ -9729,7 +9729,7 @@ struct ATgMissionObjective_execSetTagParameters_Parms
 {
 	class ATgPlayerController*                         tgpc;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class UMaterialInstanceConstant*                   tagMIC;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bNoChangeParent : 1;                              		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bNoChangeParent    ;                              		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgMissionObjective.DrawObjectiveTag
@@ -9756,7 +9756,7 @@ struct ATgMissionObjective_execDrawOffscreenObjectivePointer_Parms
 struct ATgMissionObjective_execIsDefenderTaskForceNumber_Parms
 {
 	int                                                nTaskForce;                                       		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgMissionObjective.IsDefenderTaskForce
@@ -9764,7 +9764,7 @@ struct ATgMissionObjective_execIsDefenderTaskForceNumber_Parms
 struct ATgMissionObjective_execIsDefenderTaskForce_Parms
 {
 	class ATgRepInfo_TaskForce*                        tfri;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgMissionObjective.IsAttackerTaskForceNumber
@@ -9772,7 +9772,7 @@ struct ATgMissionObjective_execIsDefenderTaskForce_Parms
 struct ATgMissionObjective_execIsAttackerTaskForceNumber_Parms
 {
 	int                                                nTaskForce;                                       		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgMissionObjective.IsAttackerTaskForce
@@ -9780,7 +9780,7 @@ struct ATgMissionObjective_execIsAttackerTaskForceNumber_Parms
 struct ATgMissionObjective_execIsAttackerTaskForce_Parms
 {
 	class ATgRepInfo_TaskForce*                        tfri;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgMissionObjective.IsValidTaskForceNumber
@@ -9788,7 +9788,7 @@ struct ATgMissionObjective_execIsAttackerTaskForce_Parms
 struct ATgMissionObjective_execIsValidTaskForceNumber_Parms
 {
 	int                                                nTaskForce;                                       		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgMissionObjective.IsValidTaskForce
@@ -9796,14 +9796,14 @@ struct ATgMissionObjective_execIsValidTaskForceNumber_Parms
 struct ATgMissionObjective_execIsValidTaskForce_Parms
 {
 	class ATgRepInfo_TaskForce*                        tfri;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgMissionObjective.IsValidForLocalPlayer
 // [0x00020400] ( FUNC_Native )
 struct ATgMissionObjective_execIsValidForLocalPlayer_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgMissionObjective.UpdateSpawnOrder
@@ -9823,7 +9823,7 @@ struct ATgMissionObjective_execTeleportBots_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgMissionObjective_execSendServerObjectiveCaptured_Parms
 {
-	unsigned long                                      bAttackerCaptured : 1;                            		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAttackerCaptured    ;                            		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgMissionObjective.RegisterSelf
@@ -9866,28 +9866,28 @@ struct ATgMissionObjective_execAddToList_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgMissionObjective_execSetDoorsActive_Parms
 {
-	unsigned long                                      bActive : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bActive    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgMissionObjective.SetSpawnersActive
 // [0x00020400] ( FUNC_Native )
 struct ATgMissionObjective_execSetSpawnersActive_Parms
 {
-	unsigned long                                      bActive : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bActive    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgMissionObjective.SetObjectiveActive
 // [0x00020400] ( FUNC_Native )
 struct ATgMissionObjective_execSetObjectiveActive_Parms
 {
-	unsigned long                                      bActive : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bActive    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgMissionObjective.SetObjectivePending
 // [0x00020400] ( FUNC_Native )
 struct ATgMissionObjective_execSetObjectivePending_Parms
 {
-	unsigned long                                      bPending : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bPending    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgMissionObjective_Bot.OnHackBot
@@ -9949,7 +9949,7 @@ struct ATgMissionObjective_Bot_eventOnKillBots_Parms
 struct ATgMissionObjective_Bot_eventUpdateObjectiveStatus_Parms
 {
 	unsigned char                                      eStatus;                                          		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgGame*                                  Game;                                             		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -9991,8 +9991,8 @@ struct ATgMissionObjective_Bot_eventDrawTaggedElements_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgMissionObjective_Bot_eventIsFriendlyWithLocalPawn_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bIsFriendly : 1;                                  		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bIsFriendly    ;                                  		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgPawn*                                  P;                                                		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -10028,7 +10028,7 @@ struct ATgMissionObjective_Bot_execSetTagParameters_Parms
 {
 	class ATgPlayerController*                         tgpc;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class UMaterialInstanceConstant*                   tagMIC;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bNoChangeParent : 1;                              		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bNoChangeParent    ;                              		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgMissionObjective_Bot.RequestLoadResources
@@ -10047,7 +10047,7 @@ struct ATgMissionObjective_Bot_execSpawnObjectiveBot_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgMissionObjective_Bot_execSetObjectiveActive_Parms
 {
-	unsigned long                                      bActive : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bActive    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgMissionObjective_Bot.LoadObjectConfig
@@ -10112,7 +10112,7 @@ struct ATgBaseObjective_CTFBot_eventOnTimerRemoveImmunity_Parms
 struct ATgBaseObjective_CTFBot_eventCaptureFlag_Parms
 {
 	class ATgPawn*                                     capturingbot;                                     		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgBaseObjective_CTFBot.AddFlagToObjectiveBot
@@ -10148,7 +10148,7 @@ struct ATgBaseObjective_CTFBot_execSetTagParameters_Parms
 {
 	class ATgPlayerController*                         tgpc;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class UMaterialInstanceConstant*                   tagMIC;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bNoChangeParent : 1;                              		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bNoChangeParent    ;                              		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgBaseObjective_CTFBot.SendFlagConsumedMessage
@@ -10187,7 +10187,7 @@ struct ATgBaseObjective_CTFBot_execSpawnObjectiveBot_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgBaseObjective_CTFBot_execSetObjectiveActive_Parms
 {
-	unsigned long                                      bActive : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bActive    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgBaseObjective_CTFBot.RemoveFlagFromPlayField
@@ -10201,7 +10201,7 @@ struct ATgBaseObjective_CTFBot_execRemoveFlagFromPlayField_Parms
 struct ATgMissionObjective_Kismet_eventUpdateObjectiveStatus_Parms
 {
 	unsigned char                                      eStatus;                                          		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgGame*                                  Game;                                             		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -10217,7 +10217,7 @@ struct ATgMissionObjective_Kismet_execOnTriggerEventObjective_Parms
 struct ATgMissionObjective_Proximity_eventUpdateObjectiveStatus_Parms
 {
 	unsigned char                                      eStatus;                                          		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgGame*                                  Game;                                             		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -10228,7 +10228,7 @@ struct ATgMissionObjective_Proximity_execCalculateAdjDeltaTime_Parms
 	float                                              fDeltaTime;                                       		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fAdjustedRate;                                    		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              ReturnValue;                                      		// 0x0008 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bDefenderInProgress : 1;                          		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bDefenderInProgress    ;                          		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
 	// float                                           fTime;                                            		// 0x0010 (0x0004) [0x0000000000000000]              
 	// float                                           fRate;                                            		// 0x0014 (0x0004) [0x0000000000000000]              
 	// int                                             nNbrInProx;                                       		// 0x0018 (0x0004) [0x0000000000000000]              
@@ -10245,8 +10245,8 @@ struct ATgMissionObjective_Proximity_execCalculateNearByPlayers_Parms
 	// unsigned char                                   currStatus;                                       		// 0x0004 (0x0001) [0x0000000000000000]              
 	// float                                           fAdjustedDeltaTime;                               		// 0x0008 (0x0004) [0x0000000000000000]              
 	// float                                           fAdjustedRate;                                    		// 0x000C (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bAttackerFound : 1;                               		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bDefenderFound : 1;                               		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAttackerFound    ;                               		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bDefenderFound    ;                               		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
 	// int                                             nNumAttackers;                                    		// 0x0018 (0x0004) [0x0000000000000000]              
 	// int                                             nNumDefenders;                                    		// 0x001C (0x0004) [0x0000000000000000]              
 	// int                                             nFirstAttackerTaskForce;                          		// 0x0020 (0x0004) [0x0000000000000000]              
@@ -10297,7 +10297,7 @@ struct ATgMissionObjective_Proximity_execGetNearbyPlayerPresence_Parms
 struct ATgMissionObjective_Proximity_execShouldIgnoreOwnerEvent_Parms
 {
 	class AActor*                                      Other;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPawn*                                  P;                                                		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -10414,8 +10414,8 @@ struct ATgMissionObjective_Escort_execCalculateNearByPlayers_Parms
 	// float                                           fAdjustedDeltaTime;                               		// 0x0008 (0x0004) [0x0000000000000000]              
 	// float                                           fAdjustedRate;                                    		// 0x000C (0x0004) [0x0000000000000000]              
 	// class ATgGame*                                  Game;                                             		// 0x0010 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bAttackerFound : 1;                               		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bDefenderFound : 1;                               		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAttackerFound    ;                               		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bDefenderFound    ;                               		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
 	// int                                             nNumAttackers;                                    		// 0x001C (0x0004) [0x0000000000000000]              
 	// int                                             nNumDefenders;                                    		// 0x0020 (0x0004) [0x0000000000000000]              
 	// int                                             nFirstAttackerTaskForce;                          		// 0x0024 (0x0004) [0x0000000000000000]              
@@ -10507,21 +10507,21 @@ struct ATgObjectiveAssignment_execObjectiveBegun_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgObjectiveAssignment_execIsFinished_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgObjectiveAssignment.IsActive
 // [0x00020400] ( FUNC_Native )
 struct ATgObjectiveAssignment_execIsActive_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgObjectiveAssignment.IsPending
 // [0x00020400] ( FUNC_Native )
 struct ATgObjectiveAssignment_execIsPending_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgObjectiveAssignment.IsDefender
@@ -10529,7 +10529,7 @@ struct ATgObjectiveAssignment_execIsPending_Parms
 struct ATgObjectiveAssignment_execIsDefender_Parms
 {
 	class ATgRepInfo_TaskForce*                        tf;                                               		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgObjectiveAssignment.IsAttacker
@@ -10537,7 +10537,7 @@ struct ATgObjectiveAssignment_execIsDefender_Parms
 struct ATgObjectiveAssignment_execIsAttacker_Parms
 {
 	class ATgRepInfo_TaskForce*                        tf;                                               		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgObjectiveAssignment.IsValidForTaskforceNumber
@@ -10545,7 +10545,7 @@ struct ATgObjectiveAssignment_execIsAttacker_Parms
 struct ATgObjectiveAssignment_execIsValidForTaskforceNumber_Parms
 {
 	int                                                nTaskNum;                                         		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgObjectiveAssignment.IsValidForTaskforce
@@ -10553,14 +10553,14 @@ struct ATgObjectiveAssignment_execIsValidForTaskforceNumber_Parms
 struct ATgObjectiveAssignment_execIsValidForTaskforce_Parms
 {
 	class ATgRepInfo_TaskForce*                        tf;                                               		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgObjectiveAssignment.IsValidForLocalPlayer
 // [0x00020400] ( FUNC_Native )
 struct ATgObjectiveAssignment_execIsValidForLocalPlayer_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.SetPawnDebug
@@ -10600,7 +10600,7 @@ struct ATgAIController_execEndSuspend_Parms
 struct ATgAIController_eventSuspend_Parms
 {
 	float                                              SuspendLength;                                    		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bPauseAI : 1;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bPauseAI    ;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgAIController.ReviveTimer
@@ -10626,25 +10626,25 @@ struct ATgAIController_eventDoPause_Parms
 // [0x00020002] 
 struct ATgAIController_execSetActionlessPause_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgAIController.PauseAI
 // [0x00024902] ( FUNC_Event )
 struct ATgAIController_eventPauseAI_Parms
 {
-	unsigned long                                      bStart : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bStart    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	float                                              fPauseDuration;                                   		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bForceNewPauseDuration : 1;                       		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForceNewPauseDuration    ;                       		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgAIController.Stun
 // [0x00024102] 
 struct ATgAIController_execStun_Parms
 {
-	unsigned long                                      bStunController : 1;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bStunController    ;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	unsigned char                                      eType;                                            		// 0x0004 (0x0001) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	// unsigned long                                   bStartPause : 1;                                  		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bStartPause    ;                                  		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgAIController.GetAdjustedAimFor
@@ -10666,9 +10666,9 @@ struct ATgAIController_execGetAdjustedAimFor_Parms
 	// class UTgDeviceFire*                            devMode;                                          		// 0x0058 (0x0004) [0x0000000000000000]              
 	// float                                           Delta;                                            		// 0x005C (0x0004) [0x0000000000000000]              
 	// float                                           dist2d;                                           		// 0x0060 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bLead : 1;                                        		// 0x0064 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bGrenade : 1;                                     		// 0x0068 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bCapRotation : 1;                                 		// 0x006C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bLead    ;                                        		// 0x0064 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bGrenade    ;                                     		// 0x0068 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bCapRotation    ;                                 		// 0x006C (0x0004) [0x0000000000000000] [0x00000001] 
 	// struct FRotator                                 rAim;                                             		// 0x0070 (0x000C) [0x0000000000000000]              
 	// struct FRotator                                 rDelta;                                           		// 0x007C (0x000C) [0x0000000000000000]              
 	// int                                             Yaw;                                              		// 0x0088 (0x0004) [0x0000000000000000]              
@@ -10705,9 +10705,9 @@ struct ATgAIController_execUseDevice_Parms
 {
 	unsigned char                                      eEquipmentSlot;                                   		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nMode;                                            		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bSecondary : 1;                                   		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bEquipOnly : 1;                                   		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bSecondary    ;                                   		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEquipOnly    ;                                   		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgDevice*                                Dev;                                              		// 0x0014 (0x0004) [0x0000000000000000]              
 	// class ATgDevice*                                Current;                                          		// 0x0018 (0x0004) [0x0000000000000000]              
 	// class UTgDeviceFire*                            devMode;                                          		// 0x001C (0x0004) [0x0000000000000000]              
@@ -10718,7 +10718,7 @@ struct ATgAIController_execUseDevice_Parms
 // [0x00020002] 
 struct ATgAIController_execDoBlock_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	unsigned char                                      eEquipmentSlot;                                   		// 0x0004 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	// class ATgDevice*                                Dev;                                              		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  MyPawn;                                           		// 0x000C (0x0004) [0x0000000000000000]              
@@ -10733,7 +10733,7 @@ struct ATgAIController_eventCauseConsoleEvent_Parms
 	// class USeqEvent_Console*                        ConsoleEvt;                                       		// 0x0014 (0x0004) [0x0000000000000000]              
 	// class USequence*                                GameSeq;                                          		// 0x0018 (0x0004) [0x0000000000000000]              
 	// int                                             Idx;                                              		// 0x001C (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bFoundEvt : 1;                                    		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bFoundEvt    ;                                    		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgAIController.GetFriendsTarget
@@ -10767,7 +10767,7 @@ struct ATgAIController_execTargetClosestPlayer_Parms
 // [0x00020002] 
 struct ATgAIController_execTargetRandomPlayer_Parms
 {
-	unsigned long                                      bIgnoreLos : 1;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIgnoreLos    ;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	class ATgPawn*                                     ReturnValue;                                      		// 0x0004 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPawn*                                  P;                                                		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgPlayerController*                      C;                                                		// 0x000C (0x0004) [0x0000000000000000]              
@@ -10813,7 +10813,7 @@ struct ATgAIController_execSetMovementTarget_Parms
 	// class ATgPawn*                                  TargetPawn;                                       		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class AActor*                                   MyTarget;                                         		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ANavigationPoint*                         Nav;                                              		// 0x000C (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bAttackTarget : 1;                                		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAttackTarget    ;                                		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgAIController.GetNextPatrolPoint
@@ -10825,7 +10825,7 @@ struct ATgAIController_execGetNextPatrolPoint_Parms
 	// int                                             loops;                                            		// 0x0008 (0x0004) [0x0000000000000000]              
 	// int                                             Index;                                            		// 0x000C (0x0004) [0x0000000000000000]              
 	// class ANavigationPoint*                         Nav;                                              		// 0x0010 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bReachedPoint : 1;                                		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bReachedPoint    ;                                		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgAIController.CylinderContainsPoint
@@ -10836,7 +10836,7 @@ struct ATgAIController_execCylinderContainsPoint_Parms
 	int                                                nRadius;                                          		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nHeight;                                          		// 0x0010 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     vPoint;                                           		// 0x0014 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0020 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0020 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// struct FVector                                  vDiff;                                            		// 0x0024 (0x000C) [0x0000000000000000]              
 };
 
@@ -10870,9 +10870,9 @@ struct ATgAIController_eventSetPace_Parms
 struct ATgAIController_eventSetPosture_Parms
 {
 	int                                                nPosture;                                         		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bForce : 1;                                       		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForce    ;                                       		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	float                                              fRateScale;                                       		// 0x0008 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bIgnoreTransition : 1;                            		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreTransition    ;                            		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// int                                             nNewPosture;                                      		// 0x0010 (0x0004) [0x0000000000000000]              
 	// int                                             I;                                                		// 0x0014 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  P;                                                		// 0x0018 (0x0004) [0x0000000000000000]              
@@ -10956,7 +10956,7 @@ struct ATgAIController_execCheckContinuousFire_Parms
 // [0x00020002] 
 struct ATgAIController_execUsingDevice_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.SetWhatToDoNext
@@ -10978,7 +10978,7 @@ struct ATgAIController_execWhatToDoNext_Parms
 // [0x00020002] 
 struct ATgAIController_execCheckDestinationRange_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// float                                           Range;                                            		// 0x0004 (0x0004) [0x0000000000000000]              
 	// float                                           Offset;                                           		// 0x0008 (0x0004) [0x0000000000000000]              
 };
@@ -10987,7 +10987,7 @@ struct ATgAIController_execCheckDestinationRange_Parms
 // [0x00020002] 
 struct ATgAIController_execCheckLocationRange_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// float                                           Offset;                                           		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -11025,7 +11025,7 @@ struct ATgAIController_execGetSpreadLocation_Parms
 // [0x00820002] 
 struct ATgAIController_execGetBackstepLocation_Parms
 {
-	unsigned long                                      bFarBackup : 1;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bFarBackup    ;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	struct FVector                                     ReturnValue;                                      		// 0x0004 (0x000C) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// struct FVector                                  diff;                                             		// 0x0010 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  Dest;                                             		// 0x001C (0x000C) [0x0000000000000000]              
@@ -11058,7 +11058,7 @@ struct ATgAIController_execGetCircleEnemyLocation_Parms
 // [0x00020002] 
 struct ATgAIController_execIsStuck_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// float                                           DeltaTime;                                        		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -11077,7 +11077,7 @@ struct ATgAIController_execGetObjectivePath_Parms
 // [0x00020002] 
 struct ATgAIController_execGetObjectiveNav_Parms
 {
-	unsigned long                                      bEnemy : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnemy    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	class AActor*                                      ReturnValue;                                      		// 0x0004 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             Count;                                            		// 0x0008 (0x0004) [0x0000000000000000]              
 	// int                                             nTaskForce;                                       		// 0x000C (0x0004) [0x0000000000000000]              
@@ -11089,7 +11089,7 @@ struct ATgAIController_execGetObjectiveNav_Parms
 // [0x00020002] 
 struct ATgAIController_execStopHibernating_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.ExecActionTest
@@ -11138,7 +11138,7 @@ struct ATgAIController_execNotifyTakeHit_Parms
 	int                                                Damage;                                           		// 0x0010 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class UClass*                                      DamageType;                                       		// 0x0014 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     Momentum;                                         		// 0x0018 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	// unsigned long                                   bIsEnemy : 1;                                     		// 0x0024 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsEnemy    ;                                     		// 0x0024 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgPawn*                                  AttackedPawn;                                     		// 0x0028 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_Game*                          GRI;                                              		// 0x002C (0x0004) [0x0000000000000000]              
 };
@@ -11172,7 +11172,7 @@ struct ATgAIController_eventNotifyHitWall_Parms
 {
 	struct FVector                                     HitNormal;                                        		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	class AActor*                                      Wall;                                             		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// struct FVector                                  vJump;                                            		// 0x0014 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  vCurrent;                                         		// 0x0020 (0x000C) [0x0000000000000000]              
 	// class ATgPawn*                                  MyPawn;                                           		// 0x002C (0x0004) [0x0000000000000000]              
@@ -11184,7 +11184,7 @@ struct ATgAIController_eventNotifyBump_Parms
 {
 	class AActor*                                      Other;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     HitNormal;                                        		// 0x0004 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.TargetHighestThreat
@@ -11224,7 +11224,7 @@ struct ATgAIController_execInitPlayerReplicationInfo_Parms
 // [0x00020002] 
 struct ATgAIController_execRestart_Parms
 {
-	unsigned long                                      bVehicleTransition : 1;                           		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bVehicleTransition    ;                           		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgAIController.Possess
@@ -11232,8 +11232,8 @@ struct ATgAIController_execRestart_Parms
 struct ATgAIController_execPossess_Parms
 {
 	class APawn*                                       aPawn;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bVehicleTransition : 1;                           		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bIgnoreTouchEvent : 1;                            		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bVehicleTransition    ;                           		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIgnoreTouchEvent    ;                            		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgAIController.GetBossRoomAlarmBotCount
@@ -11283,7 +11283,7 @@ struct ATgAIController_execNumHumanFriends_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execEnemyRecentlyUnstealthed_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.WeakestFriendHealth
@@ -11299,63 +11299,63 @@ struct ATgAIController_execWeakestFriendHealth_Parms
 struct ATgAIController_execTargetIsProfileType_Parms
 {
 	int                                                nProfileType;                                     		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.IsBehindTarget
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execIsBehindTarget_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.IsTargetInMeleeeAttack
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execIsTargetInMeleeeAttack_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.IsTargetMeleeEquipped
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execIsTargetMeleeEquipped_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.IsTargetBlocking
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execIsTargetBlocking_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.IsTargetStealthed
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execIsTargetStealthed_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.IsTargetStunned
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execIsTargetStunned_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.TargetIsReachable
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execTargetIsReachable_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.FindWeakestTarget
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execFindWeakestTarget_Parms
 {
-	unsigned long                                      bEnemy : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnemy    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	int                                                nPhysicalType;                                    		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class ATgPawn*                                     ReturnValue;                                      		// 0x0008 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
@@ -11371,10 +11371,10 @@ struct ATgAIController_execFindClosestTaunter_Parms
 // [0x00024400] ( FUNC_Native )
 struct ATgAIController_execFindClosestTarget_Parms
 {
-	unsigned long                                      bEnemy : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnemy    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	int                                                nPhysicalType;                                    		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nProfileType;                                     		// 0x0008 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bIgnoreLos : 1;                                   		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreLos    ;                                   		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class ATgPawn*                                     ReturnValue;                                      		// 0x0010 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -11382,8 +11382,8 @@ struct ATgAIController_execFindClosestTarget_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execNearestDeployable_Parms
 {
-	unsigned long                                      bEnemy : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bFirst : 1;                                       		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnemy    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bFirst    ;                                       		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	class ATgDeployable*                               ReturnValue;                                      		// 0x0008 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -11392,7 +11392,7 @@ struct ATgAIController_execNearestDeployable_Parms
 struct ATgAIController_execIsDeployableDead_Parms
 {
 	class ATgDeployable*                               Deployable;                                       		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.IsPawnDead
@@ -11400,7 +11400,7 @@ struct ATgAIController_execIsDeployableDead_Parms
 struct ATgAIController_execIsPawnDead_Parms
 {
 	class ATgPawn*                                     DeadPawn;                                         		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.CheckForDeadTarget
@@ -11422,7 +11422,7 @@ struct ATgAIController_execGetTargetProperty_Parms
 struct ATgAIController_execInvalidDestination_Parms
 {
 	struct FVector                                     vDest;                                            		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.IsCliff
@@ -11430,7 +11430,7 @@ struct ATgAIController_execInvalidDestination_Parms
 struct ATgAIController_execIsCliff_Parms
 {
 	struct FVector                                     vDest;                                            		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.AtNavPoint
@@ -11438,7 +11438,7 @@ struct ATgAIController_execIsCliff_Parms
 struct ATgAIController_execAtNavPoint_Parms
 {
 	class ANavigationPoint*                            Point;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.AtLocation
@@ -11446,14 +11446,14 @@ struct ATgAIController_execAtNavPoint_Parms
 struct ATgAIController_execAtLocation_Parms
 {
 	struct FVector                                     vLocation;                                        		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.AtCover
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execAtCover_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.AtActor
@@ -11461,7 +11461,7 @@ struct ATgAIController_execAtCover_Parms
 struct ATgAIController_execAtActor_Parms
 {
 	class AActor*                                      pActor;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.AtActionPoint
@@ -11469,21 +11469,21 @@ struct ATgAIController_execAtActor_Parms
 struct ATgAIController_execAtActionPoint_Parms
 {
 	int                                                Action;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.AtCoverForTarget
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execAtCoverForTarget_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.AtCommandDestination
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execAtCommandDestination_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.DistanceFromCommandDestination
@@ -11504,7 +11504,7 @@ struct ATgAIController_execDestroyCommandBeacon_Parms
 struct ATgAIController_execIsValidCoverForTarget_Parms
 {
 	class ATgCoverPoint*                               Cover;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.DistanceFromQuickestCover
@@ -11518,7 +11518,7 @@ struct ATgAIController_execDistanceFromQuickestCover_Parms
 // [0x00024400] ( FUNC_Native )
 struct ATgAIController_execGetQuickestCoverForTarget_Parms
 {
-	unsigned long                                      bUseCache : 1;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bUseCache    ;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class ATgCoverPoint*                               ReturnValue;                                      		// 0x0004 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -11526,7 +11526,7 @@ struct ATgAIController_execGetQuickestCoverForTarget_Parms
 // [0x00024400] ( FUNC_Native )
 struct ATgAIController_execGetCloserCoverForTarget_Parms
 {
-	unsigned long                                      bUseCache : 1;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bUseCache    ;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class ATgCoverPoint*                               ReturnValue;                                      		// 0x0004 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -11535,14 +11535,14 @@ struct ATgAIController_execGetCloserCoverForTarget_Parms
 struct ATgAIController_execIsValidCoverForGoto_Parms
 {
 	class ATgCoverPoint*                               Cover;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.GetCloserCoverForGoto
 // [0x00024400] ( FUNC_Native )
 struct ATgAIController_execGetCloserCoverForGoto_Parms
 {
-	unsigned long                                      bUseCache : 1;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bUseCache    ;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class ATgCoverPoint*                               ReturnValue;                                      		// 0x0004 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -11557,14 +11557,14 @@ struct ATgAIController_execGetClosestCover_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execIsSquadFollower_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.IsSquadLeader
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execIsSquadLeader_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.TimeSinceTargetInLOS
@@ -11578,7 +11578,7 @@ struct ATgAIController_execTimeSinceTargetInLOS_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execInDriveBy_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.IsDeviceReady
@@ -11586,7 +11586,7 @@ struct ATgAIController_execInDriveBy_Parms
 struct ATgAIController_execIsDeviceReady_Parms
 {
 	unsigned char                                      eEquipmentSlot;                                   		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.GetCurrentObjectivePercent
@@ -11608,7 +11608,7 @@ struct ATgAIController_execTimeElapsed_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execCheckLastLocation_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.CheckLastTarget
@@ -11622,7 +11622,7 @@ struct ATgAIController_execCheckLastTarget_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execCheckLastAttacker_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.TimeSinceHearHelpCall
@@ -11643,21 +11643,21 @@ struct ATgAIController_execTimeSinceHearSound_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execThreatendedByGrenade_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.RecentAOEDamage
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execRecentAOEDamage_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.RecentDamage
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execRecentDamage_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.IsRecent
@@ -11665,112 +11665,112 @@ struct ATgAIController_execRecentDamage_Parms
 struct ATgAIController_execIsRecent_Parms
 {
 	float                                              fTime;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.HasHelp
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execHasHelp_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.HeardSound
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execHeardSound_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.HelpRequested
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execHelpRequested_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.CanBeRepaired
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execCanBeRepaired_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.FriendHasAttacker
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execFriendHasAttacker_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.FriendHasTarget
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execFriendHasTarget_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.IsIdle
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execIsIdle_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.IsHibernating
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execIsHibernating_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.IsStealthed
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execIsStealthed_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.HasDriveByDestination
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execHasDriveByDestination_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.HighestThreatInLOS
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execHighestThreatInLOS_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.LastAttackerInLOS
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execLastAttackerInLOS_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.TargetInLOS
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execTargetInLOS_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.TargetInIndirectFire
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execTargetInIndirectFire_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.TargetInEncounterVolume
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execTargetInEncounterVolume_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.CheckIndirectFire
@@ -11779,7 +11779,7 @@ struct ATgAIController_execCheckIndirectFire_Parms
 {
 	struct FVector                                     Loc;                                              		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fadj;                                             		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.NumEnemyInRange
@@ -11801,14 +11801,14 @@ struct ATgAIController_execNumEnemySighted_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execAtValidPetSpawnPoint_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.HasValidNearbyPetSpawnPoint
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execHasValidNearbyPetSpawnPoint_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.GetNumberActiveSpawnedPets
@@ -11829,14 +11829,14 @@ struct ATgAIController_execMinionsInHelpRange_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execOwnerHasLastAttacked_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.OwnerHasLastAttacker
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execOwnerHasLastAttacker_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.GetClosestVolumePathNode
@@ -11844,7 +11844,7 @@ struct ATgAIController_execOwnerHasLastAttacker_Parms
 struct ATgAIController_execGetClosestVolumePathNode_Parms
 {
 	class AActor*                                      ATarget;                                          		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bTestValidSpawnPetPoint : 1;                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bTestValidSpawnPetPoint    ;                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	class AVolumePathNode*                             ReturnValue;                                      		// 0x0008 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -11868,7 +11868,7 @@ struct ATgAIController_execGetNearestEmptyActionPoint_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execGetClosestObjectiveActor_Parms
 {
-	unsigned long                                      bEnemy : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnemy    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	class AActor*                                      ReturnValue;                                      		// 0x0004 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -11890,10 +11890,10 @@ struct ATgAIController_execGetNearestAlarmDistance_Parms
 // [0x00024400] ( FUNC_Native )
 struct ATgAIController_execDistanceFromNearest_Parms
 {
-	unsigned long                                      bEnemy : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnemy    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	int                                                nPhysicalType;                                    		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nProfileType;                                     		// 0x0008 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bIgnoreLos : 1;                                   		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreLos    ;                                   		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	float                                              ReturnValue;                                      		// 0x0010 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -11919,7 +11919,7 @@ struct ATgAIController_execInDeviceRange_Parms
 	class AActor*                                      ATarget;                                          		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	unsigned char                                      eEquipmentSlot;                                   		// 0x0008 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nDeviceMode;                                      		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.HighestThreatInDeviceRange
@@ -11927,7 +11927,7 @@ struct ATgAIController_execInDeviceRange_Parms
 struct ATgAIController_execHighestThreatInDeviceRange_Parms
 {
 	unsigned char                                      eEquipmentSlot;                                   		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.AttackerInDeviceRange
@@ -11935,7 +11935,7 @@ struct ATgAIController_execHighestThreatInDeviceRange_Parms
 struct ATgAIController_execAttackerInDeviceRange_Parms
 {
 	unsigned char                                      eEquipmentSlot;                                   		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.TargetInDeviceRange
@@ -11944,7 +11944,7 @@ struct ATgAIController_execTargetInDeviceRange_Parms
 {
 	unsigned char                                      eEquipmentSlot;                                   		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nDeviceMode;                                      		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.TargetInRange
@@ -11952,7 +11952,7 @@ struct ATgAIController_execTargetInDeviceRange_Parms
 struct ATgAIController_execTargetInRange_Parms
 {
 	float                                              Range;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.DistanceFromCurrentObjective
@@ -12043,7 +12043,7 @@ struct ATgAIController_execTriggerBots_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execUpdateTargetLocation_Parms
 {
-	unsigned long                                      bInLOS : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bInLOS    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgAIController.SetTargetActor
@@ -12112,7 +12112,7 @@ struct ATgAIController_execEndClimbLadder_Parms
 struct ATgAIController_execIsInvisible_Parms
 {
 	class ATgPawn*                                     Other;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.GetRandomNav
@@ -12129,8 +12129,8 @@ struct ATgAIController_execGetRandomNav_Parms
 struct ATgAIController_execIsValidTargetEx_Parms
 {
 	class APawn*                                       CheckTarget;                                      		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bEnemy : 1;                                       		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bEnemy    ;                                       		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.IsEnemy
@@ -12138,14 +12138,14 @@ struct ATgAIController_execIsValidTargetEx_Parms
 struct ATgAIController_execIsEnemy_Parms
 {
 	class AActor*                                      pOther;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.InPatrol
 // [0x00020400] ( FUNC_Native )
 struct ATgAIController_execInPatrol_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.HasCondition
@@ -12154,7 +12154,7 @@ struct ATgAIController_execHasCondition_Parms
 {
 	class ATgPawn*                                     pPawn;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nCondition;                                       		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.SetTaskForceNumber
@@ -12188,7 +12188,7 @@ struct ATgAIController_execLineCheckRecurse_Parms
 	struct FVector                                     vTarget;                                          		// 0x0010 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	class AActor*                                      pSource;                                          		// 0x001C (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nDepth;                                           		// 0x0020 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.LineCheckEx
@@ -12198,7 +12198,7 @@ struct ATgAIController_execLineCheckEx_Parms
 	struct FVector                                     vLocation;                                        		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	class AActor*                                      pTarget;                                          		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     vTarget;                                          		// 0x0010 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x001C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x001C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.LineCheck
@@ -12207,7 +12207,7 @@ struct ATgAIController_execLineCheck_Parms
 {
 	struct FVector                                     vLocation;                                        		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	class AActor*                                      pTarget;                                          		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.LineCheckMovement
@@ -12215,14 +12215,14 @@ struct ATgAIController_execLineCheck_Parms
 struct ATgAIController_execLineCheckMovement_Parms
 {
 	class AActor*                                      pTarget;                                          		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.ChooseNextAction
 // [0x00020401] ( FUNC_Final | FUNC_Native )
 struct ATgAIController_execChooseNextAction_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.SpawnNextPet
@@ -12247,7 +12247,7 @@ struct ATgAIController_execRadioAlarm_Parms
 // [0x00020401] ( FUNC_Final | FUNC_Native )
 struct ATgAIController_execCheckInterrupt_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgAIController.Debugger
@@ -12289,7 +12289,7 @@ struct ATgPawn_execChangePhase_Parms
 // [0x00020202] ( FUNC_Exec )
 struct ATgPawn_execPerf2_Parms
 {
-	unsigned long                                      bEnabled : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnabled    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgPawn*                                  P;                                                		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -12297,7 +12297,7 @@ struct ATgPawn_execPerf2_Parms
 // [0x00020202] ( FUNC_Exec )
 struct ATgPawn_execPerf1_Parms
 {
-	unsigned long                                      bEnabled : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnabled    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgPawn_Switchblade*                      P;                                                		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -12386,7 +12386,7 @@ struct ATgPawn_eventClientClosedVendorScene_Parms
 // [0x00020102] 
 struct ATgPawn_execCanPickupDroppedItem_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.SetRestDevice
@@ -12401,21 +12401,21 @@ struct ATgPawn_execSetRestDevice_Parms
 struct ATgPawn_execPickUpBot_Parms
 {
 	class ATgPawn*                                     pReceiver;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.CanBePickedUp
 // [0x00020002] 
 struct ATgPawn_execCanBePickedUp_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.PickupNearestBot
 // [0x00020002] 
 struct ATgPawn_execPickupNearestBot_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgCollisionProxy*                        collisionProxy;                                   		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  proxyOwner;                                       		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  nearestPickupableBot;                             		// 0x000C (0x0004) [0x0000000000000000]              
@@ -12426,7 +12426,7 @@ struct ATgPawn_execPickupNearestBot_Parms
 // [0x00020802] ( FUNC_Event )
 struct ATgPawn_eventIsCrewed_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ClientOnCrewingBot
@@ -12451,7 +12451,7 @@ struct ATgPawn_eventTouch_Parms
 struct ATgPawn_execCanBeCrewedBy_Parms
 {
 	class ATgPawn*                                     P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.SetDevice
@@ -12479,7 +12479,7 @@ struct ATgPawn_execResetMoralePoints_Parms
 // [0x00020202] ( FUNC_Exec )
 struct ATgPawn_execShoulderpads_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// int                                             I;                                                		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -12494,7 +12494,7 @@ struct ATgPawn_eventGetGenderTypeCode_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_eventIsMedic_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ResetClientUIAndSensorsOnWeaponChange
@@ -12509,7 +12509,7 @@ struct ATgPawn_execResetClientUIAndSensorsOnWeaponChange_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_eventAimModeAllowed_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgDevice*                                Dev;                                              		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -12529,8 +12529,8 @@ struct ATgPawn_eventGetCameraValues_Parms
 struct ATgPawn_execIsValidMeleeTarget_Parms
 {
 	class ATgPawn*                                     ProspectiveMeleeTarget;                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bIsValidTarget : 1;                               		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bIsValidTarget    ;                               		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPawn.EndSkydiving
@@ -12553,7 +12553,7 @@ struct ATgPawn_eventSaveDeathInfoForZoomCam_Parms
 	class ATgPawn*                                     KillerOwner;                                      		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class ATgPawn*                                     Killer;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                DeviceID;                                         		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bPetKill : 1;                                     		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bPetKill    ;                                     		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgPlayerController*                      PC;                                               		// 0x0010 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_Player*                        KillerPRI;                                        		// 0x0014 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_Player*                        OwnerPRI;                                         		// 0x0018 (0x0004) [0x0000000000000000]              
@@ -12578,7 +12578,7 @@ struct ATgPawn_execInitKnockdown_Parms
 // [0x00024102] 
 struct ATgPawn_execStun_Parms
 {
-	unsigned long                                      bStunController : 1;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bStunController    ;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	unsigned char                                      eType;                                            		// 0x0004 (0x0001) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
 
@@ -12599,7 +12599,7 @@ struct ATgPawn_eventLetGoOfHangingLedge_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_eventIsPet_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.TriggerBeaconEntrance
@@ -12638,7 +12638,7 @@ struct ATgPawn_eventTeleport_Parms
 {
 	struct FVector                                     vDest;                                            		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	struct FRotator                                    rDest;                                            		// 0x000C (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bPlayFx : 1;                                      		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bPlayFx    ;                                      		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// struct FVector                                  Extent;                                           		// 0x001C (0x000C) [0x0000000000000000]              
 	// struct FVector                                  Loc;                                              		// 0x0028 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  NewLocation;                                      		// 0x0034 (0x000C) [0x0000000000000000]              
@@ -12651,14 +12651,14 @@ struct ATgPawn_execTeleportTraceCheck_Parms
 {
 	struct FVector                                     vTestLoc;                                         		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     vDestLoc;                                         		// 0x000C (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0018 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0018 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.PickupNearestDeployable
 // [0x00020002] 
 struct ATgPawn_execPickupNearestDeployable_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgDeployable*                            Deployable;                                       		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class ATgDeployable*                            nearestPickupableDeployable;                      		// 0x0008 (0x0004) [0x0000000000000000]              
 	// float                                           fShortestDist;                                    		// 0x000C (0x0004) [0x0000000000000000]              
@@ -12689,14 +12689,14 @@ struct ATgPawn_execGetCurrentOwnerPawn_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execWasPlayerControlled_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.WasPlayerSpawned
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execWasPlayerSpawned_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.SetSensorAlertLevel
@@ -12710,7 +12710,7 @@ struct ATgPawn_execSetSensorAlertLevel_Parms
 // [0x00020002] 
 struct ATgPawn_execSetAllowAddMoralePoints_Parms
 {
-	unsigned long                                      bAllowAdd : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAllowAdd    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.Tick
@@ -12718,15 +12718,15 @@ struct ATgPawn_execSetAllowAddMoralePoints_Parms
 struct ATgPawn_execTick_Parms
 {
 	float                                              DeltaSeconds;                                     		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	// unsigned long                                   bIsDying : 1;                                     		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bIsClient : 1;                                    		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsDying    ;                                     		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsClient    ;                                    		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPawn.DoubleCheckSimulatedProxy
 // [0x00020102] 
 struct ATgPawn_execDoubleCheckSimulatedProxy_Parms
 {
-	// unsigned long                                   bWrong : 1;                                       		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bWrong    ;                                       		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPawn.TickFriendlyPush
@@ -12749,8 +12749,8 @@ struct ATgPawn_execConsumePowerPool_Parms
 // [0x00020802] ( FUNC_Event )
 struct ATgPawn_eventShouldRechargePowerPool_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bShouldRecharge : 1;                              		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bShouldRecharge    ;                              		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgDevice*                                Dev;                                              		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -12808,10 +12808,10 @@ struct ATgPawn_execMWLog_Parms
 struct ATgPawn_execIsInBackStabPosition_Parms
 {
 	class ATgPawn*                                     Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// struct FVector                                  TargetFacingDir;                                  		// 0x0008 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  AttackDir;                                        		// 0x0014 (0x000C) [0x0000000000000000]              
-	// unsigned long                                   AttackIsComingFromBehind : 1;                     		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   AttackIsComingFromBehind    ;                     		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPawn.DisplayMessage
@@ -12833,17 +12833,17 @@ struct ATgPawn_eventUnTouch_Parms
 {
 	class AActor*                                      Other;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	// int                                             I;                                                		// 0x0004 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bNeedBoneSprings : 1;                             		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bNeedBoneSprings    ;                             		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgPawn*                                  P;                                                		// 0x000C (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  proxytouched;                                     		// 0x0010 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bNeedsUseUntouch : 1;                             		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bNeedsUseUntouch    ;                             		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPawn.OmegaVolumePropertiesChanged
 // [0x00020802] ( FUNC_Event )
 struct ATgPawn_eventOmegaVolumePropertiesChanged_Parms
 {
-	// unsigned long                                   bNewAutoKick : 1;                                 		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bNewAutoKick    ;                                 		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgOmegaVolume*                           currentOmegaVol;                                  		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class ATgOmegaVolume*                           currentZoneMsgVol;                                		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgOmegaVolume*                           currentZoneBilboardVol;                           		// 0x000C (0x0004) [0x0000000000000000]              
@@ -12856,10 +12856,10 @@ struct ATgPawn_eventOmegaVolumePropertiesChanged_Parms
 struct ATgPawn_eventModifyPawnPropertiesVolumeChanged_Parms
 {
 	// class ATgModifyPawnPropertiesVolume*            vol;                                              		// 0x0000 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bNewDisableJump : 1;                              		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bNewDisableBlockActors : 1;                       		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bNewDisableHanging : 1;                           		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bNewDisableAllDevices : 1;                        		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bNewDisableJump    ;                              		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bNewDisableBlockActors    ;                       		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bNewDisableHanging    ;                           		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bNewDisableAllDevices    ;                        		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgAIController*                          aic;                                              		// 0x0014 (0x0004) [0x0000000000000000]              
 };
 
@@ -12867,7 +12867,7 @@ struct ATgPawn_eventModifyPawnPropertiesVolumeChanged_Parms
 // [0x00020302] ( FUNC_Exec )
 struct ATgPawn_execRiseFromYourGrave_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             I;                                                		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -12888,13 +12888,13 @@ struct ATgPawn_eventOnRigidBodySpringOverextension_Parms
 // [0x00820102] 
 struct ATgPawn_execSetBoneSprings_Parms
 {
-	unsigned long                                      bEnabled : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnabled    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class URB_BodyInstance*                         BodyInst;                                         		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class URB_BodySetup*                            BodySetup;                                        		// 0x0008 (0x0004) [0x0000000000000000]              
 	// int                                             I;                                                		// 0x000C (0x0004) [0x0000000000000000]              
 	// int                                             BoneIndex;                                        		// 0x0010 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bEnableLinear : 1;                                		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bEnableAngular : 1;                               		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bEnableLinear    ;                                		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bEnableAngular    ;                               		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
 	// struct FMatrix                                  BoneMatrix;                                       		// 0x0020 (0x0040) [0x0000000000000000]              
 };
 
@@ -12903,7 +12903,7 @@ struct ATgPawn_execSetBoneSprings_Parms
 struct ATgPawn_execIsAngularBoneSpringName_Parms
 {
 	struct FName                                       InName;                                           		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             I;                                                		// 0x000C (0x0004) [0x0000000000000000]              
 };
 
@@ -12912,7 +12912,7 @@ struct ATgPawn_execIsAngularBoneSpringName_Parms
 struct ATgPawn_execIsLinearBoneSpringName_Parms
 {
 	struct FName                                       InName;                                           		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             I;                                                		// 0x000C (0x0004) [0x0000000000000000]              
 };
 
@@ -12920,7 +12920,7 @@ struct ATgPawn_execIsLinearBoneSpringName_Parms
 // [0x00024102] 
 struct ATgPawn_execSetBonesFixed_Parms
 {
-	unsigned long                                      bSetAllBonesFixed : 1;                            		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSetAllBonesFixed    ;                            		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// class URB_BodyInstance*                         BodyInst;                                         		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class URB_BodySetup*                            BodySetup;                                        		// 0x0008 (0x0004) [0x0000000000000000]              
 	// int                                             I;                                                		// 0x000C (0x0004) [0x0000000000000000]              
@@ -12931,7 +12931,7 @@ struct ATgPawn_execSetBonesFixed_Parms
 struct ATgPawn_execIsAimModeName_Parms
 {
 	struct FName                                       InName;                                           		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             I;                                                		// 0x000C (0x0004) [0x0000000000000000]              
 };
 
@@ -12940,7 +12940,7 @@ struct ATgPawn_execIsAimModeName_Parms
 struct ATgPawn_execIsLowerBodyName_Parms
 {
 	struct FName                                       InName;                                           		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             I;                                                		// 0x000C (0x0004) [0x0000000000000000]              
 };
 
@@ -12948,14 +12948,14 @@ struct ATgPawn_execIsLowerBodyName_Parms
 // [0x00020102] 
 struct ATgPawn_execSetBodiesFixed_Parms
 {
-	unsigned long                                      InFixed : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      InFixed    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.EnableMotors
 // [0x00020102] 
 struct ATgPawn_execEnableMotors_Parms
 {
-	unsigned long                                      InEnabled : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      InEnabled    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.SetPhysAnimState
@@ -12971,7 +12971,7 @@ struct ATgPawn_execSetPhysAnimState_Parms
 struct ATgPawn_execPrePokeActor_Parms
 {
 	struct FVector                                     PokeDir;                                          		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.BoneImpulse
@@ -12999,7 +12999,7 @@ struct ATgPawn_eventPoke_Parms
 // [0x00020102] 
 struct ATgPawn_execIsLocalPlayerInFirstPerson_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.FindLocalPlayerPawn
@@ -13108,9 +13108,9 @@ struct ATgPawn_execEnableHangingCapable_Parms
 // [0x00020002] 
 struct ATgPawn_execDoJump_Parms
 {
-	unsigned long                                      bUpdating : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   retval : 1;                                       		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      bUpdating    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   retval    ;                                       		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPawn.ServerCancelJump
@@ -13145,7 +13145,7 @@ struct ATgPawn_eventEndCrouch_Parms
 struct ATgPawn_execGetBaseAimRotation_Parms
 {
 	class AWeapon*                                     W;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bIgnoreAutoLock : 1;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreAutoLock    ;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	struct FRotator                                    ReturnValue;                                      		// 0x0008 (0x000C) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// struct FVector                                  HitLocation;                                      		// 0x0014 (0x000C) [0x0000000000000000]              
 	// class ATgPlayerController*                      PC;                                               		// 0x0020 (0x0004) [0x0000000000000000]              
@@ -13164,7 +13164,7 @@ struct ATgPawn_execGetBaseAimRotation_Parms
 struct ATgPawn_eventGetBaseAimRotationNative_Parms
 {
 	class AWeapon*                                     W;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bIgnoreAutoLock : 1;                              		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIgnoreAutoLock    ;                              		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	struct FRotator                                    Rot;                                              		// 0x0008 (0x000C) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
 };
 
@@ -13252,7 +13252,7 @@ struct ATgPawn_execDisplayWeaponSwitchProgressBar_Parms
 // [0x01020142] 
 struct ATgPawn_execClientHideProgressBar_Parms
 {
-	unsigned long                                      bWorldInteractionBar : 1;                         		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bWorldInteractionBar    ;                         		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgHUD*                                   myHUD;                                            		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -13261,7 +13261,7 @@ struct ATgPawn_execClientHideProgressBar_Parms
 struct ATgPawn_execClientDisplayProgressBar_Parms
 {
 	int                                                Duration;                                         		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bWorldInteractionBar : 1;                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bWorldInteractionBar    ;                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgHUD*                                   myHUD;                                            		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -13269,7 +13269,7 @@ struct ATgPawn_execClientDisplayProgressBar_Parms
 // [0x00024802] ( FUNC_Event )
 struct ATgPawn_eventHideProgressBar_Parms
 {
-	unsigned long                                      bWorldInteractionBar : 1;                         		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bWorldInteractionBar    ;                         		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn.DisplayProgressBar
@@ -13277,8 +13277,8 @@ struct ATgPawn_eventHideProgressBar_Parms
 struct ATgPawn_eventDisplayProgressBar_Parms
 {
 	int                                                nDuration;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bIgnoreKismetInterruption : 1;                    		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bWorldInteractionBar : 1;                         		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreKismetInterruption    ;                    		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bWorldInteractionBar    ;                         		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn.CheckUseDuration
@@ -13301,7 +13301,7 @@ struct ATgPawn_execClientSetTriggerMessage_Parms
 struct ATgPawn_execSetTriggerToUse_Parms
 {
 	class ATgTrigger_Use*                              Trigger;                                          		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bEnable : 1;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnable    ;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.InterruptRestDevice
@@ -13315,7 +13315,7 @@ struct ATgPawn_execInterruptRestDevice_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_eventIsUseInterrupted_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.InterruptUse
@@ -13329,8 +13329,8 @@ struct ATgPawn_execInterruptUse_Parms
 struct ATgPawn_execShouldAllowUse_Parms
 {
 	struct FString                                     sMessage;                                         		// 0x0000 (0x000C) [0x0000000000400180]              ( CPF_Parm | CPF_OutParm | CPF_NeedCtorLink )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bAllowUse : 1;                                    		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bAllowUse    ;                                    		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
 	// struct FString                                  sCondition;                                       		// 0x0014 (0x000C) [0x0000000000400000]              ( CPF_NeedCtorLink )
 };
 
@@ -13338,11 +13338,11 @@ struct ATgPawn_execShouldAllowUse_Parms
 // [0x00024102] 
 struct ATgPawn_execShouldInterrupt_Parms
 {
-	unsigned long                                      bMovementAllowed : 1;                             		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bRestDeviceAllowed : 1;                           		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bMovementAllowed    ;                             		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bRestDeviceAllowed    ;                           		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPlayerController*                      PC;                                               		// 0x000C (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bInterruptUse : 1;                                		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bInterruptUse    ;                                		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgDevice*                                firingDevice;                                     		// 0x0014 (0x0004) [0x0000000000000000]              
 };
 
@@ -13350,7 +13350,7 @@ struct ATgPawn_execShouldInterrupt_Parms
 // [0x00020102] 
 struct ATgPawn_execCheckInterrupt_Parms
 {
-	// unsigned long                                   bShouldInterrupt : 1;                             		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bShouldInterrupt    ;                             		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPawn.EnableFootControls
@@ -13358,7 +13358,7 @@ struct ATgPawn_execCheckInterrupt_Parms
 struct ATgPawn_eventEnableFootControls_Parms
 {
 	int                                                foot;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bDisable : 1;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bDisable    ;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.PlayHitReaction
@@ -13382,21 +13382,21 @@ struct ATgPawn_eventHitWall_Parms
 struct ATgPawn_execIsPreyOfHunter_Parms
 {
 	class ATgPawn*                                     HunterPawn;                                       		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.StealthedPlayerResistDeploySensorMinimap
 // [0x00020102] 
 struct ATgPawn_execStealthedPlayerResistDeploySensorMinimap_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ApplyScannerSettingsToPawn
 // [0x00024102] 
 struct ATgPawn_execApplyScannerSettingsToPawn_Parms
 {
-	unsigned long                                      bReset : 1;                                       		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bReset    ;                                       		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// class UTgProperty*                              prop;                                             		// 0x0004 (0x0004) [0x0000000000000000]              
 	// int                                             nScannerRange;                                    		// 0x0008 (0x0004) [0x0000000000000000]              
 	// int                                             nScannerFOV;                                      		// 0x000C (0x0004) [0x0000000000000000]              
@@ -13445,7 +13445,7 @@ struct ATgPawn_execClientSetStun_Parms
 // [0x00020802] ( FUNC_Event )
 struct ATgPawn_eventUnhacked_Parms
 {
-	unsigned long                                      bPetDeathCam : 1;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bPetDeathCam    ;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class AController*                              C;                                                		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -13453,7 +13453,7 @@ struct ATgPawn_eventUnhacked_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_eventIsHacked_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.HackedBy
@@ -13470,7 +13470,7 @@ struct ATgPawn_eventHackedBy_Parms
 // [0x00020002] 
 struct ATgPawn_execSwapRepInfoForHacking_Parms
 {
-	unsigned long                                      bHacking : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bHacking    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.ClientResetMovement
@@ -13511,7 +13511,7 @@ struct ATgPawn_eventOnAnimPlay_Parms
 	class UAnimNodeSequence*                           SeqNode;                                          		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	// float                                           AnimLength;                                       		// 0x0004 (0x0004) [0x0000000000000000]              
 	// int                                             I;                                                		// 0x0008 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bIsAParentRelevant : 1;                           		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsAParentRelevant    ;                           		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgPlayerController*                      C;                                                		// 0x0010 (0x0004) [0x0000000000000000]              
 };
 
@@ -13566,7 +13566,7 @@ struct ATgPawn_execCheckTargetActor_Parms
 {
 	// class ATgPlayerController*                      PC;                                               		// 0x0000 (0x0004) [0x0000000000000000]              
 	// class ATgDevice*                                Dev;                                              		// 0x0004 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bIsValidTarget : 1;                               		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsValidTarget    ;                               		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPawn.IsTargetWithInAutoLockCone
@@ -13574,10 +13574,10 @@ struct ATgPawn_execCheckTargetActor_Parms
 struct ATgPawn_execIsTargetWithInAutoLockCone_Parms
 {
 	class ATgPawn*                                     Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// struct FVector                                  vTargetDir;                                       		// 0x0008 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  vPawnFacingDir;                                   		// 0x0014 (0x000C) [0x0000000000000000]              
-	// unsigned long                                   bTargetInFrontOfMe : 1;                           		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bTargetInFrontOfMe    ;                           		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
 	// float                                           fOrientation;                                     		// 0x0024 (0x0004) [0x0000000000000000]              
 	// float                                           fAngle;                                           		// 0x0028 (0x0004) [0x0000000000000000]              
 };
@@ -13600,7 +13600,7 @@ struct ATgPawn_eventOnDeviceBuffChange_Parms
 // [0x00020102] 
 struct ATgPawn_execIsTargetAutoLock_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.PropertySet
@@ -13653,7 +13653,7 @@ struct ATgPawn_execFlushDebug_Parms
 // [0x00020102] 
 struct ATgPawn_execIsFirstPerson_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.PlayHit
@@ -13675,7 +13675,7 @@ struct ATgPawn_execPlayHit_Parms
 struct ATgPawn_execProcessEffect_Parms
 {
 	class UTgEffectGroup*                              EffectGrp;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bRemove : 1;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bRemove    ;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	class AActor*                                      aInstigator;                                      		// 0x0008 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	struct FImpactInfo                                 Impact;                                           		// 0x000C (0x0060) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
@@ -13686,8 +13686,8 @@ struct ATgPawn_execPlayLanded_Parms
 {
 	float                                              ImpactVel;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	// class ATgPlayerController*                      PC;                                               		// 0x0004 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bHardLanding : 1;                                 		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bSkydiveLanding : 1;                              		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bHardLanding    ;                                 		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bSkydiveLanding    ;                              		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
 	// struct FVector                                  HitLocation;                                      		// 0x0010 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  HitNormal;                                        		// 0x001C (0x000C) [0x0000000000000000]              
 	// struct FVector                                  TraceStart;                                       		// 0x0028 (0x000C) [0x0000000000000000]              
@@ -13728,14 +13728,14 @@ struct ATgPawn_eventLanded_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_eventIsDying_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ApplyPawnShadows
 // [0x00020102] 
 struct ATgPawn_execApplyPawnShadows_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.GetCurrentControlRangePercent
@@ -13763,14 +13763,14 @@ struct ATgPawn_eventGetPowerPoolPercent_Parms
 // [0x00020102] 
 struct ATgPawn_execInCombat_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.Combat
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_eventCombat_Parms
 {
-	unsigned long                                      bInCombat : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bInCombat    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgPlayerController*                      ctrl;                                             		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -13799,7 +13799,7 @@ struct ATgPawn_execEnterCombat_Parms
 // [0x00020102] 
 struct ATgPawn_execToggleInHandDevicePS_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class UTgDeviceForm*                            InHandDeviceForm;                                 		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class UTgSpecialFx*                             Fx;                                               		// 0x0008 (0x0004) [0x0000000000000000]              
 };
@@ -13815,7 +13815,7 @@ struct ATgPawn_execGetSensorRange_Parms
 // [0x00020102] 
 struct ATgPawn_execCleanUpMakeVisibleParam_Parms
 {
-	unsigned long                                      bResetMeshParam : 1;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bResetMeshParam    ;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.ApplyStealth
@@ -13828,7 +13828,7 @@ struct ATgPawn_eventApplyStealth_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_eventCanPawnBeStealthed_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ApplyStealthClient
@@ -13900,7 +13900,7 @@ struct ATgPawn_execCalcCamera_Parms
 	struct FVector                                     out_CamLoc;                                       		// 0x0004 (0x000C) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
 	struct FRotator                                    out_CamRot;                                       		// 0x0010 (0x000C) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
 	float                                              out_FOV;                                          		// 0x001C (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0020 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0020 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.OnUpdateHealthVar
@@ -13949,7 +13949,7 @@ struct ATgPawn_execManageBlockingClientSide_Parms
 // [0x002200C2] 
 struct ATgPawn_execServerUpdateBlocking_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.ManageBlockingServerSide
@@ -13962,7 +13962,7 @@ struct ATgPawn_execManageBlockingServerSide_Parms
 // [0x00020002] 
 struct ATgPawn_execCanBlock_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgDevice*                                Dev;                                              		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class ATgPlayerController*                      PC;                                               		// 0x0008 (0x0004) [0x0000000000000000]              
 };
@@ -13987,7 +13987,7 @@ struct ATgPawn_execGetFiringOffhandWeapon_Parms
 // [0x002200C2] 
 struct ATgPawn_execServerUpdateAimingMode_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgDevice*                                Dev;                                              		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -13995,7 +13995,7 @@ struct ATgPawn_execServerUpdateAimingMode_Parms
 // [0x002200C2] 
 struct ATgPawn_execServerUpdateSnipeScopeMode_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.OnAimingModeChange
@@ -14015,7 +14015,7 @@ struct ATgPawn_execExitAimingMode_Parms
 // [0x00020002] 
 struct ATgPawn_execEnterAimingMode_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgDevice*                                Dev;                                              		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -14032,14 +14032,14 @@ struct ATgPawn_execManageZoomingClientSide_Parms
 // [0x00020002] 
 struct ATgPawn_execCanUseBinoculars_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ServerSetBinoculars
 // [0x002200C2] 
 struct ATgPawn_execServerSetBinoculars_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.ClientZoomIn
@@ -14047,7 +14047,7 @@ struct ATgPawn_execServerSetBinoculars_Parms
 struct ATgPawn_execClientZoomIn_Parms
 {
 	float                                              fFOVModifier;                                     		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bBinoculars : 1;                                  		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bBinoculars    ;                                  		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// float                                           baseFOV;                                          		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -14087,14 +14087,14 @@ struct ATgPawn_eventGetZoomOverlayToDraw_Parms
 {
 	unsigned char                                      ReturnValue;                                      		// 0x0000 (0x0001) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// unsigned char                                   zv;                                               		// 0x0001 (0x0001) [0x0000000000000000]              
-	// unsigned long                                   bHasZoomMaterial : 1;                             		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bHasZoomMaterial    ;                             		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPawn.InSensorDefaultMode
 // [0x00020002] 
 struct ATgPawn_execInSensorDefaultMode_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.SetActiveWeapon
@@ -14103,8 +14103,8 @@ struct ATgPawn_eventSetActiveWeapon_Parms
 {
 	class AWeapon*                                     NewWeapon;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nMode;                                            		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bForceFastClear : 1;                              		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bForceFastClear    ;                              		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgDevice*                                NewDevice;                                        		// 0x0010 (0x0004) [0x0000000000000000]              
 };
 
@@ -14119,7 +14119,7 @@ struct ATgPawn_execSetPawnState_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execShowVipFx_Parms
 {
-	unsigned long                                      bShow : 1;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bShow    ;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.RemoveDeathEffects
@@ -14176,7 +14176,7 @@ struct ATgPawn_execRemoveAllEffects_Parms
 // [0x00020102] 
 struct ATgPawn_execSetAnyBreakablePhysicsConstraints_Parms
 {
-	unsigned long                                      bEnabled : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnabled    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// int                                             I;                                                		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -14192,17 +14192,17 @@ struct ATgPawn_execPlayDyingPhysicsAndAnimation_Parms
 {
 	class UClass*                                      TgDmgType;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     HitLoc;                                           		// 0x0004 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	// unsigned long                                   bDoDeathAnimation : 1;                            		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bLoopDeathAnim : 1;                               		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bIsDeathAnimRigidBody : 1;                        		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bShotFromFront : 1;                               		// 0x001C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bDoDeathAnimation    ;                            		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bLoopDeathAnim    ;                               		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsDeathAnimRigidBody    ;                        		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bShotFromFront    ;                               		// 0x001C (0x0004) [0x0000000000000000] [0x00000001] 
 	// int                                             DeathAnimInfoLength;                              		// 0x0020 (0x0004) [0x0000000000000000]              
 	// int                                             DeathAnimInfoIndex;                               		// 0x0024 (0x0004) [0x0000000000000000]              
 	// struct FName                                    nmDeathAnim;                                      		// 0x0028 (0x0008) [0x0000000000000000]              
 	// struct FTraceHitInfo                            HitInfo;                                          		// 0x0030 (0x001C) [0x0000000000000000]              
 	// struct FVector                                  ShotDir;                                          		// 0x004C (0x000C) [0x0000000000000000]              
 	// struct FVector                                  ApplyImpulse;                                     		// 0x0058 (0x000C) [0x0000000000000000]              
-	// unsigned long                                   bPlayingDeathAnim : 1;                            		// 0x0064 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bPlayingDeathAnim    ;                            		// 0x0064 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class UAnimSequence*                            DeathAnimSeq;                                     		// 0x0068 (0x0004) [0x0000000000000000]              
 };
 
@@ -14249,7 +14249,7 @@ struct ATgPawn_execRemoveIfLocalTarget_Parms
 // [0x00020102] 
 struct ATgPawn_execShouldBeHeard_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.MakeRadarMapNoise
@@ -14268,7 +14268,7 @@ struct ATgPawn_eventPlayFootStepSound_Parms
 	// struct FVector                                  HitNormal;                                        		// 0x0014 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  TraceStart;                                       		// 0x0020 (0x000C) [0x0000000000000000]              
 	// struct FTraceHitInfo                            HitInfo;                                          		// 0x002C (0x001C) [0x0000000000000000]              
-	// unsigned long                                   bSilentMode : 1;                                  		// 0x0048 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bSilentMode    ;                                  		// 0x0048 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class UTgImpactFx*                              FootstepImpactFxGroup;                            		// 0x004C (0x0004) [0x0000000000000000]              
 	// class UTgSpecialFx*                             FootstepImpactSpecialFx;                          		// 0x0050 (0x0004) [0x0000000000000000]              
 	// int                                             ImpactFxGroupIDToRetreive;                        		// 0x0054 (0x0004) [0x0000000000000000]              
@@ -14334,7 +14334,7 @@ struct ATgPawn_eventSetPosture_Parms
 {
 	int                                                ePosture;                                         		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fRateScale;                                       		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bIgnoreTransition : 1;                            		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreTransition    ;                            		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn.FaceRotation
@@ -14483,7 +14483,7 @@ struct ATgPawn_execGetLocalPlayerPawn_Parms
 // [0x00020102] 
 struct ATgPawn_execLoadPlayerIcons_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class UMaterialInstanceConstant*                parentMIC;                                        		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -14492,8 +14492,8 @@ struct ATgPawn_execLoadPlayerIcons_Parms
 struct ATgPawn_execSeenByLocalPlayer_Parms
 {
 	class ATgPawn*                                     LocalPlayerPawn;                                  		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bSeen : 1;                                        		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bSeen    ;                                        		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 	// int                                             I;                                                		// 0x000C (0x0004) [0x0000000000000000]              
 };
 
@@ -14627,7 +14627,7 @@ struct ATgPawn_execIncrementFlashCount_Parms
 // [0x00020002] 
 struct ATgPawn_execCanApplyEffects_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.OnDeviceFormStopFire
@@ -14676,16 +14676,16 @@ struct ATgPawn_eventRestartAllDevices_Parms
 // [0x010241C2] 
 struct ATgPawn_execClientStopFiringAllDevices_Parms
 {
-	unsigned long                                      bClearEquipEffectFlag : 1;                        		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bResetCooldowns : 1;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bClearEquipEffectFlag    ;                        		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bResetCooldowns    ;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn.StopFiringAllDevices
 // [0x00024902] ( FUNC_Event )
 struct ATgPawn_eventStopFiringAllDevices_Parms
 {
-	unsigned long                                      bClearEquipEffectFlag : 1;                        		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bResetCooldowns : 1;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bClearEquipEffectFlag    ;                        		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bResetCooldowns    ;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// int                                             I;                                                		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgDevice*                                Dev;                                              		// 0x000C (0x0004) [0x0000000000000000]              
 };
@@ -14713,15 +14713,15 @@ struct ATgPawn_execStartAction_Parms
 {
 	class ATgDevice*                                   Dev;                                              		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nMode;                                            		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bSuccess : 1;                                     		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bSuccess    ;                                     		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPawn.SetDisableAction
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_eventSetDisableAction_Parms
 {
-	unsigned long                                      bDisable : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bDisable    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.AnimSwapDevice
@@ -14740,7 +14740,7 @@ struct ATgPawn_execUIH_Parms
 // [0x00024902] ( FUNC_Event )
 struct ATgPawn_eventUpdateInHand_Parms
 {
-	unsigned long                                      bForceFastClear : 1;                              		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForceFastClear    ;                              		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// float                                           putAwayTime;                                      		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -14748,7 +14748,7 @@ struct ATgPawn_eventUpdateInHand_Parms
 // [0x00024102] 
 struct ATgPawn_execEquipPendingDeviceTimer_Parms
 {
-	unsigned long                                      SkipPlayAnim : 1;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      SkipPlayAnim    ;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// class ATgDevice*                                NewDevice;                                        		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -14771,7 +14771,7 @@ struct ATgPawn_eventPutInHandDeviceAwayFast_Parms
 struct ATgPawn_execCanChangeInHandDeviceOrMode_Parms
 {
 	class ATgDevice*                                   instigatorDev;                                    		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ResetUIDeviceTimers
@@ -14804,13 +14804,13 @@ struct ATgPawn_eventDied_Parms
 	class AController*                                 Killer;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class UClass*                                      dmgType;                                          		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     HitLocation;                                      		// 0x0008 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPawn*                                  ownerPawn;                                        		// 0x0018 (0x0004) [0x0000000000000000]              
 	// class ATgDevice*                                Dev;                                              		// 0x001C (0x0004) [0x0000000000000000]              
 	// int                                             I;                                                		// 0x0020 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_Player*                        killerPlayerRep;                                  		// 0x0024 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_TaskForce*                     killerTaskForce;                                  		// 0x0028 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   notifyKismet : 1;                                 		// 0x002C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   notifyKismet    ;                                 		// 0x002C (0x0004) [0x0000000000000000] [0x00000001] 
 	// TArray< class USequenceObject* >                Events;                                           		// 0x0030 (0x000C) [0x0000000000400000]              ( CPF_NeedCtorLink )
 	// int                                             Idx;                                              		// 0x003C (0x0004) [0x0000000000000000]              
 	// class USeqEvent_Death*                          deathEvent;                                       		// 0x0040 (0x0004) [0x0000000000000000]              
@@ -14876,7 +14876,7 @@ struct ATgPawn_execResetStealthEffect_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_eventIsCustomCharacter_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.GetBodyMeshId
@@ -14896,7 +14896,7 @@ struct ATgPawn_execMissionTimeUpdate_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.CrushedBy
@@ -15141,7 +15141,7 @@ struct ATgPawn_execOnGetTeamIndex_Parms
 struct ATgPawn_execPossessedBy_Parms
 {
 	class AController*                                 C;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bVehicleTransition : 1;                           		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bVehicleTransition    ;                           		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgRepInfo_Player*                        TgPRI;                                            		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -15149,7 +15149,7 @@ struct ATgPawn_execPossessedBy_Parms
 // [0x002208C2] ( FUNC_Event )
 struct ATgPawn_eventServerSetIsCrafting_Parms
 {
-	unsigned long                                      bIsCrafting : 1;                                  		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsCrafting    ;                                  		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.ServerTestPushBack
@@ -15284,7 +15284,7 @@ struct ATgPawn_execPlayBotSound_Parms
 struct ATgPawn_execIsPlayerTagged_Parms
 {
 	class ATgPlayerController*                         PC;                                               		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ShouldSeeActor
@@ -15293,7 +15293,7 @@ struct ATgPawn_execShouldSeeActor_Parms
 {
 	class AActor*                                      A;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nScannerSettingIndex;                             		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ClearEquippedDevice
@@ -15307,7 +15307,7 @@ struct ATgPawn_execClearEquippedDevice_Parms
 struct ATgPawn_execNativeReplicatedEvent_Parms
 {
 	struct FName                                       VarName;                                          		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.DoRappelEffects
@@ -15357,7 +15357,7 @@ struct ATgPawn_execScannerSeeStealthedTarget_Parms
 {
 	int                                                nIndex;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class ATgPawn*                                     P;                                                		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ScannerSeeStealthedPlayer
@@ -15365,7 +15365,7 @@ struct ATgPawn_execScannerSeeStealthedTarget_Parms
 struct ATgPawn_execScannerSeeStealthedPlayer_Parms
 {
 	class ATgPawn*                                     P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ScannerSeeBeacon
@@ -15373,7 +15373,7 @@ struct ATgPawn_execScannerSeeStealthedPlayer_Parms
 struct ATgPawn_execScannerSeeBeacon_Parms
 {
 	int                                                nIndex;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ScannerSeeDeployable
@@ -15381,7 +15381,7 @@ struct ATgPawn_execScannerSeeBeacon_Parms
 struct ATgPawn_execScannerSeeDeployable_Parms
 {
 	int                                                nIndex;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ScannerDisplayTargetWithBracket
@@ -15390,7 +15390,7 @@ struct ATgPawn_execScannerDisplayTargetWithBracket_Parms
 {
 	class ATgPawn*                                     P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nIndex;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ScannerDisplayTargetWithLowHealth
@@ -15399,7 +15399,7 @@ struct ATgPawn_execScannerDisplayTargetWithLowHealth_Parms
 {
 	class ATgPawn*                                     P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nIndex;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ScannerDisplayTargetTagged
@@ -15408,7 +15408,7 @@ struct ATgPawn_execScannerDisplayTargetTagged_Parms
 {
 	class ATgPawn*                                     P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nIndex;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ScannerDisplayTargetInGame
@@ -15417,7 +15417,7 @@ struct ATgPawn_execScannerDisplayTargetInGame_Parms
 {
 	class ATgPawn*                                     P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nIndex;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ScannerDisplayTargetInMinimap
@@ -15426,7 +15426,7 @@ struct ATgPawn_execScannerDisplayTargetInMinimap_Parms
 {
 	class ATgPawn*                                     P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nIndex;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.IsStealthedPlayerDisplayInGameBySensor
@@ -15434,21 +15434,21 @@ struct ATgPawn_execScannerDisplayTargetInMinimap_Parms
 struct ATgPawn_execIsStealthedPlayerDisplayInGameBySensor_Parms
 {
 	class ATgPawn*                                     LocalPlayerPawn;                                  		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.SensorDisplayMeWithBracket
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execSensorDisplayMeWithBracket_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.SensorDisplayMeWithLowHealth
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execSensorDisplayMeWithLowHealth_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.SensorDisplayMeTagged
@@ -15456,21 +15456,21 @@ struct ATgPawn_execSensorDisplayMeWithLowHealth_Parms
 struct ATgPawn_execSensorDisplayMeTagged_Parms
 {
 	class ATgPawn*                                     LocalPlayerPawn;                                  		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.SensorDisplayMeInGame
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execSensorDisplayMeInGame_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.SensorDisplayMeInMinimap
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execSensorDisplayMeInMinimap_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ShouldDisplayWithBracket
@@ -15478,7 +15478,7 @@ struct ATgPawn_execSensorDisplayMeInMinimap_Parms
 struct ATgPawn_execShouldDisplayWithBracket_Parms
 {
 	class ATgPawn*                                     LocalPlayerPawn;                                  		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ShouldDisplayWithLowHealth
@@ -15486,7 +15486,7 @@ struct ATgPawn_execShouldDisplayWithBracket_Parms
 struct ATgPawn_execShouldDisplayWithLowHealth_Parms
 {
 	class ATgPawn*                                     LocalPlayerPawn;                                  		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ShouldDisplayInMinimap
@@ -15494,14 +15494,14 @@ struct ATgPawn_execShouldDisplayWithLowHealth_Parms
 struct ATgPawn_execShouldDisplayInMinimap_Parms
 {
 	class ATgPawn*                                     LocalPlayerPawn;                                  		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.StealthedPlayerResistVisualScanner
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execStealthedPlayerResistVisualScanner_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ValidBotOnlyCheck
@@ -15510,14 +15510,14 @@ struct ATgPawn_execValidBotOnlyCheck_Parms
 {
 	class ATgPawn*                                     P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nIndex;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.IsScannerOn
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execIsScannerOn_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.CheckIndexedFlag
@@ -15526,7 +15526,7 @@ struct ATgPawn_execCheckIndexedFlag_Parms
 {
 	int                                                nFlag;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nIndex;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.CheckUiVolumeTriggers
@@ -15548,7 +15548,7 @@ struct ATgPawn_execDisplayDamageInfo_Parms
 struct ATgPawn_execPlayCustomAnimation_Parms
 {
 	int                                                nAnimResId;                                       		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bFullBody : 1;                                    		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bFullBody    ;                                    		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	float                                              fTime;                                            		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 };
 
@@ -15601,7 +15601,7 @@ struct ATgPawn_execGetCurrentUsedResourceList_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execIsNonCombat_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.MatchJoin
@@ -15615,14 +15615,14 @@ struct ATgPawn_execMatchJoin_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execIsCrewable_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.CanMove
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execCanMove_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.GetAim
@@ -15673,7 +15673,7 @@ struct ATgPawn_execPlayUpperBodyAnim_Parms
 	struct FName                                       AnimName;                                         		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
 	float                                              Rate;                                             		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              BlendInTime;                                      		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bLooping : 1;                                     		// 0x0010 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bLooping    ;                                     		// 0x0010 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.PlayFullBodyLoopingAnimWithTransition
@@ -15696,18 +15696,18 @@ struct ATgPawn_execPlayFullBodyAnim_Parms
 	float                                              Rate;                                             		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              BlendInTime;                                      		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              BlendOutTime;                                     		// 0x0010 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bLooping : 1;                                     		// 0x0014 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bOverride : 1;                                    		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bDisablePlayerControls : 1;                       		// 0x001C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bBlendOutIfVelocityIsGreaterThanZero : 1;         		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bHideInHandDevice : 1;                            		// 0x0024 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bLooping    ;                                     		// 0x0014 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOverride    ;                                    		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bDisablePlayerControls    ;                       		// 0x001C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bBlendOutIfVelocityIsGreaterThanZero    ;         		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bHideInHandDevice    ;                            		// 0x0024 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn.IsFriendlyWithLocalPawn
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execIsFriendlyWithLocalPawn_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.GetCurrentDeviceAccuracyInfo
@@ -15757,8 +15757,8 @@ struct ATgPawn_execCheckWeakSpotPassThrough_Parms
 {
 	struct FVector                                     HitLocation;                                      		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     HitNormal;                                        		// 0x000C (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bAllowZImpactOutsideOfCylidnerHeightRange : 1;    		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x001C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bAllowZImpactOutsideOfCylidnerHeightRange    ;    		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x001C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.SetScannerDetectedStealthLightup
@@ -15771,28 +15771,28 @@ struct ATgPawn_execSetScannerDetectedStealthLightup_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execIsVisibilityFadeDone_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.IsFadeInEffectDone
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execIsFadeInEffectDone_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.NeedFadeInEffect
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execNeedFadeInEffect_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.NeedPlayDeathFadeEffect
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execNeedPlayDeathFadeEffect_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.GetHealthPercent
@@ -15828,7 +15828,7 @@ struct ATgPawn_execSetMeshScalarValue_Parms
 struct ATgPawn_execForceResetTaskForce_Parms
 {
 	class ATgPawn*                                     PawnInstigator;                                   		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bResetTaskforce : 1;                              		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bResetTaskforce    ;                              		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.MoveCloseTo
@@ -15836,7 +15836,7 @@ struct ATgPawn_execForceResetTaskForce_Parms
 struct ATgPawn_execMoveCloseTo_Parms
 {
 	struct FVector                                     vDesiredLocation;                                 		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.HideCrewMessage
@@ -15855,7 +15855,7 @@ struct ATgPawn_execDisplayCrewMessage_Parms
 // [0x00024400] ( FUNC_Native )
 struct ATgPawn_execUnCrewed_Parms
 {
-	unsigned long                                      bKillControlPawn : 1;                             		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bKillControlPawn    ;                             		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn.CrewBot
@@ -15876,7 +15876,7 @@ struct ATgPawn_execSetHexItem_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execKillDeployables_Parms
 {
-	unsigned long                                      bAll : 1;                                         		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAll    ;                                         		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.DrawMatString
@@ -15898,14 +15898,14 @@ struct ATgPawn_execDrawMatString_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execIsCarryingPickupFlag_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.IsCarryingBeacon
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execIsCarryingBeacon_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.GetMoraleDevice
@@ -15933,28 +15933,28 @@ struct ATgPawn_execDrawLineToOwner_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execShouldApplyJetpackTrail_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ApplyJetpackTrail
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execApplyJetpackTrail_Parms
 {
-	unsigned long                                      bReset : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bReset    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.ShouldApplyDye
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execShouldApplyDye_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ApplyDye
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execApplyDye_Parms
 {
-	unsigned long                                      bResetDyeMIC : 1;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bResetDyeMIC    ;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.SwapAttachedDeviceMaterials
@@ -15962,7 +15962,7 @@ struct ATgPawn_execApplyDye_Parms
 struct ATgPawn_execSwapAttachedDeviceMaterials_Parms
 {
 	class UMaterialInstanceConstant*                   NewMaterial;                                      		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bIgnoreParams : 1;                                		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreParams    ;                                		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn.SwapSkinMaterials
@@ -15970,8 +15970,8 @@ struct ATgPawn_execSwapAttachedDeviceMaterials_Parms
 struct ATgPawn_execSwapSkinMaterials_Parms
 {
 	TArray< struct FFx_Material >                      MaterialList;                                     		// 0x0000 (0x000C) [0x0000000000400090]              ( CPF_OptionalParm | CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      bIgnoreParams : 1;                                		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bIsFriendly : 1;                                  		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreParams    ;                                		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIsFriendly    ;                                  		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn.SetSkin
@@ -15979,29 +15979,29 @@ struct ATgPawn_execSwapSkinMaterials_Parms
 struct ATgPawn_execSetSkin_Parms
 {
 	class UTgSpecialFx*                                NewSpecialFx;                                     		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bIgnoreParams : 1;                                		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bForceSetSkin : 1;                                		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreParams    ;                                		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForceSetSkin    ;                                		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn.IsHenchman
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execIsHenchman_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.IsStealthActive
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execIsStealthActive_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.IsStealthed
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execIsStealthed_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.GetDeviceByInstanceId
@@ -16030,7 +16030,7 @@ struct ATgPawn_execManageFirstPerson_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execOnPawnDied_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ApplyAnyPushback
@@ -16045,7 +16045,7 @@ struct ATgPawn_execApplyAnyPushback_Parms
 struct ATgPawn_execPushback_Parms
 {
 	struct FVector                                     Distance;                                         		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.PlaySpawnFadeOutFx
@@ -16082,7 +16082,7 @@ struct ATgPawn_execTickMakeVisibleCalculation_Parms
 struct ATgPawn_execShouldUpdateStealthedFor_Parms
 {
 	class ATgPawn*                                     ViewerPawn;                                       		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.GetTerminalVelocity
@@ -16111,35 +16111,35 @@ struct ATgPawn_execApplyFlair_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execRecalculateMaterial_Parms
 {
-	unsigned long                                      bIsFriendlyWithLocalPawn : 1;                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsFriendlyWithLocalPawn    ;                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.CanBeAffectedByVortices
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execCanBeAffectedByVortices_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.IsInvisible
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execIsInvisible_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ShouldInHandDeviceBeHiddenThisTick
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execShouldInHandDeviceBeHiddenThisTick_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ShouldPawnMeshBeHiddenThisTick
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execShouldPawnMeshBeHiddenThisTick_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.GetFont
@@ -16169,7 +16169,7 @@ struct ATgPawn_execPlaySoundCue_Parms
 // [0x00024400] ( FUNC_Native )
 struct ATgPawn_execSensorAlertSound_Parms
 {
-	unsigned long                                      bPlay : 1;                                        		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bPlay    ;                                        		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn.NativeSet
@@ -16338,7 +16338,7 @@ struct ATgPawn_execTrackHit_Parms
 {
 	int                                                nDeviceModeID;                                    		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fDistance;                                        		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bHitPlayer : 1;                                   		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bHitPlayer    ;                                   		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.RemoveTrackFired
@@ -16359,7 +16359,7 @@ struct ATgPawn_execTrackCompleteKillInfo_Parms
 	struct FVector                                     KillerLocation;                                   		// 0x0010 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     VictimLocation;                                   		// 0x001C (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     PetLocation;                                      		// 0x0028 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bPetKill : 1;                                     		// 0x0034 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bPetKill    ;                                     		// 0x0034 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.TrackFired
@@ -16492,7 +16492,7 @@ struct ATgPawn_execValidateStatsTracker_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execIsProfileNonStandard_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.SetDebugParticleMaskNative
@@ -16514,9 +16514,9 @@ struct ATgPawn_execCreateUITextBoxBitfield_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execCreateUIClockBitfield_Parms
 {
-	unsigned long                                      Alarm : 1;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      Bar : 1;                                          		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      Down : 1;                                         		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      Alarm    ;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      Bar    ;                                          		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      Down    ;                                         		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	unsigned char                                      ReturnValue;                                      		// 0x000C (0x0001) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -16567,8 +16567,8 @@ struct ATgPawn_execReapplyCurrentMICFx_Parms
 struct ATgPawn_execRemoveMICFx_Parms
 {
 	class UTgSpecialFx*                                SpecialFx;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bForceRemove : 1;                                 		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bForceRemove    ;                                 		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.ApplyMICFx
@@ -16577,14 +16577,14 @@ struct ATgPawn_execApplyMICFx_Parms
 {
 	class UTgSpecialFx*                                SpecialFx;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                Priority;                                         		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.SwapMeshToStealthed
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execSwapMeshToStealthed_Parms
 {
-	unsigned long                                      bStealthed : 1;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bStealthed    ;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	class UMaterialInstanceConstant*                   ReturnValue;                                      		// 0x0004 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -16704,14 +16704,14 @@ struct ATgPawn_execGetSpecialFx_Parms
 // [0x00020500] ( FUNC_Native )
 struct ATgPawn_execSetDeviceVisibility_Parms
 {
-	unsigned long                                      bVisible : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bVisible    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.SetMeshVisibility
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execSetMeshVisibility_Parms
 {
-	unsigned long                                      bVisible : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bVisible    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.CanSeeActor
@@ -16719,16 +16719,16 @@ struct ATgPawn_execSetMeshVisibility_Parms
 struct ATgPawn_execCanSeeActor_Parms
 {
 	class AActor*                                      aActor;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bRequiresLOS : 1;                                 		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bRequiresLOS    ;                                 		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.IsPhysicalLadderInFrontOfPawn
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execIsPhysicalLadderInFrontOfPawn_Parms
 {
-	unsigned long                                      bTraceFromTopOfCylinder : 1;                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bTraceFromTopOfCylinder    ;                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.GetGravityZ
@@ -16744,7 +16744,7 @@ struct ATgPawn_execGetIconResource_Parms
 {
 	int                                                nIconId;                                          		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FIcon_Info                                  iconInfo;                                         		// 0x0004 (0x0010) [0x0000000000400180]              ( CPF_Parm | CPF_OutParm | CPF_NeedCtorLink )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.AddRemoveAnimSetList
@@ -16752,7 +16752,7 @@ struct ATgPawn_execGetIconResource_Parms
 struct ATgPawn_execAddRemoveAnimSetList_Parms
 {
 	TArray< class UAnimSet* >                          AnimSetList;                                      		// 0x0000 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      bAdd : 1;                                         		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAdd    ;                                         		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.PlaySoundEmote
@@ -16771,7 +16771,7 @@ struct ATgPawn_execPlayAnimEmote_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execTermRagdoll_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.LogPawnAnim
@@ -16787,14 +16787,14 @@ struct ATgPawn_execIsPointInsideCollisionCylinder_Parms
 	struct FVector                                     Point;                                            		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	float                                              AddHeight;                                        		// 0x000C (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              AddRadius;                                        		// 0x0010 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.DetermineMeshVisibility
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execDetermineMeshVisibility_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.DrawClientDebug
@@ -16807,14 +16807,14 @@ struct ATgPawn_execDrawClientDebug_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execbIsEditor_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.OnCrafting
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execOnCrafting_Parms
 {
-	unsigned long                                      bStart : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bStart    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.ReapplyLoadoutEffects
@@ -16883,7 +16883,7 @@ struct ATgPawn_execApplyBuff_Parms
 	struct FBuffHeader                                 BuffFilter;                                       		// 0x0000 (0x0010) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nCalcMethodCode;                                  		// 0x0010 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fAmount;                                          		// 0x0014 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bRemove : 1;                                      		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bRemove    ;                                      		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	unsigned char                                      buffSourceType;                                   		// 0x001C (0x0001) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
 
@@ -16892,7 +16892,7 @@ struct ATgPawn_execApplyBuff_Parms
 struct ATgPawn_execGetBuffIndex_Parms
 {
 	struct FBuffHeader                                 BuffFilter;                                       		// 0x0000 (0x0010) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bAddIfNotExists : 1;                              		// 0x0010 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAddIfNotExists    ;                              		// 0x0010 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	int                                                nIndex;                                           		// 0x0014 (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
 };
 
@@ -17051,7 +17051,7 @@ struct ATgPawn_execFlashArcing_Parms
 	struct FVector                                     vOldLoc;                                          		// 0x0014 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nEquipSlot;                                       		// 0x0020 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	int                                                nSocketIndex;                                     		// 0x0024 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bsuccesfulhit : 1;                                		// 0x0028 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bsuccesfulhit    ;                                		// 0x0028 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn.FlashFireNoSim
@@ -17063,8 +17063,8 @@ struct ATgPawn_execFlashFireNoSim_Parms
 	struct FVector                                     vNewLoc;                                          		// 0x0008 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nEquipSlot;                                       		// 0x0014 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	int                                                nSocketIndex;                                     		// 0x0018 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bsuccesfulhit : 1;                                		// 0x001C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bSecondaryShot : 1;                               		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bsuccesfulhit    ;                                		// 0x001C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSecondaryShot    ;                               		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	int                                                SituationalAttackType;                            		// 0x0024 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              RefireTime;                                       		// 0x0028 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
@@ -17078,8 +17078,8 @@ struct ATgPawn_execFlashFire_Parms
 	struct FVector                                     vNewLoc;                                          		// 0x0008 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nEquipSlot;                                       		// 0x0014 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	int                                                nSocketIndex;                                     		// 0x0018 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bsuccesfulhit : 1;                                		// 0x001C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bSecondaryShot : 1;                               		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bsuccesfulhit    ;                                		// 0x001C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSecondaryShot    ;                               		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	int                                                SituationalAttackType;                            		// 0x0024 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              RefireTime;                                       		// 0x0028 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
@@ -17188,7 +17188,7 @@ struct ATgPawn_execInitializeDefaultProps_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execApplyPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.DoBlend
@@ -17205,7 +17205,7 @@ struct ATgPawn_execDoBlend_Parms
 // [0x00024400] ( FUNC_Native )
 struct ATgPawn_execDeviceFormChanged_Parms
 {
-	unsigned long                                      bForceReload : 1;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForceReload    ;                                 		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn.CreateDeviceForm
@@ -17238,15 +17238,15 @@ struct ATgPawn_execGetDeviceByEqPoint_Parms
 // [0x00024400] ( FUNC_Native )
 struct ATgPawn_execUpdateClientDevices_Parms
 {
-	unsigned long                                      bForce : 1;                                       		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bForceDeviceFormArg : 1;                          		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForce    ;                                       		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForceDeviceFormArg    ;                          		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn.IsBlocking
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_execIsBlocking_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn.BeginEquipOffhandCooldown
@@ -17315,7 +17315,7 @@ struct ATgPawn_execDrawTargetBox_Parms
 	class UCanvas*                                     Canvas;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     CameraPosition;                                   		// 0x0008 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     CameraDir;                                        		// 0x0014 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bAnimated : 1;                                    		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bAnimated    ;                                    		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn.DrawPlayerStat
@@ -17325,11 +17325,11 @@ struct ATgPawn_execDrawPlayerStat_Parms
 	class ATgPlayerController*                         PC;                                               		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class UCanvas*                                     Canvas;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     ScreenLoc;                                        		// 0x0008 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bIsFriendly : 1;                                  		// 0x0014 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bIsSameTeam : 1;                                  		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsFriendly    ;                                  		// 0x0014 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsSameTeam    ;                                  		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	float                                              fScaleFactor;                                     		// 0x001C (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fAlphaLevel;                                      		// 0x0020 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bIsTarget : 1;                                    		// 0x0024 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsTarget    ;                                    		// 0x0024 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.DrawPlayerIcon
@@ -17340,8 +17340,8 @@ struct ATgPawn_execDrawPlayerIcon_Parms
 	class UCanvas*                                     Canvas;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     vScreenLoc;                                       		// 0x0008 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fTagScaleFactor;                                  		// 0x0014 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bIsFriendly : 1;                                  		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bIsSameTeam : 1;                                  		// 0x001C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsFriendly    ;                                  		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsSameTeam    ;                                  		// 0x001C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn.TGPostRenderFor
@@ -17447,7 +17447,7 @@ struct ATgPawn_AttackTransport_execOnDeviceFormBuildup_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_AttackTransport_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_AttackTransport.SetMovementPhysics
@@ -17558,7 +17558,7 @@ struct ATgPawn_Character_eventPlayFootStepSound_Parms
 // [0x00826102] 
 struct ATgPawn_Character_execGetDefaultAssembly_Parms
 {
-	unsigned long                                      IsFemale : 1;                                     		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      IsFemale    ;                                     		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	struct FCustomCharacterAssembly                    ReturnValue;                                      		// 0x0004 (0x0044) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// struct FCustomCharacterAssembly                 defaultAssembly;                                  		// 0x0048 (0x0044) [0x0000000000000000]              
 };
@@ -17596,7 +17596,7 @@ struct ATgPawn_Character_eventLanded_Parms
 // [0x00820002] 
 struct ATgPawn_Character_execShouldDoWallJump_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// struct FVector                                  HitLocation;                                      		// 0x0004 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  HitNormal;                                        		// 0x0010 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  TraceStart;                                       		// 0x001C (0x000C) [0x0000000000000000]              
@@ -17606,15 +17606,15 @@ struct ATgPawn_Character_execShouldDoWallJump_Parms
 	// class AActor*                                   HitActor;                                         		// 0x005C (0x0004) [0x0000000000000000]              
 	// float                                           CollisionHeight;                                  		// 0x0060 (0x0004) [0x0000000000000000]              
 	// class ABlockingVolume*                          WallVolume;                                       		// 0x0064 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bHitValidBlockingVolume : 1;                      		// 0x0068 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bHitValidBlockingVolume    ;                      		// 0x0068 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPawn_Character.DoJump
 // [0x00020002] 
 struct ATgPawn_Character_execDoJump_Parms
 {
-	unsigned long                                      bUpdating : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bUpdating    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Character.ClientPurchaseItem
@@ -17632,7 +17632,7 @@ struct ATgPawn_Character_eventClientPurchaseItem_Parms
 // [0x00020102] 
 struct ATgPawn_Character_execCanTrackATarget_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Character.SetAimTarget
@@ -17659,7 +17659,7 @@ struct ATgPawn_Character_eventUpdateMeshBoneControllers_Parms
 struct ATgPawn_Character_eventEnableFootControls_Parms
 {
 	int                                                foot;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bDisable : 1;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bDisable    ;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Character.PossessedBy
@@ -17667,7 +17667,7 @@ struct ATgPawn_Character_eventEnableFootControls_Parms
 struct ATgPawn_Character_execPossessedBy_Parms
 {
 	class AController*                                 C;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bVehicleTransition : 1;                           		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bVehicleTransition    ;                           		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Character.zpivot
@@ -17696,15 +17696,15 @@ struct ATgPawn_Character_execTick_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_Character_eventCanPawnBeStealthed_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Character.IsCustomCharacter
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_Character_eventIsCustomCharacter_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bIsValid : 1;                                     		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bIsValid    ;                                     		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPawn_Character.InitializeDefaultProps
@@ -17766,7 +17766,7 @@ struct ATgPawn_Character_execPlayDying_Parms
 	// struct FVector                                  SpawnLocation;                                    		// 0x001C (0x000C) [0x0000000000000000]              
 	// struct FVector                                  TossVelocity;                                     		// 0x0028 (0x000C) [0x0000000000000000]              
 	// struct FRotator                                 SpawnRotation;                                    		// 0x0034 (0x000C) [0x0000000000000000]              
-	// unsigned long                                   bTossWeapon : 1;                                  		// 0x0040 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bTossWeapon    ;                                  		// 0x0040 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPawn_Character.UpdatePRIAssetRefs
@@ -17801,7 +17801,7 @@ struct ATgPawn_Character_execCanItemBePurchased_Parms
 {
 	int                                                nLootTableId;                                     		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nLootTableItemId;                                 		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Character.SendCombatMessage
@@ -17853,8 +17853,8 @@ struct ATgPawn_Character_execCrewBot_Parms
 struct ATgPawn_Character_execCraftItem_Parms
 {
 	int                                                nBlueprintId;                                     		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bSystemCraft : 1;                                 		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bUseComponents : 1;                               		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bSystemCraft    ;                                 		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bUseComponents    ;                               		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	int                                                nSystemCraftLevel;                                		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
 };
 
@@ -17862,7 +17862,7 @@ struct ATgPawn_Character_execCraftItem_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_Character_execApplyJetpackTrail_Parms
 {
-	unsigned long                                      bReset : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bReset    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Character.SetJetpackTrailId
@@ -17928,7 +17928,7 @@ struct ATgPawn_Character_execApplyMorphSettings_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_Character_execApplyDye_Parms
 {
-	unsigned long                                      bResetDyeMIC : 1;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bResetDyeMIC    ;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Character.GetHelmMeshIdToUse
@@ -17956,7 +17956,7 @@ struct ATgPawn_Character_execSetCurrentItemProfile_Parms
 // [0x00026400] ( FUNC_Native )
 struct ATgPawn_Character_execGetDefaultHelmMeshId_Parms
 {
-	unsigned long                                      bFemale : 1;                                      		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bFemale    ;                                      		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	int                                                nProfileId;                                       		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	int                                                ReturnValue;                                      		// 0x0008 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
@@ -17965,7 +17965,7 @@ struct ATgPawn_Character_execGetDefaultHelmMeshId_Parms
 // [0x00026400] ( FUNC_Native )
 struct ATgPawn_Character_execGetDefaultSuitMeshId_Parms
 {
-	unsigned long                                      bFemale : 1;                                      		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bFemale    ;                                      		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	int                                                nProfileId;                                       		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	int                                                ReturnValue;                                      		// 0x0008 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
@@ -17975,7 +17975,7 @@ struct ATgPawn_Character_execGetDefaultSuitMeshId_Parms
 struct ATgPawn_Character_execSetTeamColorForDeathSpawnedAsset_Parms
 {
 	class UMeshComponent*                              MeshComp;                                         		// 0x0000 (0x0004) [0x0000000004000080]              ( CPF_Parm | CPF_EditInline )
-	unsigned long                                      bNeedApplySuitDye : 1;                            		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bNeedApplySuitDye    ;                            		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Character.SwapSkinMaterials
@@ -17983,8 +17983,8 @@ struct ATgPawn_Character_execSetTeamColorForDeathSpawnedAsset_Parms
 struct ATgPawn_Character_execSwapSkinMaterials_Parms
 {
 	TArray< struct FFx_Material >                      MaterialList;                                     		// 0x0000 (0x000C) [0x0000000000400090]              ( CPF_OptionalParm | CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      bIgnoreParams : 1;                                		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bIsFriendly : 1;                                  		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreParams    ;                                		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIsFriendly    ;                                  		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Character.SetSkin
@@ -17992,8 +17992,8 @@ struct ATgPawn_Character_execSwapSkinMaterials_Parms
 struct ATgPawn_Character_execSetSkin_Parms
 {
 	class UTgSpecialFx*                                NewSpecialFx;                                     		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bIgnoreParams : 1;                                		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bForceSetSkin : 1;                                		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreParams    ;                                		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForceSetSkin    ;                                		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Character.CreateDeviceForm
@@ -18015,7 +18015,7 @@ struct ATgPawn_Character_execApplyFlair_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_Character_execRecalculateMaterial_Parms
 {
-	unsigned long                                      bIsFriendlyWithLocalPawn : 1;                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsFriendlyWithLocalPawn    ;                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Character.ApplyItemEffects
@@ -18023,15 +18023,15 @@ struct ATgPawn_Character_execRecalculateMaterial_Parms
 struct ATgPawn_Character_execApplyItemEffects_Parms
 {
 	class UTgInventoryObject*                          pItem;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bRemove : 1;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bRemove    ;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Character.SetMeshVisibility
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_Character_execSetMeshVisibility_Parms
 {
-	unsigned long                                      bVisible : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bVisible    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Character.RemoveCharacterSkillTree
@@ -18062,7 +18062,7 @@ struct ATgPawn_Character_execSendCharacterSkillMarshal_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_Character_execSwapMeshToStealthed_Parms
 {
-	unsigned long                                      bStealthed : 1;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bStealthed    ;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	class UMaterialInstanceConstant*                   ReturnValue;                                      		// 0x0004 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -18070,8 +18070,8 @@ struct ATgPawn_Character_execSwapMeshToStealthed_Parms
 // [0x00024400] ( FUNC_Native )
 struct ATgPawn_Character_execUpdateCustomCharacterMaterialParameters_Parms
 {
-	unsigned long                                      bUpdateOnlyHairMeshMaterial : 1;                  		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bUpdateOnlySuitMeshMaterial : 1;                  		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bUpdateOnlyHairMeshMaterial    ;                  		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bUpdateOnlySuitMeshMaterial    ;                  		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Character.UpdateBoost
@@ -18091,7 +18091,7 @@ struct ATgPawn_Character_execUpdateElfGoggles_Parms
 struct ATgPawn_Character_execInitializeFootIKZeroStrengthAnimNodes_Parms
 {
 	class USkeletalMeshComponent*                      SkelComp;                                         		// 0x0000 (0x0004) [0x0000000004000080]              ( CPF_Parm | CPF_EditInline )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Character.InitializeLeftHandIKAnimNodes
@@ -18099,14 +18099,14 @@ struct ATgPawn_Character_execInitializeFootIKZeroStrengthAnimNodes_Parms
 struct ATgPawn_Character_execInitializeLeftHandIKAnimNodes_Parms
 {
 	class USkeletalMeshComponent*                      SkelComp;                                         		// 0x0000 (0x0004) [0x0000000004000080]              ( CPF_Parm | CPF_EditInline )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Character.ApplyPawnSetup
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_Character_execApplyPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Boss.DoRagdoll
@@ -18162,7 +18162,7 @@ struct ATgPawn_ColonyEye_eventPostInitAnimTree_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_ColonyEye_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Dismantler.OnPostureChange
@@ -18175,7 +18175,7 @@ struct ATgPawn_Dismantler_execOnPostureChange_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_Dismantler_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgAIController*                          aic;                                              		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -18219,7 +18219,7 @@ struct ATgPawn_FlyingBoss_eventPostInitAnimTree_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_FlyingBoss_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Juggernaut.OnDeviceFormStopFire
@@ -18271,7 +18271,7 @@ struct ATgPawn_Marauder_execOnDeviceFormFire_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_Marauder_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Marauder.PostInitAnimTree
@@ -18285,7 +18285,7 @@ struct ATgPawn_Marauder_eventPostInitAnimTree_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_RecursiveSpawner_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_RecursiveSpawner.OnPetSpawned
@@ -18399,11 +18399,11 @@ struct ATgPawn_SonoranCommander_execPlayFullBodyAnim_Parms
 	float                                              Rate;                                             		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              BlendInTime;                                      		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              BlendOutTime;                                     		// 0x0010 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bLooping : 1;                                     		// 0x0014 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bOverride : 1;                                    		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bDisablePlayerControls : 1;                       		// 0x001C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bBlendOutIfVelocityIsGreaterThanZero : 1;         		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bHideInHandDevice : 1;                            		// 0x0024 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bLooping    ;                                     		// 0x0014 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOverride    ;                                    		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bDisablePlayerControls    ;                       		// 0x001C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bBlendOutIfVelocityIsGreaterThanZero    ;         		// 0x0020 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bHideInHandDevice    ;                            		// 0x0024 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Turret.GetSaveHealthPercent
@@ -18418,7 +18418,7 @@ struct ATgPawn_Turret_execGetSaveHealthPercent_Parms
 struct ATgPawn_Turret_execPickUpBot_Parms
 {
 	class ATgPawn*                                     pReceiver;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgInventoryManager*                      TgInvManager;                                     		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgDevice*                                NewDevice;                                        		// 0x000C (0x0004) [0x0000000000000000]              
 };
@@ -18427,7 +18427,7 @@ struct ATgPawn_Turret_execPickUpBot_Parms
 // [0x00020002] 
 struct ATgPawn_Turret_execCanBePickedUp_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Turret.OnPawnInitialized
@@ -18440,7 +18440,7 @@ struct ATgPawn_Turret_eventOnPawnInitialized_Parms
 // [0x00020102] 
 struct ATgPawn_Turret_execCanPickupDroppedItem_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Turret.PlayDyingPhysicsAndAnimation
@@ -18456,7 +18456,7 @@ struct ATgPawn_Turret_execPlayDyingPhysicsAndAnimation_Parms
 // [0x00020102] 
 struct ATgPawn_Turret_execSupportDistanceRendering_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Turret.TickDeploy
@@ -18523,7 +18523,7 @@ struct ATgPawn_Turret_eventPostInitAnimTree_Parms
 struct ATgPawn_Turret_eventEnableFootControls_Parms
 {
 	int                                                foot;                                             		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bDisable : 1;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bDisable    ;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Turret.ReplicatedEvent
@@ -18539,7 +18539,7 @@ struct ATgPawn_Turret_eventSetPosture_Parms
 {
 	int                                                ePosture;                                         		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fRateScale;                                       		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bIgnoreTransition : 1;                            		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreTransition    ;                            		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Turret.OnWaitingForPawnDone
@@ -18558,14 +18558,14 @@ struct ATgPawn_Turret_execSetDeployStateBasedOnPosture_Parms
 // [0x00020002] 
 struct ATgPawn_Turret_execCanBeRepaired_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Turret.PostPawnSetup
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_Turret_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Turret.Poke
@@ -18596,7 +18596,7 @@ struct ATgPawn_Turret_execUpdateTargetingBeam_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_Turret_execRecalculateMaterial_Parms
 {
-	unsigned long                                      bIsFriendlyWithLocalPawn : 1;                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsFriendlyWithLocalPawn    ;                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Turret.SetInitialHealthPercent
@@ -18649,14 +18649,14 @@ struct ATgPawn_TurretAVAFlak_eventPostInitAnimTree_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_TurretAVAFlak_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_TurretAVAFlak.RecalculateMaterial
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_TurretAVAFlak_execRecalculateMaterial_Parms
 {
-	unsigned long                                      bIsFriendlyWithLocalPawn : 1;                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsFriendlyWithLocalPawn    ;                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn_TurretAVARocket.OnDeviceFormFire
@@ -18677,14 +18677,14 @@ struct ATgPawn_TurretAVARocket_eventPostInitAnimTree_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_TurretAVARocket_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_TurretAVARocket.RecalculateMaterial
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_TurretAVARocket_execRecalculateMaterial_Parms
 {
-	unsigned long                                      bIsFriendlyWithLocalPawn : 1;                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsFriendlyWithLocalPawn    ;                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Hover.GetWeaponStartTraceLocation
@@ -18756,8 +18756,8 @@ struct ATgPawn_Hover_eventPostInitAnimTree_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_Hover_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   retval : 1;                                       		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   retval    ;                                       		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPawn_Hover.UpdateTargetCylinderLocation
@@ -18771,7 +18771,7 @@ struct ATgPawn_Hover_execUpdateTargetCylinderLocation_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_Hover_execInitializeHoverBot_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_NewWasp.PlayDying
@@ -18815,21 +18815,21 @@ struct ATgPawn_NewWasp_eventPostInitAnimTree_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_NewWasp_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_NewWasp.InitializeHoverBot
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_NewWasp_execInitializeHoverBot_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_WaspSpawner.PostPawnSetup
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_WaspSpawner_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_WaspSpawner.OnPetSpawned
@@ -18871,7 +18871,7 @@ struct ATgPawn_Robot_eventGetWeaponStartTraceLocation_Parms
 // [0x00020102] 
 struct ATgPawn_Robot_execCanTrackATarget_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Robot.DoFootPlacement
@@ -18885,7 +18885,7 @@ struct ATgPawn_Robot_execDoFootPlacement_Parms
 struct ATgPawn_Robot_eventUpdateMeshBoneControllers_Parms
 {
 	float                                              DeltaTime;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	// unsigned long                                   bUpdateStabilizerThisTick : 1;                    		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bUpdateStabilizerThisTick    ;                    		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 	// struct FRotator                                 DeltaRot;                                         		// 0x0008 (0x000C) [0x0000000000000000]              
 	// struct FVector2D                                NewAimPct;                                        		// 0x0014 (0x0008) [0x0000000000000000]              
 };
@@ -18942,7 +18942,7 @@ struct ATgPawn_Ambush_eventSetPosture_Parms
 {
 	int                                                ePosture;                                         		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fRateScale;                                       		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bIgnoreTransition : 1;                            		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreTransition    ;                            		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Ambush.PostBeginPlay
@@ -18963,7 +18963,7 @@ struct ATgPawn_Ambush_eventReplicatedEvent_Parms
 struct ATgPawn_Ambush_execShouldUpdateStealthedFor_Parms
 {
 	class ATgPawn*                                     ViewerPawn;                                       		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_CTR.OnDeviceFormStopFire
@@ -19032,7 +19032,7 @@ struct ATgPawn_CTR_execPlayPowerUpAnim_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_CTR_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_CTR.PostInitAnimTree
@@ -19059,14 +19059,14 @@ struct ATgPawn_CTR_execBuildPilot_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_CTR_execRecalculateMaterial_Parms
 {
-	unsigned long                                      bIsFriendlyWithLocalPawn : 1;                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsFriendlyWithLocalPawn    ;                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn_CTR.UnCrewed
 // [0x00024400] ( FUNC_Native )
 struct ATgPawn_CTR_execUnCrewed_Parms
 {
-	unsigned long                                      bKillControlPawn : 1;                             		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bKillControlPawn    ;                             		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Scanner.SetPhysAnimState
@@ -19103,7 +19103,7 @@ struct ATgPawn_Scanner_execPlayDying_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_Scanner_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ULensFlare*                               LensFlareToLoad;                                  		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -19184,7 +19184,7 @@ struct ATgPawn_Scanner_execEnemyDetectedTimer_Parms
 struct ATgPawn_Scanner_execDidSensorBeamDetectEnemy_Parms
 {
 	class AActor*                                      HitActor;                                         		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Scanner.UpdateBeamVisualHighlightIndex
@@ -19235,8 +19235,8 @@ struct ATgPawn_Scanner_execAlarmComplete_Parms
 // [0x00020000] 
 struct ATgPawn_Siege_execDoJump_Parms
 {
-	unsigned long                                      bUpdating : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bUpdating    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Siege.GetWeaponStartTraceLocation
@@ -19284,7 +19284,7 @@ struct ATgPawn_Siege_eventReplicatedEvent_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_Siege_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Siege.PostInitAnimTree
@@ -19298,7 +19298,7 @@ struct ATgPawn_Siege_eventPostInitAnimTree_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_Siege_execRecalculateMaterial_Parms
 {
-	unsigned long                                      bIsFriendlyWithLocalPawn : 1;                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsFriendlyWithLocalPawn    ;                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPawn_Siege.BlendBackJetFlares
@@ -19328,7 +19328,7 @@ struct ATgPawn_TreadRobot_execTick_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_TreadRobot_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Widow.OnDeviceFormFire
@@ -19366,7 +19366,7 @@ struct ATgPawn_Widow_execClientSetStun_Parms
 // [0x00024102] 
 struct ATgPawn_Widow_execStun_Parms
 {
-	unsigned long                                      bStunController : 1;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bStunController    ;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	unsigned char                                      eType;                                            		// 0x0004 (0x0001) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
 
@@ -19449,7 +19449,7 @@ struct ATgPawn_VanityPet_execOnAnimNodeChildChanged_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_VanityPet_execIsNonCombat_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_VanityPet.GetBodyMeshIdToUse
@@ -19463,7 +19463,7 @@ struct ATgPawn_VanityPet_execGetBodyMeshIdToUse_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPawn_VanityPet_execShouldPawnMeshBeHiddenThisTick_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_VanityPet.AllManifestsLoaded
@@ -19507,8 +19507,8 @@ struct ATgPlayerController_execTogglePawnPostRender_Parms
 // [0x00020202] ( FUNC_Exec )
 struct ATgPlayerController_execCCTest1_Parms
 {
-	unsigned long                                      bUsePAC : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bLoadAttachments : 1;                             		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bUsePAC    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bLoadAttachments    ;                             		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgSkeletalMeshActor_Composite*           CustomChar;                                       		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -19531,11 +19531,11 @@ struct ATgPlayerController_execUpdateCustomChar_Parms
 // [0x00020202] ( FUNC_Exec )
 struct ATgPlayerController_execPawnPerformanceTest_Parms
 {
-	unsigned long                                      bEnablePerfTest : 1;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bBackpack : 1;                                    		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bHelmet : 1;                                      		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bHair : 1;                                        		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bHead : 1;                                        		// 0x0010 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnablePerfTest    ;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bBackpack    ;                                    		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bHelmet    ;                                      		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bHair    ;                                        		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bHead    ;                                        		// 0x0010 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgPawn*                                  ThePawn;                                          		// 0x0014 (0x0004) [0x0000000000000000]              
 };
 
@@ -19543,7 +19543,7 @@ struct ATgPlayerController_execPawnPerformanceTest_Parms
 // [0x00020202] ( FUNC_Exec )
 struct ATgPlayerController_execCloth_Parms
 {
-	unsigned long                                      bEnabled : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnabled    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgKAsset_ClientSideSim*                  ClothActor;                                       		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -19551,7 +19551,7 @@ struct ATgPlayerController_execCloth_Parms
 // [0x00020202] ( FUNC_Exec )
 struct ATgPlayerController_execWind_Parms
 {
-	unsigned long                                      bEnabled : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnabled    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgWindManager*                           WindManager;                                      		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -19559,7 +19559,7 @@ struct ATgPlayerController_execWind_Parms
 // [0x00020202] ( FUNC_Exec )
 struct ATgPlayerController_execDoFade_Parms
 {
-	unsigned long                                      bIn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	float                                              Time;                                             		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 };
 
@@ -19575,7 +19575,7 @@ struct ATgPlayerController_execRandomizeMorphs_Parms
 struct ATgPlayerController_execServerGetTraceTime_Parms
 {
 	float                                              fRange;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bStopAtAnyHit : 1;                                		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bStopAtAnyHit    ;                                		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.GetTraceTimeCheck
@@ -19583,7 +19583,7 @@ struct ATgPlayerController_execServerGetTraceTime_Parms
 struct ATgPlayerController_execGetTraceTimeCheck_Parms
 {
 	float                                              fRange;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bStopAtAnyHit : 1;                                		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bStopAtAnyHit    ;                                		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ServerSimNWCondition
@@ -19606,8 +19606,8 @@ struct ATgPlayerController_execSimNWCondition_Parms
 // [0x00020202] ( FUNC_Exec )
 struct ATgPlayerController_execf2test_Parms
 {
-	unsigned long                                      val : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      val2 : 1;                                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      val    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      val2    ;                                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.TgServerExec
@@ -19628,8 +19628,8 @@ struct ATgPlayerController_execTgSvrExec_Parms
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgPlayerController_execDebugFn_Parms
 {
-	unsigned long                                      val : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      val2 : 1;                                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      val    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      val2    ;                                         		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.OnClientLoadDevices
@@ -19671,11 +19671,11 @@ struct ATgPlayerController_execOnShowHUDElement_Parms
 // [0x010249C2] ( FUNC_Event )
 struct ATgPlayerController_eventClientSetCameraFade_Parms
 {
-	unsigned long                                      bEnableFading : 1;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnableFading    ;                                		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	struct FColor                                      FadeColor;                                        		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	struct FVector2D                                   FadeAlpha;                                        		// 0x0008 (0x0008) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              FadeTime;                                         		// 0x0010 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	// unsigned long                                   bFadeIn : 1;                                      		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bFadeIn    ;                                      		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPlayerController.ClientSetCameraMode
@@ -19703,7 +19703,7 @@ struct ATgPlayerController_execCamera_Parms
 // [0x00020202] ( FUNC_Exec )
 struct ATgPlayerController_execDeathScreenshot_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.EndDeathScreenshotTimer
@@ -19723,7 +19723,7 @@ struct ATgPlayerController_eventOnEndDeathScreenshot_Parms
 struct ATgPlayerController_execCheatLog_Parms
 {
 	struct FString                                     cheatText;                                        		// 0x0000 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      bOn : 1;                                          		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ClientSetGroundspeed
@@ -19751,7 +19751,7 @@ struct ATgPlayerController_execSetGroundspeed_Parms
 // [0x002240C2] 
 struct ATgPlayerController_execServerChronos_Parms
 {
-	unsigned long                                      bPause : 1;                                       		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bPause    ;                                       		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	int                                                nNewTime;                                         		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	// class ATgGame*                                  Game;                                             		// 0x0008 (0x0004) [0x0000000000000000]              
 };
@@ -19760,7 +19760,7 @@ struct ATgPlayerController_execServerChronos_Parms
 // [0x00024202] ( FUNC_Exec )
 struct ATgPlayerController_execChronos_Parms
 {
-	unsigned long                                      bPause : 1;                                       		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bPause    ;                                       		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	int                                                nNewTime;                                         		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
 
@@ -19768,7 +19768,7 @@ struct ATgPlayerController_execChronos_Parms
 // [0x010201C2] 
 struct ATgPlayerController_execClientZeus_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ServerZeus
@@ -19787,7 +19787,7 @@ struct ATgPlayerController_execZeus_Parms
 // [0x010201C2] 
 struct ATgPlayerController_execClientApollo_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgPawn*                                  TgPawn;                                           		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -19808,7 +19808,7 @@ struct ATgPlayerController_execApollo_Parms
 // [0x010201C2] 
 struct ATgPlayerController_execClientElectra_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgPawn*                                  TgPawn;                                           		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -19829,7 +19829,7 @@ struct ATgPlayerController_execElectra_Parms
 // [0x010201C2] 
 struct ATgPlayerController_execClientHades_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgPawn*                                  TgPawn;                                           		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -19850,14 +19850,14 @@ struct ATgPlayerController_execHades_Parms
 // [0x010201C2] 
 struct ATgPlayerController_execClientCheatFly_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.CheatFly
 // [0x00020802] ( FUNC_Event )
 struct ATgPlayerController_eventCheatFly_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ServerIcarus
@@ -19876,7 +19876,7 @@ struct ATgPlayerController_execIcarus_Parms
 // [0x010201C2] 
 struct ATgPlayerController_execClientAthena_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgPawn*                                  TgPawn;                                           		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -19970,7 +19970,7 @@ struct ATgPlayerController_eventServerUpdateStats_Parms
 // [0x00040103] ( FUNC_Final )
 struct ATgPlayerController_execCanCommunicate_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.SpeakTTS
@@ -20087,7 +20087,7 @@ struct ATgPlayerController_execSetPlayerSuits_Parms
 struct ATgPlayerController_execCanPlayerMove_Parms
 {
 	class APawn*                                       P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.GetTFRI
@@ -20102,7 +20102,7 @@ struct ATgPlayerController_execGetTFRI_Parms
 // [0x002200C2] 
 struct ATgPlayerController_execServerCycleTeammateView_Parms
 {
-	unsigned long                                      bForward : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bForward    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgPawn*                                  OldViewTarget;                                    		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_Player*                        NewViewTargetPRI;                                 		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_Player*                        PRI;                                              		// 0x000C (0x0004) [0x0000000000000000]              
@@ -20259,7 +20259,7 @@ struct ATgPlayerController_eventForceUpdateDeviceBar_Parms
 	unsigned char                                      EquippedInHand;                                   		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	// class ATgDevice*                                Dev;                                              		// 0x0004 (0x0004) [0x0000000000000000]              
 	// int                                             nSlot;                                            		// 0x0008 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bFound : 1;                                       		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bFound    ;                                       		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPlayerController.ServerKillPets
@@ -20302,7 +20302,7 @@ struct ATgPlayerController_execGotoFly_Parms
 // [0x00024102] 
 struct ATgPlayerController_execStun_Parms
 {
-	unsigned long                                      bStunController : 1;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bStunController    ;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	unsigned char                                      eType;                                            		// 0x0004 (0x0001) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
 
@@ -20322,7 +20322,7 @@ struct ATgPlayerController_execdostun_Parms
 // [0x010241C2] 
 struct ATgPlayerController_execClientResetStunnedBehavior_Parms
 {
-	unsigned long                                      bStunController : 1;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bStunController    ;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	unsigned char                                      eType;                                            		// 0x0004 (0x0001) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
 
@@ -20330,14 +20330,14 @@ struct ATgPlayerController_execClientResetStunnedBehavior_Parms
 // [0x00020002] 
 struct ATgPlayerController_execSetTagPlayerMode_Parms
 {
-	unsigned long                                      bSet : 1;                                         		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bSet    ;                                         		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.IsInTagPlayerMode
 // [0x00020002] 
 struct ATgPlayerController_execIsInTagPlayerMode_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.OnRestartPlayers
@@ -20353,7 +20353,7 @@ struct ATgPlayerController_execServerSetPosture_Parms
 {
 	unsigned char                                      Posture;                                          		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fRateScale;                                       		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bIgnoreTransition : 1;                            		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreTransition    ;                            		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.DeploySlow
@@ -20386,14 +20386,14 @@ struct ATgPlayerController_execSetPosture_Parms
 {
 	unsigned char                                      Posture;                                          		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fRateScale;                                       		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bIgnoreTransition : 1;                            		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreTransition    ;                            		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ClientPerformedUseAction
 // [0x00020002] 
 struct ATgPlayerController_execClientPerformedUseAction_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPawn*                                  P;                                                		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -20401,7 +20401,7 @@ struct ATgPlayerController_execClientPerformedUseAction_Parms
 // [0x00020002] 
 struct ATgPlayerController_execServerPerformedUseAction_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPawn*                                  P;                                                		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -20495,9 +20495,9 @@ struct ATgPlayerController_execAddNewDisplayMessageToHUD_Parms
 // [0x010201C2] 
 struct ATgPlayerController_execClientToggleEndRoundScreen_Parms
 {
-	unsigned long                                      bShow : 1;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bShow    ;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	class ATgRepInfo_TaskForce*                        Winner;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	// unsigned long                                   bLocalPlayerWon : 1;                              		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bLocalPlayerWon    ;                              		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPlayerController.ShowReleaseDialog
@@ -20621,7 +20621,7 @@ struct ATgPlayerController_execPawnDied_Parms
 // [0x010201C2] 
 struct ATgPlayerController_execClientSetReadyState_Parms
 {
-	unsigned long                                      bReadyToPlay : 1;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bReadyToPlay    ;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ServerSetReadyToPlay
@@ -20640,7 +20640,7 @@ struct ATgPlayerController_execSetReadyToPlay_Parms
 // [0x00020202] ( FUNC_Exec )
 struct ATgPlayerController_execTestDie_Parms
 {
-	unsigned long                                      bDie : 1;                                         		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bDie    ;                                         		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	int                                                dmgType;                                          		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	// class UClass*                                   DamageType;                                       		// 0x0008 (0x0004) [0x0000000000000000]              
 };
@@ -20823,7 +20823,7 @@ struct ATgPlayerController_execChangeTaskForce_Parms
 // [0x00020002] 
 struct ATgPlayerController_execCheckJumpOrDuck_Parms
 {
-	// unsigned long                                   doCrouch : 1;                                     		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   doCrouch    ;                                     		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgPawn*                                  TgP;                                              		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -20856,7 +20856,7 @@ struct ATgPlayerController_execClientAddCheats_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPlayerController_execNativeClientAddCheats_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.ToggleScreenShotMode
@@ -20961,7 +20961,7 @@ struct ATgPlayerController_execRemoveTarget_Parms
 struct ATgPlayerController_execIsValidTarget_Parms
 {
 	class AActor*                                      HoverActor;                                       		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.IsTargetDied
@@ -20969,7 +20969,7 @@ struct ATgPlayerController_execIsValidTarget_Parms
 struct ATgPlayerController_execIsTargetDied_Parms
 {
 	class AActor*                                      TargetActor;                                      		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.IsTargetInFrontOfPawn
@@ -20977,7 +20977,7 @@ struct ATgPlayerController_execIsTargetDied_Parms
 struct ATgPlayerController_execIsTargetInFrontOfPawn_Parms
 {
 	struct FVector                                     TargetLocation;                                   		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// struct FVector                                  FacingDir;                                        		// 0x0010 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  LookingDir;                                       		// 0x001C (0x000C) [0x0000000000000000]              
 	// float                                           Orientation;                                      		// 0x0028 (0x0004) [0x0000000000000000]              
@@ -20987,7 +20987,7 @@ struct ATgPlayerController_execIsTargetInFrontOfPawn_Parms
 // [0x00020002] 
 struct ATgPlayerController_execAllowCursorSelectAction_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.CheckCurrTargetMode
@@ -20995,7 +20995,7 @@ struct ATgPlayerController_execAllowCursorSelectAction_Parms
 struct ATgPlayerController_execCheckCurrTargetMode_Parms
 {
 	unsigned char                                      TargetMode;                                       		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.GetAdjustedAimFor
@@ -21040,14 +21040,14 @@ struct ATgPlayerController_execDisplayHiddenActors_Parms
 struct ATgPlayerController_execCanAFK_Parms
 {
 	class ATgPawn*                                     ThePawn;                                          		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.ServerToggleAFK
 // [0x002200C2] 
 struct ATgPlayerController_execServerToggleAFK_Parms
 {
-	unsigned long                                      bEnabled : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnabled    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgPawn*                                  ThePawn;                                          		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -21068,9 +21068,9 @@ struct ATgPlayerController_execGoAFKTimer_Parms
 struct ATgPlayerController_execCheckBotsAround_Parms
 {
 	// class ATgPawn*                                  P;                                                		// 0x0000 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bIsPrey : 1;                                      		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bIsActiveCombat : 1;                              		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bIsHunterAround : 1;                              		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsPrey    ;                                      		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsActiveCombat    ;                              		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsHunterAround    ;                              		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgRepInfo_Game*                          GameInfo;                                         		// 0x0010 (0x0004) [0x0000000000000000]              
 };
 
@@ -21078,7 +21078,7 @@ struct ATgPlayerController_execCheckBotsAround_Parms
 // [0x00020002] 
 struct ATgPlayerController_execIsInOpenPVE_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgRepInfo_Game*                          GRI;                                              		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -21086,7 +21086,7 @@ struct ATgPlayerController_execIsInOpenPVE_Parms
 // [0x00020002] 
 struct ATgPlayerController_execIsInPVE_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgRepInfo_Game*                          GRI;                                              		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -21127,14 +21127,14 @@ struct ATgPlayerController_execStartAutoKickTimer_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPlayerController_execShouldAutoKick_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.CanPlayerAFK
 // [0x00020002] 
 struct ATgPlayerController_execCanPlayerAFK_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPawn*                                  ThePawn;                                          		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -21190,14 +21190,14 @@ struct ATgPlayerController_execTalk_Parms
 // [0x010201C2] 
 struct ATgPlayerController_execClientSetRaidChallengerWon_Parms
 {
-	unsigned long                                      bAttackerWon : 1;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAttackerWon    ;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.SendClientSetRaidChallengerWon
 // [0x00020802] ( FUNC_Event )
 struct ATgPlayerController_eventSendClientSetRaidChallengerWon_Parms
 {
-	unsigned long                                      bAttackerWon : 1;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAttackerWon    ;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ClientTrainingMissionEnded
@@ -21295,7 +21295,7 @@ struct ATgPlayerController_execRoveProcessMove_Parms
 // [0x00020002] 
 struct ATgPlayerController_execLimitSpectatorVelocity_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.RovePlayerMove
@@ -21312,7 +21312,7 @@ struct ATgPlayerController_execRovePlayerMove_Parms
 // [0x00024400] ( FUNC_Native )
 struct ATgPlayerController_execAddNavFailedAlert_Parms
 {
-	unsigned long                                      bAlreadyThere : 1;                                		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bAlreadyThere    ;                                		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ShowPathTo
@@ -21353,14 +21353,14 @@ struct ATgPlayerController_execShowPathToNearestPOI_Parms
 struct ATgPlayerController_execShowPathToObjective_Parms
 {
 	// class ATgMissionObjective*                      Objective;                                        		// 0x0000 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bFound : 1;                                       		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bFound    ;                                       		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPlayerController.AdjustCameraScale
 // [0x00020002] 
 struct ATgPlayerController_execAdjustCameraScale_Parms
 {
-	unsigned long                                      bIn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.CrouchBlendInterpRate
@@ -21423,7 +21423,7 @@ struct ATgPlayerController_execViewPlayerByName_Parms
 struct ATgPlayerController_execServerViewAPlayer_Parms
 {
 	int                                                Dir;                                              		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bFriendlyOnly : 1;                                		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bFriendlyOnly    ;                                		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// TArray< class APlayerReplicationInfo* >         PRIList;                                          		// 0x0008 (0x000C) [0x0000000000400000]              ( CPF_NeedCtorLink )
 	// class APlayerReplicationInfo*                   PRI;                                              		// 0x0014 (0x0004) [0x0000000000000000]              
 	// class AController*                              C;                                                		// 0x0018 (0x0004) [0x0000000000000000]              
@@ -21439,14 +21439,14 @@ struct ATgPlayerController_execServerViewAPlayer_Parms
 // [0x00224042] 
 struct ATgPlayerController_execServerViewPrevPlayer_Parms
 {
-	unsigned long                                      bFriendlyOnly : 1;                                		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bFriendlyOnly    ;                                		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ServerViewNextPlayer
 // [0x00224042] 
 struct ATgPlayerController_execServerViewNextPlayer_Parms
 {
-	unsigned long                                      bFriendlyOnly : 1;                                		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bFriendlyOnly    ;                                		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.GetFOVAngle
@@ -21500,7 +21500,7 @@ struct ATgPlayerController_execCallServerMove_Parms
 	unsigned char                                      ClientRoll;                                       		// 0x0010 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	int                                                View;                                             		// 0x0014 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class USavedMove*                                  OldMove;                                          		// 0x0018 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	// unsigned long                                   bCombine : 1;                                     		// 0x001C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bCombine    ;                                     		// 0x001C (0x0004) [0x0000000000000000] [0x00000001] 
 	// struct FVector                                  InAccel;                                          		// 0x0020 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  BuildAccel;                                       		// 0x002C (0x000C) [0x0000000000000000]              
 	// unsigned char                                   OldAccelX;                                        		// 0x0038 (0x0001) [0x0000000000000000]              
@@ -21620,7 +21620,7 @@ struct ATgPlayerController_execDamageShake_Parms
 struct ATgPlayerController_execAllowVoiceMessage_Parms
 {
 	struct FName                                       MessageType;                                      		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.PlayAnnouncement
@@ -21685,24 +21685,24 @@ struct ATgPlayerController_execReset_Parms
 // [0x010201C2] 
 struct ATgPlayerController_execClientSetCinematicMode_Parms
 {
-	unsigned long                                      bInCinematicMode : 1;                             		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bAffectsMovement : 1;                             		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bAffectsTurning : 1;                              		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bAffectsHUD : 1;                                  		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bInCinematicMode    ;                             		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAffectsMovement    ;                             		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAffectsTurning    ;                              		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAffectsHUD    ;                                  		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.SetCinematicMode
 // [0x00020002] 
 struct ATgPlayerController_execSetCinematicMode_Parms
 {
-	unsigned long                                      bInCinematicMode : 1;                             		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bHidePlayer : 1;                                  		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bAffectsHUD : 1;                                  		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bAffectsMovement : 1;                             		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bAffectsTurning : 1;                              		// 0x0010 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bAffectsButtons : 1;                              		// 0x0014 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	// unsigned long                                   bAdjustMoveInput : 1;                             		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bAdjustLookInput : 1;                             		// 0x001C (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      bInCinematicMode    ;                             		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bHidePlayer    ;                                  		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAffectsHUD    ;                                  		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAffectsMovement    ;                             		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAffectsTurning    ;                              		// 0x0010 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAffectsButtons    ;                              		// 0x0014 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	// unsigned long                                   bAdjustMoveInput    ;                             		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAdjustLookInput    ;                             		// 0x001C (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPlayerController.OnToggleCinematicMode
@@ -21710,7 +21710,7 @@ struct ATgPlayerController_execSetCinematicMode_Parms
 struct ATgPlayerController_execOnToggleCinematicMode_Parms
 {
 	class USeqAct_ToggleCinematicMode*                 Action;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	// unsigned long                                   bNewCinematicMode : 1;                            		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bNewCinematicMode    ;                            		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPlayerController.DisplayDebug
@@ -21753,14 +21753,14 @@ struct ATgPlayerController_execDeathZoomTimerCallback_Parms
 // [0x00024302] ( FUNC_Exec )
 struct ATgPlayerController_execRequestRelease_Parms
 {
-	unsigned long                                      bOverride : 1;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bOverride    ;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.Release
 // [0x002240C2] 
 struct ATgPlayerController_execRelease_Parms
 {
-	unsigned long                                      bOverride : 1;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bOverride    ;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.Revive
@@ -21787,7 +21787,7 @@ struct ATgPlayerController_execGotoPlayerPauseState_Parms
 // [0x00820002] 
 struct ATgPlayerController_execDisarmGrapple_Parms
 {
-	unsigned long                                      bDismount : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bDismount    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// struct FVector                                  GrappleDismountVelocity;                          		// 0x0004 (0x000C) [0x0000000000000000]              
 };
 
@@ -21795,7 +21795,7 @@ struct ATgPlayerController_execDisarmGrapple_Parms
 // [0x00A200C2] 
 struct ATgPlayerController_execServerDisarmGrapple_Parms
 {
-	unsigned long                                      bDismount : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bDismount    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// struct FVector                                  GrappleDismountVelocity;                          		// 0x0004 (0x000C) [0x0000000000000000]              
 };
 
@@ -21803,7 +21803,7 @@ struct ATgPlayerController_execServerDisarmGrapple_Parms
 // [0x002200C2] 
 struct ATgPlayerController_execServerSetAutoGrappling_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.LadderLetGo
@@ -21829,7 +21829,7 @@ struct ATgPlayerController_execServerHangingLetGo_Parms
 // [0x00820202] ( FUNC_Exec )
 struct ATgPlayerController_execPressFreeCam_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// struct FRotator                                 RotateVal;                                        		// 0x0004 (0x000C) [0x0000000000000000]              
 };
 
@@ -21983,10 +21983,10 @@ struct ATgPlayerController_execServerAssignTarget_Parms
 // [0x00020A02] ( FUNC_Exec | FUNC_Event )
 struct ATgPlayerController_execPressJump_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class ATgDevice*                                Dev;                                              		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  P;                                                		// 0x0008 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bUseOffhandJetpack : 1;                           		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bUseOffhandJetpack    ;                           		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPlayerController.StartJetpack
@@ -22024,9 +22024,9 @@ struct ATgPlayerController_execPickupPutdownDeployable_Parms
 // [0x00020A02] ( FUNC_Exec | FUNC_Event )
 struct ATgPlayerController_execChangeToPreviousWeapon_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgInventoryManager*                      Inv;                                              		// 0x0004 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   Success : 1;                                      		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   Success    ;                                      		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgDevice*                                Dev;                                              		// 0x000C (0x0004) [0x0000000000000000]              
 	// class ATgPawn*                                  TgPawn;                                           		// 0x0010 (0x0004) [0x0000000000000000]              
 };
@@ -22049,7 +22049,7 @@ struct ATgPlayerController_execServerProfileScript_Parms
 // [0x00020202] ( FUNC_Exec )
 struct ATgPlayerController_execFloatCamera_Parms
 {
-	unsigned long                                      bFloatOn : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bFloatOn    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.SelfAlert
@@ -22077,8 +22077,8 @@ struct ATgPlayerController_execAddAlertScript_Parms
 	unsigned char                                      Type;                                             		// 0x0001 (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	float                                              fDuration;                                        		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nMsgId;                                           		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bBlockDuplicates : 1;                             		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bRequestKeybinds : 1;                             		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bBlockDuplicates    ;                             		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bRequestKeybinds    ;                             		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.GetCamOption
@@ -22099,7 +22099,7 @@ struct ATgPlayerController_execCycleCamOption_Parms
 struct ATgPlayerController_execCamOption_Parms
 {
 	int                                                X;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      saveSetting : 1;                                  		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      saveSetting    ;                                  		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ServerCamOption
@@ -22114,7 +22114,7 @@ struct ATgPlayerController_execServerCamOption_Parms
 struct ATgPlayerController_execClientSetRotationAndDesired_Parms
 {
 	struct FRotator                                    NewRotation;                                      		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bResetCamera : 1;                                 		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bResetCamera    ;                                 		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ServerReleasePet
@@ -22134,7 +22134,7 @@ struct ATgPlayerController_eventControlPet_Parms
 // [0x00020002] 
 struct ATgPlayerController_execSetHackingBotState_Parms
 {
-	unsigned long                                      bIsHacking : 1;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsHacking    ;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ReleaseHackedPet
@@ -22162,7 +22162,7 @@ struct ATgPlayerController_eventAcceptNewProfileFromEquipScreen_Parms
 // [0x002200C2] 
 struct ATgPlayerController_execServerRove_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ToggleRove
@@ -22225,7 +22225,7 @@ struct ATgPlayerController_execOnRightMouseReleased_Parms
 // [0x00020202] ( FUNC_Exec )
 struct ATgPlayerController_execOnRightMousePressed_Parms
 {
-	// unsigned long                                   bOther : 1;                                       		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bOther    ;                                       		// 0x0000 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgPawn*                                  P;                                                		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class ATgDevice*                                Dev;                                              		// 0x0008 (0x0004) [0x0000000000000000]              
 };
@@ -22248,7 +22248,7 @@ struct ATgPlayerController_execOnLeftMousePressed_Parms
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgPlayerController_execCheckNonCombatInteraction_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.CCE
@@ -22267,7 +22267,7 @@ struct ATgPlayerController_execCauseClientEvent_Parms
 	// class USeqEvent_Console*                        ConsoleEvt;                                       		// 0x0014 (0x0004) [0x0000000000000000]              
 	// class USequence*                                GameSeq;                                          		// 0x0018 (0x0004) [0x0000000000000000]              
 	// int                                             Idx;                                              		// 0x001C (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bFoundEvt : 1;                                    		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bFoundEvt    ;                                    		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPlayerController.ServerCallKismetEventFromClient
@@ -22336,7 +22336,7 @@ struct ATgPlayerController_execAddKillAlert_Parms
 {
 	struct FString                                     KilledName;                                       		// 0x0000 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
 	struct FString                                     KillerName;                                       		// 0x000C (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      KillerWasPlayer : 1;                              		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      KillerWasPlayer    ;                              		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ClientAddKilled
@@ -22345,7 +22345,7 @@ struct ATgPlayerController_eventClientAddKilled_Parms
 {
 	struct FString                                     KilledName;                                       		// 0x0000 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
 	struct FString                                     KillerName;                                       		// 0x000C (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      KillerWasPlayer : 1;                              		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      KillerWasPlayer    ;                              		// 0x0018 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.RequestBeaconNetworkHop
@@ -22395,7 +22395,7 @@ struct ATgPlayerController_execNameScale_Parms
 // [0x00020102] 
 struct ATgPlayerController_execSetShowRangeTargeter_Parms
 {
-	unsigned long                                      bShow : 1;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bShow    ;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.Wear
@@ -22463,7 +22463,7 @@ struct ATgPlayerController_execAbandonAssignment_Parms
 struct ATgPlayerController_execServerRequestAssignment_Parms
 {
 	class ATgMissionObjective*                         Objective;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.RequestAssignment
@@ -22538,7 +22538,7 @@ struct ATgPlayerController_execTestSystemMailItem_Parms
 	int                                                nPlayerId;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nItemId;                                          		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nQuantity;                                        		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bSystemCraft : 1;                                 		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSystemCraft    ;                                 		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	int                                                nMaxQuanlityValueId;                              		// 0x0010 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
 
@@ -22653,7 +22653,7 @@ struct ATgPlayerController_execDestroyInvItem_Parms
 {
 	int                                                nInvId;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nCount;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bSellIt : 1;                                      		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bSellIt    ;                                      		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ServerActivateInvItem
@@ -22690,7 +22690,7 @@ struct ATgPlayerController_execServerDestroyInvItem_Parms
 {
 	int                                                nInvId;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nCount;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bSellIt : 1;                                      		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSellIt    ;                                      		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ServerCombineItems
@@ -22778,7 +22778,7 @@ struct ATgPlayerController_execServerDevGiveXP_Parms
 struct ATgPlayerController_execCanPlayerUseVolume_Parms
 {
 	class ATgOmegaVolume*                              pOmega;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.SetNWCondition
@@ -22875,14 +22875,14 @@ struct ATgPlayerController_execToggleEchoVoice_Parms
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgPlayerController_execTestVoice_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.TgPerfTrack
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgPlayerController_execTgPerfTrack_Parms
 {
-	unsigned long                                      bStart : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bStart    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.SetPawnTickState
@@ -22897,7 +22897,7 @@ struct ATgPlayerController_execSetPawnTickState_Parms
 struct ATgPlayerController_execToggleTick_Parms
 {
 	struct FString                                     ClassName;                                        		// 0x0000 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      bDisable : 1;                                     		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bDisable    ;                                     		// 0x000C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.DoClientSidePerfTracking
@@ -22912,7 +22912,7 @@ struct ATgPlayerController_execDoClientSidePerfTracking_Parms
 struct ATgPlayerController_execGetTraceTime_Parms
 {
 	float                                              fRange;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bStopAtAnyHit : 1;                                		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bStopAtAnyHit    ;                                		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	float                                              ReturnValue;                                      		// 0x0008 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -22957,7 +22957,7 @@ struct ATgPlayerController_execActiveVoiceChannel_Parms
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgPlayerController_execActiveNewsChannel_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.SetNewsSpeakerLocation
@@ -22979,14 +22979,14 @@ struct ATgPlayerController_execCheckMaxEffectDistance_Parms
 	class APlayerController*                           P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     SpawnLocation;                                    		// 0x0004 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	float                                              CullDistance;                                     		// 0x0010 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.DisplayReticuleEmitter
 // [0x00024400] ( FUNC_Native )
 struct ATgPlayerController_execDisplayReticuleEmitter_Parms
 {
-	unsigned long                                      bDisplay : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bDisplay    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	struct FVector                                     HitLocation;                                      		// 0x0004 (0x000C) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
 
@@ -23012,7 +23012,7 @@ struct ATgPlayerController_execTraceWeaponFire_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPlayerController_execUseFreezeDeathCam_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.OpenUpdateFaceScreen
@@ -23091,7 +23091,7 @@ struct ATgPlayerController_execRefreshRandomSMSettings_Parms
 struct ATgPlayerController_execShouldShowDyeColor_Parms
 {
 	class ATgPawn*                                     P;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.SetDyeColorOption
@@ -23172,7 +23172,7 @@ struct ATgPlayerController_execServerTestSystemMailItem_Parms
 	int                                                nPlayerId;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nItemId;                                          		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nQuantity;                                        		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bSystemCraft : 1;                                 		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bSystemCraft    ;                                 		// 0x000C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	int                                                nMaxQuanlityValueId;                              		// 0x0010 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 };
 
@@ -23224,14 +23224,14 @@ struct ATgPlayerController_execGetPlayerControlPawn_Parms
 struct ATgPlayerController_execSendGameOverEvent_Parms
 {
 	unsigned char                                      gameWinState;                                     		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bPlayerIsAttacker : 1;                            		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bPlayerIsAttacker    ;                            		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ToggleDeathZoom
 // [0x00020400] ( FUNC_Native )
 struct ATgPlayerController_execToggleDeathZoom_Parms
 {
-	unsigned long                                      bOn : 1;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bOn    ;                                          		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.GetDeathPitchOffset
@@ -23247,7 +23247,7 @@ struct ATgPlayerController_execGetDeathPitchOffset_Parms
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgPlayerController_execToggleVoiceCapture_Parms
 {
-	unsigned long                                      bEnabled : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnabled    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	int                                                nChannelType;                                     		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 };
 
@@ -23269,7 +23269,7 @@ struct ATgPlayerController_execClientLoadDevices_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPlayerController_execSetHUDFade_Parms
 {
-	unsigned long                                      bFadeIn : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bFadeIn    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	float                                              FadeTime;                                         		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 };
 
@@ -23291,7 +23291,7 @@ struct ATgPlayerController_execShowHUDElement_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPlayerController_execFadeMasterSound_Parms
 {
-	unsigned long                                      bFadeIn : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bFadeIn    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	float                                              FadeTime;                                         		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 };
 
@@ -23299,7 +23299,7 @@ struct ATgPlayerController_execFadeMasterSound_Parms
 // [0x00024400] ( FUNC_Native )
 struct ATgPlayerController_execTriggerOmegaAlert_Parms
 {
-	unsigned long                                      bForced : 1;                                      		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bForced    ;                                      		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.CloseConfirmPopup
@@ -23307,7 +23307,7 @@ struct ATgPlayerController_execTriggerOmegaAlert_Parms
 struct ATgPlayerController_execCloseConfirmPopup_Parms
 {
 	struct FName                                       fnCallback;                                       		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bTellGameClient : 1;                              		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bTellGameClient    ;                              		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.OpenConfirmPopup
@@ -23330,15 +23330,15 @@ struct ATgPlayerController_execGetDeviceIdByName_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPlayerController_execCanShiftReticule_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.CheckAlertSounds
 // [0x00020400] ( FUNC_Native )
 struct ATgPlayerController_execCheckAlertSounds_Parms
 {
-	unsigned long                                      bHealthAlert : 1;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      bPowerAlert : 1;                                  		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bHealthAlert    ;                                 		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bPowerAlert    ;                                  		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.SetValue
@@ -23362,7 +23362,7 @@ struct ATgPlayerController_execGetValue_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPlayerController_execbIsEditor_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.ForceRelevant
@@ -23451,21 +23451,21 @@ struct ATgPlayerController_execGmBand_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPlayerController_execProcessSkillPromptResponse_Parms
 {
-	unsigned long                                      bValue : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bValue    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.AccompanyOnQuestMap
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgPlayerController_execAccompanyOnQuestMap_Parms
 {
-	unsigned long                                      bAccepted : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAccepted    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.AcceptHexOwnership
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgPlayerController_execAcceptHexOwnership_Parms
 {
-	unsigned long                                      bAccepted : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAccepted    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.RaidSetLeader
@@ -23479,7 +23479,7 @@ struct ATgPlayerController_execRaidSetLeader_Parms
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgPlayerController_execRaidAcceptLaunch_Parms
 {
-	unsigned long                                      bAccepted : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAccepted    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.HexMissionLeave
@@ -23492,28 +23492,28 @@ struct ATgPlayerController_execHexMissionLeave_Parms
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgPlayerController_execHexGotoBattle_Parms
 {
-	unsigned long                                      bAccepted : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAccepted    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.MatchAccept
 // [0x00020C00] ( FUNC_Event | FUNC_Native )
 struct ATgPlayerController_eventMatchAccept_Parms
 {
-	unsigned long                                      bAccepted : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAccepted    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.MatchLeave
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgPlayerController_execMatchLeave_Parms
 {
-	unsigned long                                      bAsTeam : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAsTeam    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.ConfirmMatchLeave
 // [0x00020400] ( FUNC_Native )
 struct ATgPlayerController_execConfirmMatchLeave_Parms
 {
-	unsigned long                                      bLeave : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bLeave    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.OpenConfirmMatchLeave
@@ -23526,7 +23526,7 @@ struct ATgPlayerController_execOpenConfirmMatchLeave_Parms
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgPlayerController_execAllianceAccept_Parms
 {
-	unsigned long                                      bAccepted : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAccepted    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.AllianceInvite
@@ -23552,7 +23552,7 @@ struct ATgPlayerController_execAgencyLeave_Parms
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgPlayerController_execAgencyAccept_Parms
 {
-	unsigned long                                      bAccepted : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAccepted    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.AgencyInvite
@@ -23592,7 +23592,7 @@ struct ATgPlayerController_execTeamLeave_Parms
 // [0x00020600] ( FUNC_Exec | FUNC_Native )
 struct ATgPlayerController_execTeamAccept_Parms
 {
-	unsigned long                                      bAccepted : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAccepted    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPlayerController.TeamInvite
@@ -23636,7 +23636,7 @@ struct ATgPlayerController_execCanCameraSeeActorCenter_Parms
 {
 	class AActor*                                      Other;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              ZOffset;                                          		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.CanCameraSeePawnCenter
@@ -23644,7 +23644,7 @@ struct ATgPlayerController_execCanCameraSeeActorCenter_Parms
 struct ATgPlayerController_execCanCameraSeePawnCenter_Parms
 {
 	class ATgPawn*                                     Other;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerController.CalcCameraView
@@ -23667,7 +23667,7 @@ struct ATgPlayerController_execGetHudClass_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgPlayerController_execIsReadyForStart_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerInput.PlayerInput
@@ -23698,7 +23698,7 @@ struct UTgPlayerInput_eventInputChar_Parms
 {
 	int                                                ControllerId;                                     		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FString                                     Unicode;                                          		// 0x0004 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerInput.OnInputChar
@@ -23707,7 +23707,7 @@ struct UTgPlayerInput_execOnInputChar_Parms
 {
 	int                                                ControllerId;                                     		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FString                                     Unicode;                                          		// 0x0004 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerInput.OnInputAxis
@@ -23718,7 +23718,7 @@ struct UTgPlayerInput_execOnInputAxis_Parms
 	struct FName                                       Key;                                              		// 0x0004 (0x0008) [0x0000000000000080]              ( CPF_Parm )
 	float                                              Delta;                                            		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              DeltaTime;                                        		// 0x0010 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPlayerInput.OnRawInputKey
@@ -23729,7 +23729,7 @@ struct UTgPlayerInput_execOnRawInputKey_Parms
 	struct FName                                       Key;                                              		// 0x0004 (0x0008) [0x0000000000000080]              ( CPF_Parm )
 	unsigned char                                      Event;                                            		// 0x000C (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	float                                              AmountDepressed;                                  		// 0x0010 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgSkeletalMeshActor_CharacterBuilder.RandomizeMorphs
@@ -23769,7 +23769,7 @@ struct ATgSkeletalMeshActor_CharacterBuilder_execSetHeadShotHead_Parms
 {
 	class UTexture2D*                                  DiffuseTexture;                                   		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class UMorphTargetSet*                             MorphSet;                                         		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	// unsigned long                                   bError : 1;                                       		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bError    ;                                       		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgSkeletalMeshActor_CharacterBuilder.StopAnims
@@ -23797,7 +23797,7 @@ struct ATgSkeletalMeshActor_CharacterBuilder_eventBuildDude_Parms
 	// float                                           SkinTone;                                         		// 0x0020 (0x0004) [0x0000000000000000]              
 	// class UMaterialInstanceConstant*                HeadMIC;                                          		// 0x0024 (0x0004) [0x0000000000000000]              
 	// class UMaterialInstanceConstant*                SuitMIC;                                          		// 0x0028 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bShouldDrawHead : 1;                              		// 0x002C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bShouldDrawHead    ;                              		// 0x002C (0x0004) [0x0000000000000000] [0x00000001] 
 	// class UAnimTree*                                HeadAnimTree;                                     		// 0x0030 (0x0004) [0x0000000000000000]              
 	// int                                             HelmetMeshIDToUse;                                		// 0x0034 (0x0004) [0x0000000000000000]              
 	// int                                             HeadMeshIDToUse;                                  		// 0x0038 (0x0004) [0x0000000000000000]              
@@ -23833,7 +23833,7 @@ struct ATgSkeletalMeshActor_CharacterBuilder_eventGetDefaultDeviceAssembly_Parms
 // [0x00024902] ( FUNC_Event )
 struct ATgSkeletalMeshActor_CharacterBuilder_eventGetDefaultCharacterAssembly_Parms
 {
-	unsigned long                                      bIsFemale : 1;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIsFemale    ;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	struct FCustomCharacterAssembly                    ReturnValue;                                      		// 0x0004 (0x0044) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -23841,7 +23841,7 @@ struct ATgSkeletalMeshActor_CharacterBuilder_eventGetDefaultCharacterAssembly_Pa
 // [0x00824902] ( FUNC_Event )
 struct ATgSkeletalMeshActor_CharacterBuilder_eventSetAssemblyToDefaults_Parms
 {
-	unsigned long                                      bIsFemale : 1;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIsFemale    ;                                    		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	// struct FDeviceAttachmentAssembly                defaultdevassembly;                               		// 0x0004 (0x001C) [0x0000000000000000]              
 };
 
@@ -23913,14 +23913,14 @@ struct ATgSkeletalMeshActor_CharacterBuilder_eventSetHeadFlairId_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgSkeletalMeshActor_CharacterBuilder_eventSetHideHelmetFlag_Parms
 {
-	unsigned long                                      bHideHelmetFlag : 1;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bHideHelmetFlag    ;                              		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgSkeletalMeshActor_CharacterBuilder.SetBaldFlag
 // [0x00020902] ( FUNC_Event )
 struct ATgSkeletalMeshActor_CharacterBuilder_eventSetBaldFlag_Parms
 {
-	unsigned long                                      bBaldFlag : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bBaldFlag    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgSkeletalMeshActor_CharacterBuilder.SetInHandDeviceIdAndAnimSet
@@ -24002,21 +24002,21 @@ struct ATgSkeletalMeshActor_CharacterBuilder_execGetSkinColorsFromHeadMorphData_
 // [0x00020400] ( FUNC_Native )
 struct ATgSkeletalMeshActor_CharacterBuilder_execShouldDrawHair_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgSkeletalMeshActor_CharacterBuilder.ShouldDrawHelmet
 // [0x00020400] ( FUNC_Native )
 struct ATgSkeletalMeshActor_CharacterBuilder_execShouldDrawHelmet_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgSkeletalMeshActor_CharacterBuilder.ShouldDrawHead
 // [0x00020400] ( FUNC_Native )
 struct ATgSkeletalMeshActor_CharacterBuilder_execShouldDrawHead_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgSkeletalMeshActor_CharacterBuilder.ApplyDyeColor
@@ -24228,7 +24228,7 @@ struct ATgSkeletalMeshActorNPC_eventPostRenderFor_Parms
 	// float                                           YL;                                               		// 0x0068 (0x0004) [0x0000000000000000]              
 	// float                                           stdFOV;                                           		// 0x006C (0x0004) [0x0000000000000000]              
 	// float                                           FOVAngle;                                         		// 0x0070 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   isSeenByLocalPlayer : 1;                          		// 0x0074 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   isSeenByLocalPlayer    ;                          		// 0x0074 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgPlayerController*                      tgpc;                                             		// 0x0078 (0x0004) [0x0000000000000000]              
 };
 
@@ -24273,7 +24273,7 @@ struct ATgSkeletalMeshActorNPC_eventPawnEnteredPresence_Parms
 struct ATgSkeletalMeshActorNPC_execCheckCallOut_Parms
 {
 	float                                              DeltaSeconds;                                     		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgSkeletalMeshActorNPC.Tick
@@ -24301,8 +24301,8 @@ struct ATgSkeletalMeshActorNPC_execCreateAttachments_Parms
 	// int                                             AttachIdx;                                        		// 0x0000 (0x0004) [0x0000000000000000]              
 	// class UStaticMeshComponent*                     StaticMeshComp;                                   		// 0x0004 (0x0004) [0x0000000004000000]              ( CPF_EditInline )
 	// class USkeletalMeshComponent*                   SkeletalMeshComp;                                 		// 0x0008 (0x0004) [0x0000000004000000]              ( CPF_EditInline )
-	// unsigned long                                   bUseSocket : 1;                                   		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bUseBone : 1;                                     		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bUseSocket    ;                                   		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bUseBone    ;                                     		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgSkeletalMeshActorNPC.PostBeginPlay
@@ -24403,7 +24403,7 @@ struct ATgSkeletalMeshActor_MeleePreVis_execAttack_Parms
 // [0x00020002] 
 struct ATgSkeletalMeshActor_MeleePreVis_execCanJumpNow_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgSkeletalMeshActor_MeleePreVis.DoJump
@@ -24454,7 +24454,7 @@ struct UTgSkeletalMeshComponent_execGetSkinColorsFromMorphData_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgSkeletalMeshComponent_execSetForceUpdateAttachmentsInTick_Parms
 {
-	unsigned long                                      bSet : 1;                                         		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bSet    ;                                         		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgSkeletalMeshComponent.ResolveMorphNodeIndex
@@ -24509,7 +24509,7 @@ struct UTgSkeletalMeshComponent_execApplyDye_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgSkeletalMeshComponent_execOnMeshSetHidden_Parms
 {
-	unsigned long                                      bHidden : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bHidden    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgSkeletalMeshComponent.RecalculateFx
@@ -24543,7 +24543,7 @@ struct UTgSkeletalMeshComponent_execGetCurrentDeployPercentage_Parms
 struct UTgSkeletalMeshComponent_execSwapMaterial_Parms
 {
 	class UMaterialInterface*                          MI;                                               		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bNoParamReaping : 1;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bNoParamReaping    ;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgSkeletalMeshComponent.GetDefaultMaterial
@@ -24626,7 +24626,7 @@ struct UTgSkeletalMeshComponent_execFxActivateGroup_Parms
 	int                                                nMode;                                            		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nSocketIndex;                                     		// 0x000C (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	int                                                nEquipSlot;                                       		// 0x0010 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bIgnoreRelevancy : 1;                             		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreRelevancy    ;                             		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class UObject*                                     ReturnValue;                                      		// 0x0018 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -24687,7 +24687,7 @@ struct UTgStaticMeshComponent_execRecalculateFx_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgStaticMeshComponent_execOnMeshSetHidden_Parms
 {
-	unsigned long                                      bHidden : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bHidden    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgStaticMeshComponent.GetDefaultMaterial
@@ -24710,7 +24710,7 @@ struct UTgStaticMeshComponent_execSetDefaultSkin_Parms
 struct UTgStaticMeshComponent_execSwapMaterial_Parms
 {
 	class UMaterialInterface*                          MI;                                               		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bNoParamReaping : 1;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bNoParamReaping    ;                              		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgStaticMeshComponent.FxActivateIndependant
@@ -24778,7 +24778,7 @@ struct UTgStaticMeshComponent_execFxActivateGroup_Parms
 	int                                                nMode;                                            		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                nSocketIndex;                                     		// 0x000C (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	int                                                nEquipSlot;                                       		// 0x0010 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bIgnoreRelevancy : 1;                             		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreRelevancy    ;                             		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class UObject*                                     ReturnValue;                                      		// 0x0018 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -24887,7 +24887,7 @@ struct ATgDeviceVolume_eventPostBeginPlay_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgDeviceVolume_execsetupDevice_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgModifyPawnPropertiesVolume.UnTouch
@@ -25056,8 +25056,8 @@ struct UTgUIDataStore_StringList_eventGetCurrentValue_Parms
 {
 	struct FName                                       FieldName;                                        		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
 	struct FString                                     out_Value;                                        		// 0x0008 (0x000C) [0x0000000000400180]              ( CPF_Parm | CPF_OutParm | CPF_NeedCtorLink )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   Result : 1;                                       		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   Result    ;                                       		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
 	// int                                             FieldIndex;                                       		// 0x001C (0x0004) [0x0000000000000000]              
 };
 
@@ -25092,7 +25092,7 @@ struct UTgUIDataStore_StringList_execFindStr_Parms
 struct UTgUIDataStore_StringList_execEmpty_Parms
 {
 	struct FName                                       FieldName;                                        		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bBatchOp : 1;                                     		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bBatchOp    ;                                     		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgUIDataStore_StringList.RemoveStrByIndex
@@ -25102,7 +25102,7 @@ struct UTgUIDataStore_StringList_execRemoveStrByIndex_Parms
 	struct FName                                       FieldName;                                        		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
 	int                                                Index;                                            		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                Count;                                            		// 0x000C (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bBatchOp : 1;                                     		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bBatchOp    ;                                     		// 0x0010 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgUIDataStore_StringList.RemoveStr
@@ -25111,7 +25111,7 @@ struct UTgUIDataStore_StringList_execRemoveStr_Parms
 {
 	struct FName                                       FieldName;                                        		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
 	struct FString                                     StringToRemove;                                   		// 0x0008 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      bBatchOp : 1;                                     		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bBatchOp    ;                                     		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgUIDataStore_StringList.UpdateStr
@@ -25121,7 +25121,7 @@ struct UTgUIDataStore_StringList_execUpdateStr_Parms
 	struct FName                                       FieldName;                                        		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
 	struct FString                                     NewString;                                        		// 0x0008 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
 	int                                                UpdateIndex;                                      		// 0x0014 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bBatchOp : 1;                                     		// 0x0018 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bBatchOp    ;                                     		// 0x0018 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgUIDataStore_StringList.InsertStr
@@ -25131,7 +25131,7 @@ struct UTgUIDataStore_StringList_execInsertStr_Parms
 	struct FName                                       FieldName;                                        		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
 	struct FString                                     NewString;                                        		// 0x0008 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
 	int                                                InsertIndex;                                      		// 0x0014 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bBatchOp : 1;                                     		// 0x0018 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bBatchOp    ;                                     		// 0x0018 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgUIDataStore_StringList.AddStr
@@ -25140,7 +25140,7 @@ struct UTgUIDataStore_StringList_execAddStr_Parms
 {
 	struct FName                                       FieldName;                                        		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
 	struct FString                                     NewString;                                        		// 0x0008 (0x000C) [0x0000000000400080]              ( CPF_Parm | CPF_NeedCtorLink )
-	unsigned long                                      bBatchOp : 1;                                     		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bBatchOp    ;                                     		// 0x0014 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgUIDataStore_StringList.GetFieldIndex
@@ -25282,7 +25282,7 @@ struct UTgUIHexWidget_execGetHexData_Parms
 {
 	int                                                Index;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FHexData                                    Data;                                             		// 0x0004 (0x00B4) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x00B8 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x00B8 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgUIHexWidget.CenterMapOn
@@ -25413,7 +25413,7 @@ struct UTgUIHexWidget_Zone_execGetMICParams_Parms
 struct UTgUIHexWidget_Zone_execSetRegionHighlightRegion_Parms
 {
 	int                                                nRegionId;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bEnabled : 1;                                     		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bEnabled    ;                                     		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgUIHexWidget_Zone.SetRegionHighlightAgency
@@ -25421,7 +25421,7 @@ struct UTgUIHexWidget_Zone_execSetRegionHighlightRegion_Parms
 struct UTgUIHexWidget_Zone_execSetRegionHighlightAgency_Parms
 {
 	int                                                nAgencyId;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bEnabled : 1;                                     		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bEnabled    ;                                     		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgUIHexWidget_Zone.ClearRegionHighlight
@@ -25444,7 +25444,7 @@ struct UTgUIHexWidget_Zone_execGetAgencyData_Parms
 {
 	int                                                nAgencyId;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FHexAgencyData                              Data;                                             		// 0x0004 (0x0020) [0x0000000000400180]              ( CPF_Parm | CPF_OutParm | CPF_NeedCtorLink )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0024 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgUIHexWidget_Zone.IsHexFriendlyWithLocalPlayer
@@ -25452,7 +25452,7 @@ struct UTgUIHexWidget_Zone_execGetAgencyData_Parms
 struct UTgUIHexWidget_Zone_execIsHexFriendlyWithLocalPlayer_Parms
 {
 	int                                                nIndex;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgUIHexWidget_Zone.IsFriendlyWithLocalPlayer
@@ -25460,7 +25460,7 @@ struct UTgUIHexWidget_Zone_execIsHexFriendlyWithLocalPlayer_Parms
 struct UTgUIHexWidget_Zone_execIsFriendlyWithLocalPlayer_Parms
 {
 	int                                                nAgencyId;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgUIMapWidget.GetObjectiveIconSize
@@ -25543,7 +25543,7 @@ struct UTgUIScrollList_execEmptyList_Parms
 // [0x00020400] ( FUNC_Native )
 struct UTgUIChatScrollList_execSetEntryMode_Parms
 {
-	unsigned long                                      bEntryMode : 1;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEntryMode    ;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgUIChatScrollList.AddChatMessage
@@ -25595,7 +25595,7 @@ struct ATgGame_execPreventDeath_Parms
 	class AController*                                 Killer;                                           		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class UClass*                                      DamageType;                                       		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     HitLocation;                                      		// 0x000C (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0018 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0018 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame.CanSpectate
@@ -25604,9 +25604,9 @@ struct ATgGame_execCanSpectate_Parms
 {
 	class APlayerController*                           Viewer;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class APlayerReplicationInfo*                      ViewTarget;                                       		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bViewTargetIsSpectator : 1;                       		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bIsFriendlyWithTarget : 1;                        		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bViewTargetIsSpectator    ;                       		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsFriendlyWithTarget    ;                        		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgRepInfo_Player*                        viewerPRI;                                        		// 0x0014 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_Player*                        targetPRI;                                        		// 0x0018 (0x0004) [0x0000000000000000]              
 };
@@ -25623,18 +25623,18 @@ struct ATgGame_eventGetMissionTimerStatus_Parms
 struct ATgGame_execObjectiveTaken_Parms
 {
 	class ATgMissionObjective*                         Objective;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgPlayerController*                      tgpc;                                             		// 0x0008 (0x0004) [0x0000000000000000]              
 	// unsigned char                                   oldWinState;                                      		// 0x000C (0x0001) [0x0000000000000000]              
-	// unsigned long                                   bIsFinal : 1;                                     		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bAttackerCaptured : 1;                            		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bIsFinal    ;                                     		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAttackerCaptured    ;                            		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgGame.SetMissionTimerShouldWait
 // [0x00020002] 
 struct ATgGame_execSetMissionTimerShouldWait_Parms
 {
-	unsigned long                                      bWait : 1;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bWait    ;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgGame.PostCommitMapChange
@@ -25670,7 +25670,7 @@ struct ATgGame_eventMissionTimeIncrement_Parms
 // [0x00020802] ( FUNC_Event )
 struct ATgGame_eventMissionTimerModify_Parms
 {
-	unsigned long                                      bPause : 1;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bPause    ;                                       		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	int                                                nNewTime;                                         		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 };
 
@@ -25685,7 +25685,7 @@ struct ATgGame_eventElapsedTime_Parms
 // [0x00020802] ( FUNC_Event )
 struct ATgGame_eventMissionTimerActive_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame.ChangeTimerState
@@ -25774,7 +25774,7 @@ struct ATgGame_eventPostLogin_Parms
 struct ATgGame_execFindInactivePRI_Parms
 {
 	class APlayerController*                           PC;                                               		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame.AddInactivePRI
@@ -25834,8 +25834,8 @@ struct ATgGame_execChangeTeam_Parms
 {
 	class AController*                                 Other;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	int                                                Num;                                              		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bNewTeam : 1;                                     		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bNewTeam    ;                                     		// 0x0008 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame.RatePlayerStart
@@ -25925,7 +25925,7 @@ struct ATgGame_execRestartPlayer_Parms
 {
 	class AController*                                 aPlayer;                                          		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	// class ATgPlayerController*                      PC;                                               		// 0x0004 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bHadPawn : 1;                                     		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bHadPawn    ;                                     		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ANavigationPoint*                         np;                                               		// 0x000C (0x0004) [0x0000000000000000]              
 };
 
@@ -26034,7 +26034,7 @@ struct ATgGame_eventGetNextPawnId_Parms
 // [0x00020002] 
 struct ATgGame_execGameHasForceField_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame.InitGameReplicationInfo
@@ -26161,7 +26161,7 @@ struct ATgGame_execSendMissionTimerEvent_Parms
 struct ATgGame_execIsFinalObjective_Parms
 {
 	class ATgMissionObjective*                         Objective;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame.GetFinalObjectivesList
@@ -26263,9 +26263,9 @@ struct ATgGame_execSpawnBotPawn_Parms
 	class ATgAIController*                             pTgAI;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     vLocation;                                        		// 0x0004 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	struct FRotator                                    rRotation;                                        		// 0x0010 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bIgnoreCollision : 1;                             		// 0x001C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreCollision    ;                             		// 0x001C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class ATgPawn*                                     pOwnerPawn;                                       		// 0x0020 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bIsDecoy : 1;                                     		// 0x0024 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIsDecoy    ;                                     		// 0x0024 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	float                                              fDeploySecs;                                      		// 0x0028 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	class APawn*                                       ReturnValue;                                      		// 0x002C (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
@@ -26277,11 +26277,11 @@ struct ATgGame_execSpawnBotById_Parms
 	int                                                nBotId;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     vLocation;                                        		// 0x0004 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	struct FRotator                                    rRotation;                                        		// 0x0010 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bKillController : 1;                              		// 0x001C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bKillController    ;                              		// 0x001C (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	class ATgBotFactory*                               pFactory;                                         		// 0x0020 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bIgnoreCollision : 1;                             		// 0x0024 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreCollision    ;                             		// 0x0024 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class ATgPawn*                                     pOwnerPawn;                                       		// 0x0028 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bIsDecoy : 1;                                     		// 0x002C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIsDecoy    ;                                     		// 0x002C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class UTgDeviceFire*                               deviceFire;                                       		// 0x0030 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              fDeployAnimLength;                                		// 0x0034 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	class APawn*                                       ReturnValue;                                      		// 0x0038 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
@@ -26295,9 +26295,9 @@ struct ATgGame_execSpawnBot_Parms
 	struct FVector                                     vLocation;                                        		// 0x0008 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	struct FRotator                                    rRotation;                                        		// 0x0014 (0x000C) [0x0000000000000080]              ( CPF_Parm )
 	class ATgBotFactory*                               pFactory;                                         		// 0x0020 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bIgnoreCollision : 1;                             		// 0x0024 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIgnoreCollision    ;                             		// 0x0024 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class ATgPawn*                                     pOwnerPawn;                                       		// 0x0028 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bIsDecoy : 1;                                     		// 0x002C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bIsDecoy    ;                                     		// 0x002C (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class UTgDeviceFire*                               deviceFire;                                       		// 0x0030 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              fDeploySecs;                                      		// 0x0034 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	class APawn*                                       ReturnValue;                                      		// 0x0038 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
@@ -26307,35 +26307,35 @@ struct ATgGame_execSpawnBot_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgGame_execIsOpenWorld_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame.IsTerritory
 // [0x00020400] ( FUNC_Native )
 struct ATgGame_execIsTerritory_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame.IsTutorial
 // [0x00020400] ( FUNC_Native )
 struct ATgGame_execIsTutorial_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame.IsTraining
 // [0x00020400] ( FUNC_Native )
 struct ATgGame_execIsTraining_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame.IsMission
 // [0x00020400] ( FUNC_Native )
 struct ATgGame_execIsMission_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame.Loot
@@ -26369,17 +26369,17 @@ struct ATgGame_execCalcAndAwardMedal_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgGame_execFinishEndMission_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame.BeginEndMission
 // [0x00024400] ( FUNC_Native )
 struct ATgGame_execBeginEndMission_Parms
 {
-	unsigned long                                      bClearNextMapGame : 1;                            		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bClearNextMapGame    ;                            		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class ACameraActor*                                endMissionCamera;                                 		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              fDelayOverride;                                   		// 0x0008 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame.GetWinningTaskforce
@@ -26415,7 +26415,7 @@ struct ATgGame_execTgFindPlayerSpawnLocation_Parms
 {
 	class AController*                                 pPlayer;                                          		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     vLoc;                                             		// 0x0004 (0x000C) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0010 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame.TgFindPlayerStart
@@ -26455,7 +26455,7 @@ struct ATgGame_City_execSpawnDefaultPawnFor_Parms
 struct ATgGame_Mission_execCheckScore_Parms
 {
 	class APlayerReplicationInfo*                      Scorer;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgRepInfo_Player*                        prep;                                             		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -26492,7 +26492,7 @@ struct ATgGame_Mission_execLoadGameConfig_Parms
 struct ATgGame_Arena_execObjectiveTaken_Parms
 {
 	class ATgMissionObjective*                         Objective;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame_Arena.MissionTimer
@@ -26577,15 +26577,15 @@ struct ATgGame_Arena_eventPostBeginPlay_Parms
 struct ATgGame_Arena_eventCheckWinGame_Parms
 {
 	class ATgRepInfo_TaskForce*                        Winner;                                           		// 0x0000 (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      bForceWin : 1;                                    		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bForceWin    ;                                    		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgRepInfo_TaskForce*                     tfri;                                             		// 0x000C (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_Game*                          GRI;                                              		// 0x0010 (0x0004) [0x0000000000000000]              
 	// int                                             I;                                                		// 0x0014 (0x0004) [0x0000000000000000]              
 	// int                                             highScore;                                        		// 0x0018 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_TaskForce*                     highTF;                                           		// 0x001C (0x0004) [0x0000000000000000]              
-	// unsigned long                                   tie : 1;                                          		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bGameover : 1;                                    		// 0x0024 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   tie    ;                                          		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bGameover    ;                                    		// 0x0024 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgGame_Arena.CheckWinRound
@@ -26593,16 +26593,16 @@ struct ATgGame_Arena_eventCheckWinGame_Parms
 struct ATgGame_Arena_eventCheckWinRound_Parms
 {
 	class ATgRepInfo_TaskForce*                        Winner;                                           		// 0x0000 (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgRepInfo_Game*                          GRI;                                              		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgMissionObjective*                      Objective;                                        		// 0x000C (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_TaskForce*                     attackerTf;                                       		// 0x0010 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_TaskForce*                     defenderTf;                                       		// 0x0014 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_TaskForce*                     tfri;                                             		// 0x0018 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bAllObjectivesCapturedAttackers : 1;              		// 0x001C (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bAllObjectivesCapturedDefenders : 1;              		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bAllDefendersDead : 1;                            		// 0x0024 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bAllAttackersDead : 1;                            		// 0x0028 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAllObjectivesCapturedAttackers    ;              		// 0x001C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAllObjectivesCapturedDefenders    ;              		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAllDefendersDead    ;                            		// 0x0024 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAllAttackersDead    ;                            		// 0x0028 (0x0004) [0x0000000000000000] [0x00000001] 
 	// int                                             I;                                                		// 0x002C (0x0004) [0x0000000000000000]              
 	// int                                             nPlayerCount;                                     		// 0x0030 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_Player*                        PRI;                                              		// 0x0034 (0x0004) [0x0000000000000000]              
@@ -26662,13 +26662,13 @@ struct ATgGame_CTF_eventMissionTimer_Parms
 // [0x00020002] 
 struct ATgGame_CTF_execCheckOvertime_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgRepInfo_Game*                          GRI;                                              		// 0x0004 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bDefenderCarryingFlag : 1;                        		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bAttackerCarryingFlag : 1;                        		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bDefenderCarryingFlag    ;                        		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAttackerCarryingFlag    ;                        		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
 	// int                                             nAttackerScore;                                   		// 0x0010 (0x0004) [0x0000000000000000]              
 	// int                                             nDefenderScore;                                   		// 0x0014 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bGotoOvertime : 1;                                		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bGotoOvertime    ;                                		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgMissionObjective*                      Objective;                                        		// 0x001C (0x0004) [0x0000000000000000]              
 	// int                                             I;                                                		// 0x0020 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_TaskForce*                     tfri;                                             		// 0x0024 (0x0004) [0x0000000000000000]              
@@ -26679,8 +26679,8 @@ struct ATgGame_CTF_execCheckOvertime_Parms
 struct ATgGame_CTF_execObjectiveTaken_Parms
 {
 	class ATgMissionObjective*                         Objective;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bIsFinal : 1;                                     		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bIsFinal    ;                                     		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgGame_CTF.CheckWinRound
@@ -26688,14 +26688,14 @@ struct ATgGame_CTF_execObjectiveTaken_Parms
 struct ATgGame_CTF_eventCheckWinRound_Parms
 {
 	class ATgRepInfo_TaskForce*                        Winner;                                           		// 0x0000 (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgRepInfo_Game*                          GRI;                                              		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgMissionObjective*                      Objective;                                        		// 0x000C (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_TaskForce*                     attackerTf;                                       		// 0x0010 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_TaskForce*                     defenderTf;                                       		// 0x0014 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_TaskForce*                     tfri;                                             		// 0x0018 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bAllObjectivesCapturedAttackers : 1;              		// 0x001C (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bAllObjectivesCapturedDefenders : 1;              		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAllObjectivesCapturedAttackers    ;              		// 0x001C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAllObjectivesCapturedDefenders    ;              		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
 	// int                                             I;                                                		// 0x0024 (0x0004) [0x0000000000000000]              
 };
 
@@ -26710,7 +26710,7 @@ struct ATgGame_Defense_eventResetObjectives_Parms
 struct ATgGame_Defense_execObjectiveTaken_Parms
 {
 	class ATgMissionObjective*                         Objective;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgRepInfo_TaskForce*                     Winner;                                           		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -26786,7 +26786,7 @@ struct ATgGame_Defense_execCacheKismetConfiguration_Parms
 struct ATgGame_Defense_eventCheckWinRound_Parms
 {
 	class ATgRepInfo_TaskForce*                        Winner;                                           		// 0x0000 (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame_Defense.CheckWinGame
@@ -26794,15 +26794,15 @@ struct ATgGame_Defense_eventCheckWinRound_Parms
 struct ATgGame_Defense_eventCheckWinGame_Parms
 {
 	class ATgRepInfo_TaskForce*                        Winner;                                           		// 0x0000 (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      bForceWin : 1;                                    		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bForceWin    ;                                    		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame_PointRotation.SetMissionTimerShouldWait
 // [0x00020000] 
 struct ATgGame_PointRotation_execSetMissionTimerShouldWait_Parms
 {
-	unsigned long                                      bWait : 1;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bWait    ;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgGame_PointRotation.UpdateShouldWait
@@ -26816,14 +26816,14 @@ struct ATgGame_PointRotation_execUpdateShouldWait_Parms
 struct ATgGame_PointRotation_eventCheckWinRound_Parms
 {
 	class ATgRepInfo_TaskForce*                        Winner;                                           		// 0x0000 (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgRepInfo_Game*                          GRI;                                              		// 0x0008 (0x0004) [0x0000000000000000]              
 	// class ATgMissionObjective*                      Objective;                                        		// 0x000C (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_TaskForce*                     attackerTf;                                       		// 0x0010 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_TaskForce*                     defenderTf;                                       		// 0x0014 (0x0004) [0x0000000000000000]              
 	// class ATgRepInfo_TaskForce*                     tfri;                                             		// 0x0018 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bAllObjectivesCapturedAttackers : 1;              		// 0x001C (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bAllObjectivesCapturedDefenders : 1;              		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAllObjectivesCapturedAttackers    ;              		// 0x001C (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAllObjectivesCapturedDefenders    ;              		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
 	// int                                             I;                                                		// 0x0024 (0x0004) [0x0000000000000000]              
 };
 
@@ -26851,7 +26851,7 @@ struct ATgGame_Control_execTick_Parms
 // [0x00020000] 
 struct ATgGame_Control_execSetMissionTimerShouldWait_Parms
 {
-	unsigned long                                      bWait : 1;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bWait    ;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgGame_Control.ObjectiveTaken
@@ -26859,9 +26859,9 @@ struct ATgGame_Control_execSetMissionTimerShouldWait_Parms
 struct ATgGame_Control_execObjectiveTaken_Parms
 {
 	class ATgMissionObjective*                         Objective;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bIsFinal : 1;                                     		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bAttackerCaptured : 1;                            		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bIsFinal    ;                                     		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAttackerCaptured    ;                            		// 0x000C (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgGame_Control.SendCountdownRemainingMessages
@@ -26903,7 +26903,7 @@ struct ATgGame_Ticket_eventMissionTimer_Parms
 // [0x00020000] 
 struct ATgGame_Ticket_execSetMissionTimerShouldWait_Parms
 {
-	unsigned long                                      bWait : 1;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bWait    ;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgGame_Ticket.ObjectiveTaken
@@ -26911,7 +26911,7 @@ struct ATgGame_Ticket_execSetMissionTimerShouldWait_Parms
 struct ATgGame_Ticket_execObjectiveTaken_Parms
 {
 	class ATgMissionObjective*                         Objective;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame_Ticket.PostBeginPlay
@@ -26924,10 +26924,10 @@ struct ATgGame_Ticket_execPostBeginPlay_Parms
 // [0x00024400] ( FUNC_Native )
 struct ATgGame_Ticket_execBeginEndMission_Parms
 {
-	unsigned long                                      bClearNextMapGame : 1;                            		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bClearNextMapGame    ;                            		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class ACameraActor*                                endMissionCamera;                                 		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              fDelayOverride;                                   		// 0x0008 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame_Ticket.LoadGameConfig
@@ -26966,8 +26966,8 @@ struct ATgGame_DualCTF_execTick_Parms
 struct ATgGame_DualCTF_execObjectiveTaken_Parms
 {
 	class ATgMissionObjective*                         Objective;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bTimerIsPaused : 1;                               		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bTimerIsPaused    ;                               		// 0x0008 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgGame_DualCTF.PostBeginPlay
@@ -27001,7 +27001,7 @@ struct ATgGame_OpenWorld_eventPostBeginPlay_Parms
 struct ATgGame_OpenWorld_execObjectiveTaken_Parms
 {
 	class ATgMissionObjective*                         Objective;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame_OpenWorld.TgFindPlayerStart
@@ -27050,7 +27050,7 @@ struct ATgGame_OpenWorldPVP_eventMissionTimer_Parms
 // [0x00020000] 
 struct ATgGame_OpenWorldPVP_execSetMissionTimerShouldWait_Parms
 {
-	unsigned long                                      bWait : 1;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bWait    ;                                        		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgGame_OpenWorldPVP.PostBeginPlay
@@ -27065,10 +27065,10 @@ struct ATgGame_OpenWorldPVP_eventPostBeginPlay_Parms
 // [0x00024400] ( FUNC_Native )
 struct ATgGame_OpenWorldPVP_execBeginEndMission_Parms
 {
-	unsigned long                                      bClearNextMapGame : 1;                            		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bClearNextMapGame    ;                            		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class ACameraActor*                                endMissionCamera;                                 		// 0x0004 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
 	float                                              fDelayOverride;                                   		// 0x0008 (0x0004) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame_OpenWorldPVP.ObjectiveTaken
@@ -27076,7 +27076,7 @@ struct ATgGame_OpenWorldPVP_execBeginEndMission_Parms
 struct ATgGame_OpenWorldPVP_execObjectiveTaken_Parms
 {
 	class ATgMissionObjective*                         Objective;                                        		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgGame_OpenWorldPVP.LoadGameConfig
@@ -27135,21 +27135,21 @@ struct ATgRepInfo_Deployable_execSetTaskForce_Parms
 // [0x00020102] 
 struct ATgRepInfo_Game_execIsOpenPveMission_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgRepInfo_Game.IsPvPMission
 // [0x00020902] ( FUNC_Event )
 struct ATgRepInfo_Game_eventIsPvPMission_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgRepInfo_Game.IsPvEMission
 // [0x00020902] ( FUNC_Event )
 struct ATgRepInfo_Game_eventIsPvEMission_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgRepInfo_Game.RemoveDRI
@@ -27207,7 +27207,7 @@ struct ATgRepInfo_Game_execClientRespawnTimerAttackers_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgRepInfo_Game_eventGetApproxRespawnTimeRemaining_Parms
 {
-	unsigned long                                      bAttacker : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bAttacker    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	float                                              ReturnValue;                                      		// 0x0004 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -27235,7 +27235,7 @@ struct ATgRepInfo_Game_eventReplicatedEvent_Parms
 struct ATgRepInfo_Game_execIsObjectiveInList_Parms
 {
 	class ATgMissionObjective*                         ObjectivePoint;                                   		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgRepInfo_Game.AddObjectivePointToList
@@ -27264,7 +27264,7 @@ struct ATgRepInfo_Game_execCheckIsEnemy_Parms
 {
 	class AActor*                                      A;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class AActor*                                      B;                                                		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgRepInfo_Game.TaskForceEnumerate
@@ -27273,8 +27273,8 @@ struct ATgRepInfo_Game_execTaskForceEnumerate_Parms
 {
 	class ATgRepInfo_TaskForce*                        rpTaskForce;                                      		// 0x0000 (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
 	int                                                rnTaskForceNum;                                   		// 0x0004 (0x0004) [0x0000000000000180]              ( CPF_Parm | CPF_OutParm )
-	unsigned long                                      bPlayerOnly : 1;                                  		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bPlayerOnly    ;                                  		// 0x0008 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgRepInfo_Game.CreateTaskForce
@@ -27291,7 +27291,7 @@ struct ATgRepInfo_Game_execCreateTaskForce_Parms
 struct ATgRepInfo_Game_execGetTaskForce_Parms
 {
 	int                                                nTaskForceNum;                                    		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bCreate : 1;                                      		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bCreate    ;                                      		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 	class ATgRepInfo_TaskForce*                        ReturnValue;                                      		// 0x0008 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -27325,7 +27325,7 @@ struct ATgRepInfo_GameOpenWorld_execCheckIsEnemy_Parms
 {
 	class AActor*                                      A;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class AActor*                                      B;                                                		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgRepInfo_GameOpenWorld.GetCoalitionFor
@@ -27348,8 +27348,8 @@ struct ATgRepInfo_Player_execGetLocalPlayerController_Parms
 // [0x00024102] 
 struct ATgRepInfo_Player_execShouldBroadCastWelcomeMessage_Parms
 {
-	unsigned long                                      bExiting : 1;                                     		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bExiting    ;                                     		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgRepInfo_Player.FindLocalPlayerPawn
@@ -27524,14 +27524,14 @@ struct ATgRepInfo_Player_execGetCharacterId_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgRepInfo_Player_execIsBot_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgRepInfo_Player.IsFriendlyWithLocalPlayer
 // [0x00020400] ( FUNC_Native )
 struct ATgRepInfo_Player_execIsFriendlyWithLocalPlayer_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgRepInfo_TaskForce.NotifyInactive
@@ -27564,7 +27564,7 @@ struct ATgRepInfo_TaskForce_eventReplicatedEvent_Parms
 // [0x00020102] 
 struct ATgRepInfo_TaskForce_execHasActivePlayers_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             Index;                                            		// 0x0004 (0x0004) [0x0000000000000000]              
 	// int                                             Count;                                            		// 0x0008 (0x0004) [0x0000000000000000]              
 };
@@ -27620,7 +27620,7 @@ struct ATgRepInfo_TaskForce_execTeamRemoveFrom_Parms
 struct ATgRepInfo_TaskForce_execIsLeader_Parms
 {
 	class ATgRepInfo_Player*                           pTgPri;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgRepInfo_TaskForce.GetBot
@@ -27664,21 +27664,21 @@ struct ATgRepInfo_TaskForce_execAddDeath_Parms
 struct ATgRepInfo_TaskForce_execRepEvent_Parms
 {
 	struct FName                                       VarName;                                          		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgRepInfo_TaskForce.IsDefender
 // [0x00020400] ( FUNC_Native )
 struct ATgRepInfo_TaskForce_execIsDefender_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgRepInfo_TaskForce.IsAttacker
 // [0x00020400] ( FUNC_Native )
 struct ATgRepInfo_TaskForce_execIsAttacker_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgRepInfo_TaskForce.CycleFrom
@@ -27686,7 +27686,7 @@ struct ATgRepInfo_TaskForce_execIsAttacker_Parms
 struct ATgRepInfo_TaskForce_execCycleFrom_Parms
 {
 	class ATgRepInfo_Player*                           pFrom;                                            		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bForward : 1;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bForward    ;                                     		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	class ATgRepInfo_Player*                           ReturnValue;                                      		// 0x0008 (0x0004) [0x0000000000000580]              ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
@@ -27722,7 +27722,7 @@ struct ATgTeamBeaconManager_execSetHexItem_Parms
 // [0x00020400] ( FUNC_Native )
 struct ATgTeamBeaconManager_execLoadInventoryBeacon_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgTeamBeaconManager.GetExitDeployableId
@@ -27756,7 +27756,7 @@ struct ATgTeamBeaconManager_execPopulateBeaconFactoryList_Parms
 struct ATgTeamBeaconManager_execUnRegisterBeacon_Parms
 {
 	class ATgDeploy_Beacon*                            pBeacon;                                          		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgTeamBeaconManager.RegisterBeacon
@@ -27764,23 +27764,23 @@ struct ATgTeamBeaconManager_execUnRegisterBeacon_Parms
 struct ATgTeamBeaconManager_execRegisterBeacon_Parms
 {
 	class ATgDeploy_Beacon*                            pBeacon;                                          		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bDeployed : 1;                                    		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bDeployed    ;                                    		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgTeamBeaconManager.CheckBeacon
 // [0x00024400] ( FUNC_Native )
 struct ATgTeamBeaconManager_execCheckBeacon_Parms
 {
-	unsigned long                                      bAttemptRespawn : 1;                              		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bAttemptRespawn    ;                              		// 0x0000 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgTeamBeaconManager.ShouldSpawnBeacon
 // [0x00020400] ( FUNC_Native )
 struct ATgTeamBeaconManager_execShouldSpawnBeacon_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgTeamBeaconManager.SpawnNewBeaconForTeam
@@ -27895,7 +27895,7 @@ struct UTgAnimNodeBlendNPC_execQueueActiveChild_Parms
 struct UTgAnimNodeBlendNPC_execIsAnUninterruptableAnim_Parms
 {
 	struct FName                                       AnimName;                                         		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             I;                                                		// 0x000C (0x0004) [0x0000000000000000]              
 };
 
@@ -28029,7 +28029,7 @@ struct UTgLocalMessage_execAnnouncementSound_Parms
 struct UTgLocalMessage_execIsRewardAnnouncement_Parms
 {
 	unsigned char                                      m_byMessageIndex;                                 		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgLocalMessage.AnnouncementLevel
@@ -28045,7 +28045,7 @@ struct UTgLocalMessage_execAnnouncementLevel_Parms
 struct ATgBaseObjective_KOTH_eventUpdateObjectiveStatus_Parms
 {
 	unsigned char                                      eStatus;                                          		// 0x0000 (0x0001) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgBaseObjective_KOTH.OnObjectiveStatusChange
@@ -28053,7 +28053,7 @@ struct ATgBaseObjective_KOTH_eventUpdateObjectiveStatus_Parms
 struct ATgBaseObjective_KOTH_execOnObjectiveStatusChange_Parms
 {
 	// int                                             nStatusEventIndex;                                		// 0x0000 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bAttackerCaptured : 1;                            		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bAttackerCaptured    ;                            		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgGame*                                  theGame;                                          		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 
@@ -28099,7 +28099,7 @@ struct ATgDefensePoint_execHigherPriorityThan_Parms
 {
 	class ATgDefensePoint*                             S;                                                		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class ATgAIController*                             B;                                                		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgDefensePoint.PreBeginPlay
@@ -28149,7 +28149,7 @@ struct UTgEffectBuff_execTrackBuffDebuff_Parms
 struct UTgEffectBuff_execRemove_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bResetToFollow : 1;                               		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      bResetToFollow    ;                               		// 0x0004 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
 };
 
 // Function TgGame.TgEffectBuff.ApplyEffect
@@ -28158,9 +28158,9 @@ struct UTgEffectBuff_execApplyEffect_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FImpactInfo                                 Impact;                                           		// 0x0004 (0x0060) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      bConvertDOT : 1;                                  		// 0x0064 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0068 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
-	// unsigned long                                   bWasApplied : 1;                                  		// 0x006C (0x0004) [0x0000000000000000] [0x00000001] 
+	unsigned long                                      bConvertDOT    ;                                  		// 0x0064 (0x0004) [0x0000000000000090] [0x00000001] ( CPF_OptionalParm | CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0068 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	// unsigned long                                   bWasApplied    ;                                  		// 0x006C (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgPawn*                                  BuffedPawn;                                       		// 0x0070 (0x0004) [0x0000000000000000]              
 };
 
@@ -28169,9 +28169,9 @@ struct UTgEffectBuff_execApplyEffect_Parms
 struct UTgEffectBuff_execApplyBuff_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      bRemove : 1;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bRemove    ;                                      		// 0x0004 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	struct FImpactInfo                                 Impact;                                           		// 0x0008 (0x0060) [0x0000000000000090]              ( CPF_OptionalParm | CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0068 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0068 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// float                                           fProratedAmount;                                  		// 0x006C (0x0004) [0x0000000000000000]              
 	// int                                             nReqBuffCategory;                                 		// 0x0070 (0x0004) [0x0000000000000000]              
 	// struct FBuffHeader                              header;                                           		// 0x0074 (0x0010) [0x0000000000000000]              
@@ -28194,7 +28194,7 @@ struct UTgEffectBuff_execGetBuffType_Parms
 struct UTgEffectBuff_execCanBeApplied_Parms
 {
 	class AActor*                                      Target;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Hunter.OnDeviceFormStopFire
@@ -28341,7 +28341,7 @@ struct ATgTeamScoreboard_execDrawCol_Parms
 	float                                              X2;                                               		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	float                                              Y;                                                		// 0x0008 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class ATgRepInfo_Player*                           prep;                                             		// 0x000C (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	// unsigned long                                   itsUs : 1;                                        		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   itsUs    ;                                        		// 0x0010 (0x0004) [0x0000000000000000] [0x00000001] 
 	// float                                           XL;                                               		// 0x0014 (0x0004) [0x0000000000000000]              
 	// float                                           YL;                                               		// 0x0018 (0x0004) [0x0000000000000000]              
 	// struct FString                                  S;                                                		// 0x001C (0x000C) [0x0000000000400000]              ( CPF_NeedCtorLink )
@@ -28383,14 +28383,14 @@ struct ATgScoreboard_execSBInputKey_Parms
 	struct FName                                       Key;                                              		// 0x0004 (0x0008) [0x0000000000000080]              ( CPF_Parm )
 	unsigned char                                      Event;                                            		// 0x000C (0x0001) [0x0000000000000080]              ( CPF_Parm )
 	float                                              AmountDepressed;                                  		// 0x0010 (0x0004) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgScoreboard.ChangeState
 // [0x00020102] 
 struct ATgScoreboard_execChangeState_Parms
 {
-	unsigned long                                      bIsVisible : 1;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bIsVisible    ;                                   		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class UTgPlayerInput*                           PInput;                                           		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -28563,7 +28563,7 @@ struct ATgKismetTestActor_execOnTestResult_Parms
 // [0x00020102] 
 struct ATgLevelCamera_execIsValidCamera_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// class ATgGame*                                  Game;                                             		// 0x0004 (0x0004) [0x0000000000000000]              
 };
 
@@ -28690,8 +28690,8 @@ struct ATgPawn_AndroidMinion_execTick_Parms
 // [0x00020000] 
 struct ATgPawn_Raptor_execDoJump_Parms
 {
-	unsigned long                                      bUpdating : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      bUpdating    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0004 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Raptor.EndCrouch
@@ -28736,7 +28736,7 @@ struct ATgPawn_Raptor_execTick_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_Raptor_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Boss_Destroyer.OnDeviceFormFire
@@ -28772,7 +28772,7 @@ struct ATgPawn_Brawler_execOnDeviceFormFire_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_Destructible_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Destructible.PlayDyingPhysicsAndAnimation
@@ -28797,7 +28797,7 @@ struct ATgPawn_Detonator_eventOnAnimEnd_Parms
 // [0x00020002] 
 struct ATgPawn_Detonator_execDelayedDied_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Detonator.Died
@@ -28807,7 +28807,7 @@ struct ATgPawn_Detonator_eventDied_Parms
 	class AController*                                 Killer;                                           		// 0x0000 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	class UClass*                                      dmgType;                                          		// 0x0004 (0x0004) [0x0000000000000080]              ( CPF_Parm )
 	struct FVector                                     HitLocation;                                      		// 0x0008 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0014 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Detonator.SaveDeathInfo
@@ -28880,7 +28880,7 @@ struct ATgPawn_DuneCommander_execDoCrashLanding_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_DuneCommander_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_DuneCommander.PostBeginPlay
@@ -28901,7 +28901,7 @@ struct ATgPawn_DuneCommander_eventReplicatedEvent_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_Elite_Alchemist_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Elite_Assassin.PostInitAnimTree
@@ -28977,7 +28977,7 @@ struct ATgPawn_Guardian_execSetPhysAnimState_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_Guardian_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_HoverShieldSphere.OnDeviceFormStopFire
@@ -29058,7 +29058,7 @@ struct ATgPawn_Reaper_eventOnPhaseChange_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_Reaper_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Reaper.PostInitAnimTree
@@ -29120,7 +29120,7 @@ struct ATgPawn_SupportForeman_eventOnPhaseChange_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_SupportForeman_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_SupportForeman.CheckBeingTargeted
@@ -29174,7 +29174,7 @@ struct ATgPawn_TurretFlak_eventPostInitAnimTree_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_TurretFlak_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_TurretFlame.PostInitAnimTree
@@ -29188,7 +29188,7 @@ struct ATgPawn_TurretFlame_eventPostInitAnimTree_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_TurretFlame_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_TurretPlasma.Tick
@@ -29210,7 +29210,7 @@ struct ATgPawn_TurretPlasma_eventPostInitAnimTree_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_TurretPlasma_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_UberWalker.PlayDyingPhysicsAndAnimation
@@ -29264,7 +29264,7 @@ struct ATgPawn_Vanguard_execPlayFootstepRecoil_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_Vanguard_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPawn_Vanguard.StopGunRecoil
@@ -29357,7 +29357,7 @@ struct ATgPawn_Warlord_execOnDeviceFormBuildup_Parms
 // [0x00020902] ( FUNC_Event )
 struct ATgPawn_Warlord_eventPostPawnSetup_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPhysAnimTestActor.OnAnimEnd
@@ -29402,20 +29402,20 @@ struct ATgPhysAnimTestActor_execRecoverFromRagdoll_Parms
 	// struct FVector                                  TraceEnd;                                         		// 0x0024 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  HeightVec;                                        		// 0x0030 (0x000C) [0x0000000000000000]              
 	// struct FRotator                                 NewRotation;                                      		// 0x003C (0x000C) [0x0000000000000000]              
-	// unsigned long                                   GetUpFromBack : 1;                                		// 0x0048 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   GetUpFromBack    ;                                		// 0x0048 (0x0004) [0x0000000000000000] [0x00000001] 
 };
 
 // Function TgGame.TgPhysAnimTestActor.SetBoneSprings
 // [0x00820102] 
 struct ATgPhysAnimTestActor_execSetBoneSprings_Parms
 {
-	unsigned long                                      bEnabled : 1;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      bEnabled    ;                                     		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 	// class URB_BodyInstance*                         BodyInst;                                         		// 0x0004 (0x0004) [0x0000000000000000]              
 	// class URB_BodySetup*                            BodySetup;                                        		// 0x0008 (0x0004) [0x0000000000000000]              
 	// int                                             I;                                                		// 0x000C (0x0004) [0x0000000000000000]              
 	// int                                             BoneIndex;                                        		// 0x0010 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bEnableLinear : 1;                                		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
-	// unsigned long                                   bEnableAngular : 1;                               		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bEnableLinear    ;                                		// 0x0014 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bEnableAngular    ;                               		// 0x0018 (0x0004) [0x0000000000000000] [0x00000001] 
 	// struct FMatrix                                  BoneMatrix;                                       		// 0x0020 (0x0040) [0x0000000000000000]              
 };
 
@@ -29424,7 +29424,7 @@ struct ATgPhysAnimTestActor_execSetBoneSprings_Parms
 struct ATgPhysAnimTestActor_execIsAngularBoneSpringName_Parms
 {
 	struct FName                                       InName;                                           		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             I;                                                		// 0x000C (0x0004) [0x0000000000000000]              
 };
 
@@ -29433,7 +29433,7 @@ struct ATgPhysAnimTestActor_execIsAngularBoneSpringName_Parms
 struct ATgPhysAnimTestActor_execIsLinearBoneSpringName_Parms
 {
 	struct FName                                       InName;                                           		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             I;                                                		// 0x000C (0x0004) [0x0000000000000000]              
 };
 
@@ -29460,7 +29460,7 @@ struct ATgPhysAnimTestActor_execDetachAttachments_Parms
 struct ATgPhysAnimTestActor_execIsLowerBodyName_Parms
 {
 	struct FName                                       InName;                                           		// 0x0000 (0x0008) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0008 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 	// int                                             I;                                                		// 0x000C (0x0004) [0x0000000000000000]              
 };
 
@@ -29468,14 +29468,14 @@ struct ATgPhysAnimTestActor_execIsLowerBodyName_Parms
 // [0x00020102] 
 struct ATgPhysAnimTestActor_execSetBodiesFixed_Parms
 {
-	unsigned long                                      InFixed : 1;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      InFixed    ;                                      		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPhysAnimTestActor.EnableMotors
 // [0x00020102] 
 struct ATgPhysAnimTestActor_execEnableMotors_Parms
 {
-	unsigned long                                      InEnabled : 1;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
+	unsigned long                                      InEnabled    ;                                    		// 0x0000 (0x0004) [0x0000000000000080] [0x00000001] ( CPF_Parm )
 };
 
 // Function TgGame.TgPhysAnimTestActor.SetPATAState
@@ -29495,7 +29495,7 @@ struct ATgPhysAnimTestActor_execEndGrab_Parms
 // [0x00020102] 
 struct ATgPhysAnimTestActor_execPreGrab_Parms
 {
-	unsigned long                                      ReturnValue : 1;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x0000 (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPhysAnimTestActor.PrePokeActor
@@ -29503,7 +29503,7 @@ struct ATgPhysAnimTestActor_execPreGrab_Parms
 struct ATgPhysAnimTestActor_execPrePokeActor_Parms
 {
 	struct FVector                                     PokeDir;                                          		// 0x0000 (0x000C) [0x0000000000000080]              ( CPF_Parm )
-	unsigned long                                      ReturnValue : 1;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
+	unsigned long                                      ReturnValue    ;                                  		// 0x000C (0x0004) [0x0000000000000580] [0x00000001] ( CPF_Parm | CPF_OutParm | CPF_ReturnParm )
 };
 
 // Function TgGame.TgPhysAnimTestActor.BoneImpulse
@@ -29613,7 +29613,7 @@ struct ATgProj_Teleporter_execGotoLocation_Parms
 	// int                                             nCount;                                           		// 0x000C (0x0004) [0x0000000000000000]              
 	// int                                             nMaxTries;                                        		// 0x0010 (0x0004) [0x0000000000000000]              
 	// struct FVector                                  vOffset;                                          		// 0x0014 (0x000C) [0x0000000000000000]              
-	// unsigned long                                   bSuccess : 1;                                     		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bSuccess    ;                                     		// 0x0020 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class AActor*                                   HitActor;                                         		// 0x0024 (0x0004) [0x0000000000000000]              
 	// struct FVector                                  HitLocation;                                      		// 0x0028 (0x000C) [0x0000000000000000]              
 	// struct FVector                                  HitNormal;                                        		// 0x0034 (0x000C) [0x0000000000000000]              
@@ -29631,7 +29631,7 @@ struct ATgProj_Teleporter_execCancelTeleporting_Parms
 struct ATgProj_Teleporter_execCheckInterruptTeleport_Parms
 {
 	// class ATgPawn*                                  P;                                                		// 0x0000 (0x0004) [0x0000000000000000]              
-	// unsigned long                                   bInterrupt : 1;                                   		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
+	// unsigned long                                   bInterrupt    ;                                   		// 0x0004 (0x0004) [0x0000000000000000] [0x00000001] 
 	// class ATgDevice*                                firingDevice;                                     		// 0x0008 (0x0004) [0x0000000000000000]              
 };
 

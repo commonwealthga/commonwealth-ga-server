@@ -3,6 +3,7 @@
 #include "src/GameServer/TgGame/TgEffectManager/ProcessReactiveSkillBasedEffectGroup/TgEffectManager__ProcessReactiveSkillBasedEffectGroup.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include <vector>
 
 // TgEffectManager::RemoveEffectGroup — original is the empty stub @ 0x10a6ef10.
 // UC: `native function bool RemoveEffectGroup(TgEffectGroup eg);` Called by
@@ -23,6 +24,63 @@
 // Intact native counterpart to SetEffectRep.
 typedef void(__fastcall* ClearEffectRepFn)(ATgEffectManager*, void*, int /*nEffectId*/, int /*nManagedListIndex*/);
 static const ClearEffectRepFn ClearEffectRepNative = (ClearEffectRepFn)0x10a6f030;
+
+// Recon uncloak left the cloak-effect skin on hair/head/backpack: when
+// the stealth group (category 621) is removed, two replicated actors change in
+// the same tick - the pawn (r_bIsStealthed / r_nApplyStealth -> client
+// SwapMeshToStealthed(false), which restores the materials saved at cloak-in)
+// and this manager (stealth slot cleared in r_ManagedEffectList -> client
+// RemoveMICFx -> SetSkin = the agent's normal skin). The client only ends on
+// the normal skin when both arrive in the SAME packet with the pawn first
+// (client probe, side runs cfx08/cfx12/cfx14). The engine writes the actors of
+// a tick in NetPriority * time-since-last-update order; the pawn runs at 100 Hz,
+// this manager at 10 Hz (ReplicationDefaults), so the manager's longer wait
+// often outranks the pawn and its slot clear goes first (or a tick later).
+// Original TgGame.u had the manager at 100 Hz, which kept the pawn first; we
+// keep 10 Hz (100 Hz crashed the client after jetpack-while-cloaked)
+// and instead force both out this tick with the manager's priority dropped to
+// near zero, so it is written right after the pawn. Restored ~0.3 s later from
+// the pawn tick (TgPawn__TickMakeVisibleCalculation).
+namespace {
+struct StealthClearPrio { ATgEffectManager* mgr; AActor* owner; float orig; ULONGLONG due; };
+std::vector<StealthClearPrio> g_stealthClearPrio;
+constexpr float kStealthClearMgrPriority = 0.001f;
+constexpr ULONGLONG kStealthClearPrioMs = 300;
+constexpr ULONGLONG kStaleMs = 5000;   // owner pawn stopped ticking: forget it, never touch the manager again
+}
+
+void TgEffectManager__RemoveEffectGroup::RestoreStealthClearPriority(ATgEffectManager* Manager) {
+	if (g_stealthClearPrio.empty()) return;
+	const ULONGLONG now = GetTickCount64();
+	for (size_t i = 0; i < g_stealthClearPrio.size();) {
+		const StealthClearPrio e = g_stealthClearPrio[i];
+		if (now > e.due + kStaleMs) { g_stealthClearPrio.erase(g_stealthClearPrio.begin() + i); continue; }
+		if (Manager && e.mgr == Manager && now >= e.due) {
+			g_stealthClearPrio.erase(g_stealthClearPrio.begin() + i);
+			if (Manager->r_Owner == e.owner && Manager->NetPriority == kStealthClearMgrPriority) {
+				Manager->NetPriority = e.orig;
+			}
+			continue;
+		}
+		++i;
+	}
+}
+
+static void StealthOffSendPawnFirst(ATgEffectManager* Manager) {
+	AActor* owner = Manager->r_Owner;
+	if (!owner || !ObjectClassCache::ClassNameContains(owner, "TgPawn")) return;
+	owner->bNetDirty = 1;
+	owner->bForceNetUpdate = 1;
+	Manager->bNetDirty = 1;
+	Manager->bForceNetUpdate = 1;
+	const ULONGLONG due = GetTickCount64() + kStealthClearPrioMs;
+	bool have = false;
+	for (StealthClearPrio& e : g_stealthClearPrio) {
+		if (e.mgr == Manager) { e.owner = owner; e.due = due; have = true; }   // fast re-cloak: keep the first saved priority
+	}
+	if (!have) g_stealthClearPrio.push_back({Manager, owner, Manager->NetPriority, due});
+	Manager->NetPriority = kStealthClearMgrPriority;
+}
 
 bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manager, void* /*edx*/, UTgEffectGroup* EffectGroup) {
 	if (!Manager || !EffectGroup) return false;
@@ -168,6 +226,10 @@ bool __fastcall TgEffectManager__RemoveEffectGroup::Call(ATgEffectManager* Manag
 	}
 
 	Manager->bNetDirty = 1;
+
+	// 7. Stealth off -> pawn and slot clear in one packet, pawn first.
+	if (removedCategory == 621) StealthOffSendPawnFirst(Manager);
+
 	if (Logger::IsChannelEnabled("effects")) {
 		Logger::Log("effects", "[REMOVE-GROUP] removed egId=%d cat=%d slot=%d\n",
 			inEgId, removedCategory, slot);

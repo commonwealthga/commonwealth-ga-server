@@ -1,8 +1,12 @@
 #include "src/ControlServer/MatchmakingService/Rules/CoopMatchRule.hpp"
+
+#include <unordered_map>
 #include "src/ControlServer/MatchmakingService/RuleSupport.hpp"
 #include "src/ControlServer/MatchmakingService/StrictBalance.hpp"
 
 #include <algorithm>
+#include <ctime>
+#include "src/ControlServer/MatchModeFilter/MatchModeFilter.hpp"
 
 using mm::PartiesByWaitAsc;
 using mm::PackParties;
@@ -18,6 +22,66 @@ void Partition(const std::vector<QueuedParty>& parties,
         if (p.is_team) teams.push_back(p);
         else           solos.push_back(p);
     }
+}
+
+// Distinct profile_ids among the given parties' members.
+uint32_t DistinctClasses(const std::vector<const QueuedParty*>& parties) {
+    std::vector<uint32_t> seen;
+    for (const auto* p : parties)
+        for (const auto& m : p->members)
+            if (std::find(seen.begin(), seen.end(), m.profile_id) == seen.end())
+                seen.push_back(m.profile_id);
+    return (uint32_t)seen.size();
+}
+
+// PackParties with a per-class limit for the whole match (max_class_per_side
+// x 2, starting from the instance's current class counts). limit 0 = plain
+// PackParties.
+std::vector<const QueuedParty*> PackPartiesClassCap(
+    const std::vector<const QueuedParty*>& ordered, int seat_budget,
+    uint32_t per_side, const TeamSeed& seed1, const TeamSeed& seed2) {
+    if (per_side == 0) return PackParties(ordered, seat_budget);
+    const int limit = 2 * (int)per_side;
+    std::unordered_map<uint32_t, int> counts = seed1.class_counts;
+    for (const auto& kv : seed2.class_counts) counts[kv.first] += kv.second;
+    std::vector<const QueuedParty*> chosen;
+    int used = 0;
+    for (const QueuedParty* p : ordered) {
+        const int need = (int)p->size();
+        if (seat_budget >= 0 && used + need > seat_budget) continue;
+        std::unordered_map<uint32_t, int> add;
+        for (const auto& m : p->members) add[m.profile_id]++;
+        bool fits = true;
+        for (const auto& kv : add)
+            if (counts[kv.first] + kv.second > limit) { fits = false; break; }
+        if (!fits) continue;
+        for (const auto& kv : add) counts[kv.first] += kv.second;
+        chosen.push_back(p);
+        used += need;
+    }
+    return chosen;
+}
+
+// A running PvP match older than the client's seal time only takes
+// parties whose every member ticked "Volunteer me for late backfills".
+bool IsLateMatch(const RunningInstance& inst) {
+    return inst.started_at > 0
+        && (int64_t)std::time(nullptr) - inst.started_at >= MatchModeFilter::kLateBackfillAfterSecs;
+}
+bool PartyVolunteers(const QueuedParty& p) {
+    for (const auto& m : p.members)
+        if (!MatchModeFilter::LateBackfillVolunteer(m.session_guid)) return false;
+    return true;
+}
+std::vector<QueuedParty> VolunteersOnly(const std::vector<QueuedParty>& in) {
+    std::vector<QueuedParty> out;
+    for (const auto& p : in) if (PartyVolunteers(p)) out.push_back(p);
+    return out;
+}
+std::vector<const QueuedParty*> VolunteersOnly(const std::vector<const QueuedParty*>& in) {
+    std::vector<const QueuedParty*> out;
+    for (const auto* p : in) if (PartyVolunteers(*p)) out.push_back(p);
+    return out;
 }
 
 }  // namespace
@@ -54,9 +118,11 @@ std::optional<MatchResult> CoopMatchRule::PlacePool(
     if (backfill) {
         for (const auto& inst : instances) {
             if (inst.access_mode != AccessMode::BackfillOnly) continue;
-            auto invites = StrictBalance::PlanDeficitBackfill(parties, inst);
+            const std::vector<QueuedParty> late_ok = IsLateMatch(inst) ? VolunteersOnly(parties) : parties;
+            if (late_ok.empty()) continue;
+            auto invites = StrictBalance::PlanDeficitBackfill(late_ok, inst);
             if (invites.empty() && cfg_.pair_backfill)
-                invites = StrictBalance::PlanPairJoin(parties, inst);
+                invites = StrictBalance::PlanPairJoin(late_ok, inst);
             if (invites.empty()) continue;
 
             MatchResult r;
@@ -79,7 +145,9 @@ std::optional<MatchResult> CoopMatchRule::PlacePool(
     for (const auto& inst : instances) {
         if (inst.access_mode != AccessMode::Open) continue;  // never enter locked/sealed
         const int seats = inst.seats_free();                 // -1 = unlimited
-        auto chosen = PackParties(ordered, seats);
+        const bool late = pvp && IsLateMatch(inst);          // late backfill = volunteers only
+        auto chosen = PackPartiesClassCap(late ? VolunteersOnly(ordered) : ordered, seats,
+                                          cfg_.max_class_per_side, inst.team1, inst.team2);
         if (chosen.empty()) continue;
 
         MatchResult r = BuildResult(
@@ -98,9 +166,12 @@ std::optional<MatchResult> CoopMatchRule::PlacePool(
     if (strict) {
         chosen = StrictBalance::SelectClassEqualSubset(parties, cap > 0 ? (int)cap : -1);
     } else {
-        chosen = PackParties(ordered, cap > 0 ? (int)cap : -1);
+        chosen = PackPartiesClassCap(ordered, cap > 0 ? (int)cap : -1,
+                                     cfg_.max_class_per_side, {}, {});
     }
     if (chosen.empty()) return std::nullopt;
+    if (cfg_.min_distinct_classes > 0 &&
+        DistinctClasses(chosen) < cfg_.min_distinct_classes) return std::nullopt;
 
     MatchResult r = BuildResult(
         chosen, cfg_.taskforce_policy, cfg_.team_side_policy,

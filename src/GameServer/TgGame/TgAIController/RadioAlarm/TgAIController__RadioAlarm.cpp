@@ -104,7 +104,7 @@ void __fastcall TgAIController__RadioAlarm::Call(ATgAIController* AIC, void* edx
 		"[%s] RadioAlarm: caller=%s alarmId=%d (globalAlarmId=%d)\n",
 		Logger::GetTime(), Origin, alarmId, AIC->m_nGlobalAlarmId);
 
+	FString sTypeCode;
 	TgGame__ActivateAlarm::Call(Game, nullptr,
-		(AActor*)AIC->Pawn, alarmId,
-		/*sTypeCode_Data=*/ 0, /*sTypeCode_Count=*/ 0, /*sTypeCode_Max=*/ 0);
+		(AActor*)AIC->Pawn, alarmId, &sTypeCode);
 }

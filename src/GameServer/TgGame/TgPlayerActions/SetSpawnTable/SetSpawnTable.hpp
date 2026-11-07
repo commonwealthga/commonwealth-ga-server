@@ -8,7 +8,7 @@ namespace TgPlayerActions::SetSpawnTableCmd {
 // everywhere. When false, Execute() logs + tells the caller and does nothing.
 // This is the one boolean to change once open-world spawn-table authoring is
 // finished; the command is otherwise unconditional (no role/permission gate).
-constexpr bool kEnabled = false;
+constexpr bool kEnabled = true;
 
 // -setspawntable <mapObjectId> <spawnTableId>
 //

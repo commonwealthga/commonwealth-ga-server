@@ -12,10 +12,12 @@
 #include "src/Shared/IpcProtocol.hpp"
 #include "lib/nlohmann/json.hpp"
 #include "src/Database/Database.hpp"
+#include "src/Shared/SkillRules.hpp"
 #include "src/GameServer/Engine/KismetDump/KismetDump.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/GameServer/Social/InspectRelay.hpp"
 
 enum class QuestAction { Request, Abandon };
 
@@ -36,6 +38,25 @@ uint8_t __fastcall CGameClient__MarshalReceived::Call(void* GameClient, void* ed
 
 	short uVar1 = *(short*)((int)InBunch + 0x26);
 	Logger::Log(GetLogChannel(), "Received packet type [0x%04X] (suppressed on server)\n", uVar1);
+
+	if (InspectRelay::Handle(uVar1, InBunch, edx)) { LogCallEnd(); return 0; }   // X inspect
+
+	if (uVar1 == GA_U::REQUEST_BILBOARD_CONTENT) {   // 0760: the client asks for a volume's text when the player enters it
+		uint32_t nKey = 0;
+		CMarshal__GetInt32t::CallOriginal(InBunch, edx, GA_T::BILBOARD_ID, &nKey);
+		auto it = GClientConnectionsData.find((int32_t)(intptr_t)GCurrentMarshalConnection);
+		if (it != GClientConnectionsData.end() && !it->second.SessionGuid.empty()) {
+			nlohmann::json ev;
+			ev["type"]         = IpcProtocol::MSG_GAME_EVENT;
+			ev["subtype"]      = "billboard_request";
+			ev["instance_id"]  = IpcClient::GetInstanceId();
+			ev["session_guid"] = it->second.SessionGuid;
+			ev["key"]          = nKey;
+			IpcClient::Send(ev.dump());
+		}
+		LogCallEnd();
+		return 0;
+	}
 
 	if (uVar1 == GA_U::SEND_PLAYER_SKILLS) {
 		// Client-sent skill-tree save. The client's SendRequest routes this
@@ -123,7 +144,21 @@ uint8_t __fastcall CGameClient__MarshalReceived::Call(void* GameClient, void* ed
 		// next spawn. The control server's skill_save IPC handler has its
 		// own "empty payload = client requesting current state" guard for
 		// DB writes, so an inadvertent empty here doesn't wipe persistence.
-		if (it != GClientConnectionsData.end()
+		// Apply only an allocation the game's rules allow (same
+		// check the control server runs before saving); otherwise keep the
+		// current build - the CS echoes the stored tree back to the UI.
+		bool skillsValid = true;
+		{
+			std::vector<SkillRules::SkillPick> picks;
+			for (const auto& r : rows)
+				picks.push_back({r.value("skill_group_id", 0), r.value("skill_id", 0), r.value("points", 0)});
+			std::string why;
+			skillsValid = SkillRules::ValidateSkillAllocation(Database::GetConnection(), nCharacterId, picks, why);
+			if (!skillsValid)
+				Logger::Log(GetLogChannel(), "[SEND_PLAYER_SKILLS] REJECTED char=%lld: %s\n",
+					(long long)nCharacterId, why.c_str());
+		}
+		if (skillsValid && it != GClientConnectionsData.end()
 			&& it->second.pPlayerInfo && it->second.Pawn) {
 			it->second.pPlayerInfo->skills.clear();
 			for (const auto& r : rows) {
@@ -154,6 +189,15 @@ uint8_t __fastcall CGameClient__MarshalReceived::Call(void* GameClient, void* ed
 
 		QuestAction action = bAbandonFlag ? QuestAction::Abandon : QuestAction::Request;
 
+		// A reward the player picked in the quest dialog (pick-one
+		// reward lists). Field not confirmed yet - read every candidate, log
+		// them, pass the first one set; absent fields stay 0.
+		uint32_t nRewardItemId = 0, nLootTableItemId = 0, nItemId = 0;
+		CMarshal__GetInt32t::CallOriginal(InBunch, edx, GA_T::REWARD_ITEM_ID, &nRewardItemId);
+		CMarshal__GetInt32t::CallOriginal(InBunch, edx, GA_T::LOOT_TABLE_ITEM_ID, &nLootTableItemId);
+		CMarshal__GetInt32t::CallOriginal(InBunch, edx, GA_T::ITEM_ID, &nItemId);
+		const uint32_t nRewardPick = nRewardItemId ? nRewardItemId : (nLootTableItemId ? nLootTableItemId : nItemId);
+
 		// GCurrentMarshalConnection is the UNetConnection set by MarshalChannel__MarshalReceived
 		// before dispatching here — one per player, proper multi-player identity.
 		std::string session_guid;
@@ -166,104 +210,13 @@ uint8_t __fastcall CGameClient__MarshalReceived::Call(void* GameClient, void* ed
 			if (it->second.pPlayerInfo) nCharacterId = it->second.pPlayerInfo->selected_character_id;
 		}
 
-		Logger::Log(GetLogChannel(), "[QUEST_UPDATE_REQUEST] questId=%u abandon=%d session_guid=%s\n",
-			nQuestId, (int)bAbandonFlag, session_guid.c_str());
+		Logger::Log(GetLogChannel(), "[QUEST_UPDATE_REQUEST] questId=%u abandon=%d reward_item=%u loot_table_item=%u item=%u session_guid=%s\n",
+			nQuestId, (int)bAbandonFlag, nRewardItemId, nLootTableItemId, nItemId, session_guid.c_str());
 
+		// Kismet (QuestUpdated links) fires on QUEST_KISMET from the
+		// control server AFTER it accepted / refused / finished the request, so a
+		// refused turn-in no longer plays the "Turned In" branch.
 		if (!session_guid.empty()) {
-			TArray<USequenceObject*> Events;
-			TArray<int> Indices;
-			AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
-
-			WorldInfo->GetGameSequence()->FindSeqObjectsByClass(
-				ClassPreloader::GetClass("Class TgGame.TgSeqEvent_QuestUpdated"),
-				1,
-				&Events
-			);
-
-			for (int i = 0; i < Events.Num(); i++) {
-				UTgSeqEvent_QuestUpdated* Event = (UTgSeqEvent_QuestUpdated*)Events.Data[i];
-				if (Event->QuestId == nQuestId) {
-
-					for (int j = 0; j < Event->OutputLinks.Num(); j++) {
-						for (int k = 0; k < Event->OutputLinks.Data[j].Links.Num(); k++) {
-							USequenceOp* Op = Event->OutputLinks.Data[j].Links.Data[k].LinkedOp;
-							Logger::Log(GetLogChannel(), "OutputLink [%d] Link [%d] Sequence Op: %s\n", j, k, Op->GetFullName());
-						}
-					}
-
-					// USeqAct_Interp::bClientSideOnly is at +0x017C bit 0x400.
-					// The sequence tick silently skips client-side-only ops on a dedicated server.
-					// Clear the flag on all ops connected to the output link we're about to fire.
-					auto ClearClientSideOnly = [](UTgSeqEvent_QuestUpdated* Ev, int LinkIdx) {
-						if (LinkIdx >= Ev->OutputLinks.Num()) return;
-						auto& link = Ev->OutputLinks.Data[LinkIdx];
-						for (int k = 0; k < link.Links.Num(); k++) {
-							USequenceOp* Op = link.Links.Data[k].LinkedOp;
-							if (Op) {
-								uint32_t& flags = *(uint32_t*)((char*)Op + 0x017C);
-								if (flags & 0x400u) {
-									flags &= ~0x400u;
-									Logger::Log(GetLogChannel(), "Cleared bClientSideOnly on %s\n", Op->GetFullName());
-								}
-							}
-						}
-					};
-
-					// Re-dump Kismet once after sub-levels have loaded (first quest event fires well after BeginPlay)
-					static bool s_bKismetRedumped = false;
-					if (!s_bKismetRedumped) {
-						s_bKismetRedumped = true;
-						DumpKismetSequence();
-					}
-
-					auto status = Database::GetQuestStatus(nCharacterId, nQuestId);
-					int outputLink = -1;
-					if (status == "active" && action != QuestAction::Abandon) {
-						// ClearClientSideOnly(Event, 2);
-						Event->ActivateOutputLink(2);
-						outputLink = 2;
-						Logger::Log(GetLogChannel(), "Activating output link 2\n");
-					} else if (action != QuestAction::Abandon) {
-						// ClearClientSideOnly(Event, 0);
-						Event->ActivateOutputLink(0);
-						outputLink = 0;
-						Logger::Log(GetLogChannel(), "Activating output link 0\n");
-					}
-
-					// ForceActivateInput on non-latent ops to ensure immediate execution.
-					// Latent ops (bLatentExecution = USequenceOp+0x008C bit 0x2) like SeqAct_Delay
-					// must NOT be force-activated: their outputs fire asynchronously without an
-					// instigator pawn in variable links, causing a null-deref crash downstream.
-					if (outputLink >= 0 && outputLink < Event->OutputLinks.Num()) {
-						auto& olink = Event->OutputLinks.Data[outputLink];
-						for (int k = 0; k < olink.Links.Num(); k++) {
-							USequenceOp* Op = olink.Links.Data[k].LinkedOp;
-							if (!Op) continue;
-							bool bLatent = (*(uint32_t*)((char*)Op + 0x008C) & 0x2) != 0;
-							// SeqAct_Interp is latent (derives from USeqAct_Latent) but safe to
-							// force-activate — it just starts a matinee and doesn't fire async
-							// outputs that need an instigator pawn in variable links.
-							// IsA is unreliable on this build — match by class-name string instead.
-							bool bIsInterp = false;
-							if (Op->Class) {
-								const char* ocRaw = Op->Class->GetFullName();
-								if (ocRaw) {
-									const std::string ocName = ocRaw;
-									bIsInterp = ocName.find("SeqAct_Interp") != std::string::npos;
-								}
-							}
-							if (bLatent && !bIsInterp) {
-								Logger::Log(GetLogChannel(), "Skipping latent op %s\n", Op->GetFullName());
-								continue;
-							}
-							int inputIdx = olink.Links.Data[k].InputLinkIdx;
-							Logger::Log(GetLogChannel(), "ForceActivateInput(%d) on %s\n", inputIdx, Op->GetFullName());
-							Op->ForceActivateInput(inputIdx);
-						}
-					}
-				}
-			}
-
 			{
 				nlohmann::json ev;
 				ev["type"]         = IpcProtocol::MSG_GAME_EVENT;
@@ -273,6 +226,7 @@ uint8_t __fastcall CGameClient__MarshalReceived::Call(void* GameClient, void* ed
 				ev["quest_id"]     = (int)nQuestId;
 				ev["abandon"]      = (action == QuestAction::Abandon);
 				ev["character_id"] = nCharacterId;
+				ev["reward_item_id"] = (int)nRewardPick;
 				// Lets the control server refresh the inventory after a turn-in
 				// consumes components / grants reward loot.
 				ev["pawn_id"]      = InstigatorPawn ? (int)InstigatorPawn->r_nPawnId : 0;
@@ -284,4 +238,69 @@ uint8_t __fastcall CGameClient__MarshalReceived::Call(void* GameClient, void* ed
 	LogCallEnd();
 
 	return 0;
+}
+
+// Fire every op on one output link of a quest sequence event. Non-latent ops are
+// force-activated so they run this tick. Latent ops (bLatentExecution =
+// USequenceOp+0x008C bit 0x2) like SeqAct_Delay must NOT be force-activated: their
+// outputs fire asynchronously without an instigator pawn in variable links, causing
+// a null-deref crash downstream. SeqAct_Interp is latent but safe (it only starts a
+// matinee); IsA is unreliable on this build, so match the class name.
+static void ActivateSeqEventLink(USequenceEvent* Event, int outputLink, const char* channel) {
+	if (outputLink < 0 || outputLink >= Event->OutputLinks.Num()) return;
+	Event->ActivateOutputLink(outputLink);
+	auto& olink = Event->OutputLinks.Data[outputLink];
+	for (int k = 0; k < olink.Links.Num(); k++) {
+		USequenceOp* Op = olink.Links.Data[k].LinkedOp;
+		if (!Op) continue;
+		bool bLatent = (*(uint32_t*)((char*)Op + 0x008C) & 0x2) != 0;
+		bool bIsInterp = false;
+		if (Op->Class) {
+			const char* ocRaw = Op->Class->GetFullName();
+			if (ocRaw) bIsInterp = std::string(ocRaw).find("SeqAct_Interp") != std::string::npos;
+		}
+		if (bLatent && !bIsInterp) {
+			Logger::Log(channel, "Skipping latent op %s\n", Op->GetFullName());
+			continue;
+		}
+		int inputIdx = olink.Links.Data[k].InputLinkIdx;
+		Logger::Log(channel, "ForceActivateInput(%d) on %s\n", inputIdx, Op->GetFullName());
+		Op->ForceActivateInput(inputIdx);
+	}
+}
+
+void CGameClient__MarshalReceived::FireQuestKismet(int quest_id, int link, int requirement_id) {
+	AWorldInfo* WorldInfo = World__GetWorldInfo::CallOriginal((UWorld*)Globals::Get().GWorld, nullptr, 0);
+	if (!WorldInfo || !WorldInfo->GetGameSequence()) return;
+
+	// Re-dump Kismet once after sub-levels have loaded (first quest event fires well after BeginPlay)
+	static bool s_bKismetRedumped = false;
+	if (!s_bKismetRedumped) {
+		s_bKismetRedumped = true;
+		DumpKismetSequence();
+	}
+
+	TArray<USequenceObject*> Events;
+	const bool bReq = requirement_id > 0;
+	WorldInfo->GetGameSequence()->FindSeqObjectsByClass(
+		ClassPreloader::GetClass(bReq ? "Class TgGame.TgSeqEvent_QuestRequirementUpdated"
+		                              : "Class TgGame.TgSeqEvent_QuestUpdated"),
+		1, &Events);
+
+	int fired = 0;
+	for (int i = 0; i < Events.Num(); i++) {
+		if (bReq) {
+			auto* Ev = (UTgSeqEvent_QuestRequirementUpdated*)Events.Data[i];
+			if (Ev->QuestId != quest_id || Ev->QuestRequirementId != requirement_id) continue;
+			ActivateSeqEventLink(Ev, 0, GetLogChannel());
+		} else {
+			auto* Ev = (UTgSeqEvent_QuestUpdated*)Events.Data[i];
+			if (Ev->QuestId != quest_id) continue;
+			ActivateSeqEventLink(Ev, link, GetLogChannel());
+		}
+		fired++;
+	}
+	if (fired)
+		Logger::Log(GetLogChannel(), "[QuestKismet] quest=%d req=%d link=%d -> %d event(s)\n",
+			quest_id, requirement_id, link, fired);
 }
