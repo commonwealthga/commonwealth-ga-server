@@ -10,6 +10,7 @@
 #include "src/ControlServer/ChatListener/ChatListener.hpp"
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
 #include "src/ControlServer/SpectatorOverlay/OverlayHttpServer.hpp"
+#include "src/ControlServer/PlayerSettingsApi/PlayerSettingsHttpServer.hpp"
 #include "src/ControlServer/SpectatorOverlay/SpectatorOverlayState.hpp"
 #include "src/ControlServer/SpectatorOverlay/MissionProgressState.hpp"
 #include "src/Shared/IpcProtocol.hpp"
@@ -860,6 +861,11 @@ int main(int argc, char* argv[]) {
     // bind or overlay_http_port is left at its 0 default — the feature is
     // opt-in, unlike the listeners above.
     OverlayHttpServer overlay_http(io, cfg.overlay_bind, cfg.overlay_http_port, cfg.overlay_token);
+    // The website's write path for player settings. Separate listener from the
+    // overlay on purpose: this one is loopback-only and refuses to start
+    // without admin_token, because it changes other accounts' preferences.
+    PlayerSettingsHttpServer player_settings_http(
+        io, cfg.settings_api_bind, cfg.settings_api_port, cfg.admin_token);
 
     Logger::Log("main", "All listeners bound\n");
     IpcServer::SetAdminToken(cfg.admin_token);

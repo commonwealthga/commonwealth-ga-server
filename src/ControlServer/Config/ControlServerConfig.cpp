@@ -97,6 +97,8 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
     if (j.contains("overlay_http_port"))  cfg.overlay_http_port  = j["overlay_http_port"].get<uint16_t>();
     if (j.contains("overlay_token"))      cfg.overlay_token      = j["overlay_token"].get<std::string>();
     if (j.contains("overlay_bind"))       cfg.overlay_bind       = j["overlay_bind"].get<std::string>();
+    if (j.contains("settings_api_port"))  cfg.settings_api_port  = j["settings_api_port"].get<uint16_t>();
+    if (j.contains("settings_api_bind"))  cfg.settings_api_bind  = j["settings_api_bind"].get<std::string>();
     if (j.contains("startup_timeout_seconds"))
         cfg.startup_timeout_seconds = j["startup_timeout_seconds"].get<int>();
     if (j.contains("db_path"))            cfg.db_path            = j["db_path"].get<std::string>();

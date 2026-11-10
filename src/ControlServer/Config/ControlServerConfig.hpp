@@ -72,6 +72,14 @@ struct ControlServerConfig {
     // public face is the docker/spectator-overlay proxy on the same host,
     // so the token-gated port is not directly reachable from outside.
     std::string overlay_bind       = "0.0.0.0";
+
+    // Player settings endpoint (the website's write path for the toggles that
+    // used to be chat-command only: -togglebrokensuits, -toggleallsuits,
+    // -togglesolomode, -enabledlc/-disabledlc).
+    // 0 = disabled. Loopback by default: the only client is the website on the
+    // same host. Requires admin_token — see PlayerSettingsHttpServer.
+    uint16_t    settings_api_port  = 0;
+    std::string settings_api_bind  = "127.0.0.1";
     int         startup_timeout_seconds = 120;
     std::string db_path            = "server.db";
     std::string crash_dir          = "Z:\\home\\zax\\games\\crashes";

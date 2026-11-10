@@ -97,6 +97,10 @@ public:
     static std::optional<SessionInfo> GetByGuid(const std::string& guid);
     static std::optional<SessionInfo> GetByIp(const std::string& ip);
     static std::optional<SessionInfo> GetByPlayerName(const std::string& player_name);
+    // The live session for an account, if that player is currently connected.
+    // The player-settings endpoint has a user_id (from the website's own
+    // session), not a game session GUID, so it needs this direction.
+    static std::optional<SessionInfo> GetByUserId(int64_t user_id);
     static SessionInfo* GetByGuidPtr(const std::string& guid);
 
     static int64_t UpsertUser(const std::string& username);

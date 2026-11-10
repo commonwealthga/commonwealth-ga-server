@@ -656,6 +656,7 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/SpectatorOverlay/SpectatorOverlayState.cpp \
 	$(CS_SRC_DIR)/SpectatorOverlay/MissionProgressState.cpp \
 	$(CS_SRC_DIR)/SpectatorOverlay/OverlayHttpServer.cpp \
+	$(CS_SRC_DIR)/PlayerSettingsApi/PlayerSettingsHttpServer.cpp \
 	$(CS_SRC_DIR)/SpectatorOverlay/OverlayIdCatalog.cpp \
 	$(CS_SRC_DIR)/SpectatorOverlay/SkillTreeCatalog.cpp \
 	$(CS_SRC_DIR)/InstanceRegistry/InstanceRegistry.cpp \

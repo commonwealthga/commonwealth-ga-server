@@ -333,6 +333,17 @@ std::optional<SessionInfo> PlayerSessionStore::GetByPlayerName(const std::string
 	return std::nullopt;
 }
 
+std::optional<SessionInfo> PlayerSessionStore::GetByUserId(int64_t user_id) {
+	if (user_id <= 0) return std::nullopt;
+	std::lock_guard<std::mutex> lock(mutex_);
+	for (const auto& kv : by_guid_) {
+		if (kv.second.user_id == user_id) {
+			return kv.second;
+		}
+	}
+	return std::nullopt;
+}
+
 int64_t PlayerSessionStore::UpsertUser(const std::string& username) {
 	std::lock_guard<std::mutex> lock(mutex_);
 	sqlite3* db = Database::GetConnection();
