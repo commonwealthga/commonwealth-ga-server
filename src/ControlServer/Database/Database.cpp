@@ -2648,7 +2648,7 @@ void Database::Init() {
 	{
 		static const char* kPveFactoryDlc2026_07_31[] = {
 			"INSERT OR IGNORE INTO ga_dlc (dlc_id, identifier, name) VALUES"
-			" (3, 'pve-factory-3-4', 'Factory03 and Factory04 PvE maps');",
+			" (3, 'pve-factory-3-4', 'Central Industrial Complex & Recycling Plant 37');",
 			"INSERT OR IGNORE INTO map_game_info "
 			"(map_game_id, map_name, game_class, gameplay_type_value_id, "
 			" friendly_name_msg_id, entry_background_image_res_id, "
@@ -2672,6 +2672,44 @@ void Database::Init() {
 			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
 				Logger::Log("db", "[Database] PvE Factory DLC step failed: %s\n", err ? err : "?");
 				if (err) { sqlite3_free(err); err = nullptr; }
+			}
+		}
+	}
+
+	// DLC display names (2026-08-02): the pack rows were seeded with internal
+	// working titles ("Factory03 and Factory04 PvE maps"), which leaked into
+	// every UI that lists packs. Players know these maps by their in-game
+	// names, so the rows are renamed once, behind a marker — an unconditional
+	// UPDATE on every boot would stomp an operator renaming them again.
+	{
+		sqlite3_exec(db,
+			"CREATE TABLE IF NOT EXISTS cs_migration_markers (name TEXT PRIMARY KEY);",
+			nullptr, nullptr, &err);
+		if (err) { sqlite3_free(err); err = nullptr; }
+
+		bool names_applied = false;
+		{
+			sqlite3_stmt* mstmt = nullptr;
+			if (sqlite3_prepare_v2(db,
+					"SELECT 1 FROM cs_migration_markers WHERE name='dlc_display_names_2026_08_02'",
+					-1, &mstmt, nullptr) == SQLITE_OK && mstmt) {
+				names_applied = (sqlite3_step(mstmt) == SQLITE_ROW);
+			}
+			if (mstmt) sqlite3_finalize(mstmt);
+		}
+		if (!names_applied) {
+			static const char* kDlcNames[] = {
+				"UPDATE ga_dlc SET name='Central Industrial Complex & Recycling Plant 37' "
+					"WHERE identifier='pve-factory-3-4' "
+					"AND name='Factory03 and Factory04 PvE maps';",
+				"INSERT OR IGNORE INTO cs_migration_markers (name) "
+					"VALUES ('dlc_display_names_2026_08_02');",
+			};
+			for (const char* sql : kDlcNames) {
+				if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+					Logger::Log("db", "[Database] DLC display names step failed: %s\n", err ? err : "?");
+					if (err) { sqlite3_free(err); err = nullptr; }
+				}
 			}
 		}
 	}
