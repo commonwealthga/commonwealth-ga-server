@@ -142,10 +142,10 @@ void __fastcall TgPawn__InitializeDefaultProps::Call(ATgPawn* Pawn, void* edx) {
 	// upstream from the enemy bot-factory pipeline, so we only reach this
 	// branch with BBM=0 for non-factory spawns. BBM>0: multiply HP and seed
 	// outgoing damage modifier (prop 65). Power pool is intentionally not
-	// scaled. At Ultra-Max (scalar 3.0), a plain BBM=1.0 enemy ends up at 3×
-	// HP and +200% damage; an elite BBM=1.7 Colony Soldier at 5.1× / +410%.
-	// skal: this example value above is not accurate
-	// skal: changed this with the split scalar modifier for HP/dmg
+	// scaled. Concrete Ultra-Max values (Config::GetDifficultyScalar →
+	// DifficultyScalar(HP 1.80, Dmg 1.74)): a plain BBM=1.0 enemy lands at
+	// 1.8× HP and 1.74× outgoing damage; an elite BBM=1.7 Colony Soldier at
+	// 3.06× / 2.96×.
 	const bool doScale = scaleAsEnemy && (balanceMultiplier > 0.0f);
 	if (doScale) {
 

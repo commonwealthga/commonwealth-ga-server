@@ -192,10 +192,15 @@ static const InventoryApplyPropertyFn InventoryApplyPropertyNative = (InventoryA
 // FClamp(m_fRaw, m_fMinimum, m_fMaximum), so out-of-range values are
 // clamped at read time — no need to clamp at write).
 //
-// The DISTINCT is load-bearing: asm_data_set_effects and
-// asm_data_set_effect_groups currently contain duplicate rows because the
-// capture path runs twice during startup. Without it, +30 protection becomes
-// +60.
+// The DISTINCT used to be load-bearing here: the capture path can duplicate
+// asm_data_set_effect_groups rows. It was removed because it also collapsed
+// GENUINE repeated effect rows — egId 10834 holds seven prop-140 rows, egId
+// 16329 three prop-208 rows — so a stacked equip effect only applied once,
+// and apply/revert no longer matched the group's real content. Row
+// multiplication is not a risk: no (device_id, effect_group_id) pair is
+// duplicated in asm_data_set_device_effect_groups and none of the
+// device-equip effect_group_ids appears twice in asm_data_set_effect_groups
+// (verified against server.db), so the JOIN emits each effect row once.
 // ---------------------------------------------------------------------------
 void Inventory::ApplyDeviceEquipEffects(ATgPawn* Pawn, int deviceId) {
 	if (Pawn == nullptr || Pawn->s_Properties.Data == nullptr) return;
@@ -204,7 +209,7 @@ void Inventory::ApplyDeviceEquipEffects(ATgPawn* Pawn, int deviceId) {
 	if (db == nullptr) return;
 
 	static const char* kSql =
-		"SELECT DISTINCT e.prop_id, e.base_value, e.calc_method_value_id, e.class_res_id, eg.required_skill_id "
+		"SELECT e.prop_id, e.base_value, e.calc_method_value_id, e.class_res_id, eg.required_skill_id "
 		"FROM asm_data_set_device_effect_groups deg "
 		"JOIN asm_data_set_effect_groups eg ON eg.effect_group_id = deg.effect_group_id "
 		"JOIN asm_data_set_effects e ON e.effect_group_id = deg.effect_group_id "
@@ -510,12 +515,24 @@ ATgDevice* Inventory::Equip(ATgPawn* Pawn, int deviceId, int slot, int quality, 
 	// writes directly to prop->m_fRaw with no idempotency; without this
 	// short-circuit each Apply press re-adds the device's lifetime=0 equip
 	// baseline (HUMAN BASE ATTRIBUTES → +30 protection becomes +60, +90, …).
+	//
+	// The scan covers EVERY equip point, not just the requested slot. A device
+	// whose inventory_id is already equipped elsewhere (slot re-arrange, loadout
+	// profile switch, or any caller that re-sends the same inventory id under a
+	// different slot) would otherwise fall through to
+	// ApplyDeviceEquipEffects/ApplyRolledModEffects a second time for the same
+	// inventory instance: the equip-effect pass has no per-instance idempotency
+	// (its ApplyBuff entries are wildcard-scoped on nReqDeviceInstId), while the
+	// rolled-mod pass would be skipped only because it keys on that same id.
+	// Net effect was a silent stack of the device's lifetime=0 baseline
+	// (Targeting System +5% prop 214, HUMAN BASE ATTRIBUTES +30 prop 155, …).
 	if (slot >= 1 && slot <= 24) {
-		ATgDevice* existing = Pawn->m_EquippedDevices[slot];
-		if (existing != nullptr && existing->r_nDeviceInstanceId == invId) {
+		for (int s = 1; s <= 24; ++s) {
+			ATgDevice* existing = Pawn->m_EquippedDevices[s];
+			if (existing == nullptr || existing->r_nDeviceInstanceId != invId) continue;
 			Logger::Log("inventory",
-				"Equip: pawn=0x%p slot=%d invId=%d already equipped — short-circuiting\n",
-				Pawn, slot, invId);
+				"Equip: pawn=0x%p invId=%d already equipped at slot=%d (requested slot=%d) — short-circuiting\n",
+				Pawn, invId, s, slot);
 			return existing;
 		}
 	}
@@ -812,9 +829,10 @@ const std::vector<EquippedEntry>& Inventory::GetEquippedByPawnId(int pawnId) {
 //       68 PERC_INCREASE   → newRaw = curRaw - (propBase * base)  (undo +%)
 //       69 PERC_DECREASE   → newRaw = curRaw + (propBase * base)  (undo -%)
 //
-// Same DB query, same DISTINCT (double-row capture artifact), same direct
-// m_fRaw write rationale as the Apply side (see Apply header for the
-// SetProperty-vtable-skipping explanation).
+// Same DB query, same direct m_fRaw write rationale as the Apply side (see
+// Apply header for the SetProperty-vtable-skipping explanation), and the same
+// removal of DISTINCT so the reverse mirrors the group's real effect rows
+// one-for-one.
 // ---------------------------------------------------------------------------
 static void RemoveDeviceEquipEffects_impl(ATgPawn* Pawn, int deviceId) {
 	if (Pawn == nullptr || Pawn->s_Properties.Data == nullptr) return;
@@ -823,7 +841,7 @@ static void RemoveDeviceEquipEffects_impl(ATgPawn* Pawn, int deviceId) {
 	if (db == nullptr) return;
 
 	static const char* kSql =
-		"SELECT DISTINCT e.prop_id, e.base_value, e.calc_method_value_id, e.class_res_id, eg.required_skill_id "
+		"SELECT e.prop_id, e.base_value, e.calc_method_value_id, e.class_res_id, eg.required_skill_id "
 		"FROM asm_data_set_device_effect_groups deg "
 		"JOIN asm_data_set_effect_groups eg ON eg.effect_group_id = deg.effect_group_id "
 		"JOIN asm_data_set_effects e ON e.effect_group_id = deg.effect_group_id "

@@ -548,6 +548,19 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 				if (g) {
 					g->m_nDamageType = fmDamageType;
 					g->m_eAttackType = eAttackType;
+					// m_bItemEffect (bit 0x04 @ +0x74): fire-mode groups are ITEM
+					// sourced, so TgEffectBuff.GetBuffType (TgEffectBuff.uc:47) must
+					// return BUFF_SOURCE_TYPE_ITEM (1) instead of falling through to
+					// the SELF catch-all (3). GetBuffType is the only reader of this
+					// flag, so the sole effect is which FBuffInfo layer the buff
+					// lands in: ITEM (additive with rolled mods, multiplied by the
+					// Output-Mod bucket) rather than SELF (additive WITH it).
+					// Verified against retail: LD+VV shot on a 30-protection bot gave
+					// 1360 in the original vs 1308 here; item-layer predicts 1360.2.
+					// Skills set m_bSkillEffect (ReapplyCharacterSkillTree) and
+					// GetBuffType checks skill before item, so they keep their layer.
+					unsigned int& gflags = *(unsigned int*)((char*)g + 0x74);
+					gflags |= 0x04;
 					pThis->s_EffectGroupList.Add(g);
 					// (Template→fire-mode side-map removed: OriginResolver now
 					// recovers the firing deployable at apply time by walking

@@ -11768,6 +11768,41 @@ void Database::Init() {
 		Logger::Log("db", "v171: insert gigamax spawn\n");
 	}
 
+
+	if (version < 172) {
+
+		result = sqlite3_exec(db,
+			"UPDATE map_object_config SET map_name = '1P_CPMine04_P', value = '2801', variant_group = NULL, variant_id = NULL, weight = 1 WHERE id = 2153;",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v172 (1P_CPMine04_P map objects): %s\n", err); return; }
+
+		result = sqlite3_exec(db,
+"INSERT INTO map_object_config (map_name, map_object_id, column_name, value, variant_group, variant_id, weight) VALUES"
+  "('1P_CPMine04_P', 12451, 's_n_task_force', '2', NULL, NULL, 1),"
+  "('1P_CPMine04_P', 12451, 's_n_team_number', '2', NULL, NULL, 1),"
+  "('1P_CPMine04_P', 12527, 's_n_device_id', '4662', NULL, NULL, 1),"
+  "('1P_CPMine04_P', 12527, 's_n_team_number', '2', NULL, NULL, 1),"
+  "('1P_CPMine04_P', 12527, 's_n_task_force', '2', NULL, NULL, 1),"
+  "('1P_CPMine04_P', 12451, 's_n_device_id', '2801', NULL, NULL, 1),"
+  "('1P_CPMine04_P', 12452, 's_n_team_number', '2', NULL, NULL, 1),"
+  "('1P_CPMine04_P', 12452, 's_n_task_force', '2', NULL, NULL, 1),"
+  "('1P_CPMine04_P', 12452, 's_n_device_id', '2801', NULL, NULL, 1);",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v172 (1P_CPMine04_P map objects): %s\n", err); return; }
+
+		Logger::Log("db", "v172: 1P_CPMine04_P map object config\n");
+	}
+
+	if (version < 173) {
+
+		result = sqlite3_exec(db,
+			"UPDATE map_object_config SET value = '7037' WHERE map_object_id IN (13964, 13965, 13972) AND map_name IN ('1P_SDColony05_P', '1P_SDColony06_P', '1p_SDColony04_P');",
+			nullptr, nullptr, &err);
+		if (result != SQLITE_OK) { Logger::Log("db", "Failed v173 (colony map objects): %s\n", err); return; }
+
+		Logger::Log("db", "v173: colony map object config\n");
+	}
+
 	// VR heal pad: enforce the pad device unconditionally (idempotent) —
 	// branch-divergent DBs have version counters past the v101/v102 gates.
 	// 2064 = Medical Station pulse (1.0s refire, FX 432 visual pulse);
@@ -11779,7 +11814,7 @@ void Database::Init() {
 		nullptr, nullptr, &err);
 	if (result != SQLITE_OK) { Logger::Log("db", "Failed VR heal pad device enforce: %s\n", err); return; }
 
-	result = sqlite3_exec(db, "UPDATE version_info SET version = 171", nullptr, nullptr, &err);
+	result = sqlite3_exec(db, "UPDATE version_info SET version = 173", nullptr, nullptr, &err);
 	if (result != SQLITE_OK) {
 		Logger::Log("db", "Failed to update version_info: %s\n", err);
 		return;
