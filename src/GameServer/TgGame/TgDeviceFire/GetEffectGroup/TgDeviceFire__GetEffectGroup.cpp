@@ -551,16 +551,30 @@ UTgEffectGroup* __fastcall TgDeviceFire__GetEffectGroup::Call(UTgDeviceFire* pTh
 					// m_bItemEffect (bit 0x04 @ +0x74): fire-mode groups are ITEM
 					// sourced, so TgEffectBuff.GetBuffType (TgEffectBuff.uc:47) must
 					// return BUFF_SOURCE_TYPE_ITEM (1) instead of falling through to
-					// the SELF catch-all (3). GetBuffType is the only reader of this
-					// flag, so the sole effect is which FBuffInfo layer the buff
-					// lands in: ITEM (additive with rolled mods, multiplied by the
-					// Output-Mod bucket) rather than SELF (additive WITH it).
-					// Verified against retail: LD+VV shot on a 30-protection bot gave
-					// 1360 in the original vs 1308 here; item-layer predicts 1360.2.
-					// Skills set m_bSkillEffect (ReapplyCharacterSkillTree) and
-					// GetBuffType checks skill before item, so they keep their layer.
+					// the SELF catch-all (3). ITEM is its own multiplier in the
+					// 3-layer property formula (item × skill × self+generic), which
+					// is what retail's numbers show: LD+VV shot on a 30-protection bot
+					// gave 1360 in the original vs 1308 with these buffs in SELF;
+					// item-layer predicts 1360.2. Skills set m_bSkillEffect
+					// (ReapplyCharacterSkillTree) and GetBuffType checks skill before
+					// item, so they keep their layer.
+					//
+					// EXCEPTION — aim/rest self-state groups (266 = RemoveAimEffects,
+					// 283 = RemoveRestEffects). These are sustained buffs on the
+					// wielder, and GetBuffType's type list (TgEffectBuff.uc:54) puts
+					// them in SELF — the layer TgPawn.SetTargetAutoLock reads
+					// (`fModifier + fSelfModifier`, TgPawn.uc:6589). Prop 200 Target
+					// AutoLock Angle lives on exactly these groups (86 of its 87
+					// groups are type 283, one is 266), so flagging them ITEM zeroes
+					// m_fAutoLockAngle → TgDevice.m_bAutoLock stays false →
+					// CheckTargetActor never assigns r_Target → heal beams
+					// (BioFeedback Beam et al.) stop soft-locking and only connect on
+					// a direct trace hit. No ITEM-layer damage buff lives on these
+					// types, so excluding them doesn't move any damage number.
 					unsigned int& gflags = *(unsigned int*)((char*)g + 0x74);
-					gflags |= 0x04;
+					if (g->m_nType != 266 && g->m_nType != 283) {
+						gflags |= 0x04;
+					}
 					pThis->s_EffectGroupList.Add(g);
 					// (Template→fire-mode side-map removed: OriginResolver now
 					// recovers the firing deployable at apply time by walking
