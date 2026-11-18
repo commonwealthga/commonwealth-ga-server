@@ -7,6 +7,7 @@
 #include "src/GameServer/Utils/ClassPreloader/ClassPreloader.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Config/Config.hpp"
+#include "src/Utils/GameRng.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 #include <algorithm>
@@ -33,6 +34,7 @@ struct BossAlarmState {
 	float TargetSince   = -1.0f;
 	float NoTargetSince = -1.0f;
 	float LastFire      = -1.0f;
+	int   nFires        = 0;   // rng ordinal for the adds-factory pick
 	bool  bAddsOut      = false;
 	bool  bUnresolvable = false;  // auto-pick found several bot objectives
 };
@@ -221,7 +223,12 @@ void TickBossAlarm(ATgGame* Game, BossAlarmState& a, float now) {
 		a.LastFire = now;
 		return;
 	}
-	ATgBotFactory* f = factories[rand() % factories.size()];
+	// Keyed gameplay RNG: (boss objective, fire ordinal) so the adds factory
+	// sequence replays under a recorded match seed, instead of CRT rand()
+	// answering the alarm from the same factory every game.
+	GameRng::Stream rng(GameRng::Purpose::AlarmFactory,
+		(uint64_t)(uint32_t)s.nObjectiveMapObjectId, (uint64_t)a.nFires++);
+	ATgBotFactory* f = factories[rng.Index((int)factories.size())];
 	FireFactory(f, s.nSpawnTableId, target);
 	a.LastFire = now;
 	a.bAddsOut = true;

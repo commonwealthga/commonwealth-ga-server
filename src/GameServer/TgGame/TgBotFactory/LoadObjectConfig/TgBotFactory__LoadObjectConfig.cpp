@@ -7,6 +7,7 @@
 #include "src/Database/Database.hpp"
 #include "src/Config/Config.hpp"
 #include "src/Utils/Logger/Logger.hpp"
+#include "src/Utils/GameRng.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
 
 #include <chrono>
@@ -398,22 +399,12 @@ void EnsureSpawnTablesLoaded() {
 		difficulty, cascade.size(), g_spawnTables.size());
 }
 
-// Private RNG for spawn rolls. Do NOT use CRT rand(): the DLL shares
-// msvcrt's rand state with the game binary, which can re-seed srand()
-// deterministically during map load — observed as the SAME boss rolled from
-// an 80/20 table on 7 consecutive Ultra-Max runs. mt19937 state is ours alone.
-std::mt19937& SpawnRng() {
-	static std::mt19937 gen(
-		static_cast<unsigned>(std::chrono::high_resolution_clock::now().time_since_epoch().count()));
-	return gen;
-}
-float SpawnRollFloat(float span) {
-	return std::uniform_real_distribution<float>(0.0f, span)(SpawnRng());
-}
-int SpawnRollInt(int lo, int hi) {  // inclusive
-	return std::uniform_int_distribution<int>(lo, hi)(SpawnRng());
-}
-void EnsureRandSeeded() {}  // superseded by SpawnRng; kept for call sites
+// Spawn rolls go through the shared keyed RNG (Utils/GameRng.hpp) — never CRT
+// rand(), whose msvcrt state the game binary re-seeds deterministically during
+// map load. Rolls are addressed by (purpose, factory key, activation/entry
+// ordinal) so a recorded match seed reproduces them regardless of when the
+// factory happened to activate.
+void EnsureRandSeeded() {}  // superseded by GameRng; kept for call sites
 
 // Apply MapObjectConfig overrides for every config-shaped field declared on
 // ATgBotFactory (NOT the parent class — those are handled by
@@ -468,13 +459,14 @@ void ApplyFactoryFieldOverrides(ATgBotFactory* f) {
 // leaves an "empty" remainder — the group spawns nothing this roll (e.g.
 // table 28 group 3: single row at 0.75 = 75% chance the group exists).
 // Returns nullptr for the empty outcome.
-const SpawnTableEntry* RollGroupRow(const std::vector<SpawnTableEntry>& rows) {
+const SpawnTableEntry* RollGroupRow(const std::vector<SpawnTableEntry>& rows,
+                                    GameRng::Stream& rng) {
 	float total = 0.0f;
 	for (const auto& r : rows) total += r.SpawnChance;
 	if (total <= 0.0f) return nullptr;
 
 	const float span = total > 1.0f ? total : 1.0f;
-	float roll = SpawnRollFloat(span);
+	float roll = rng.FloatSpan(span);
 	for (const auto& r : rows) {
 		if (roll < r.SpawnChance) return &r;
 		roll -= r.SpawnChance;
@@ -486,7 +478,9 @@ const SpawnTableEntry* RollGroupRow(const std::vector<SpawnTableEntry>& rows) {
 
 // skal: replace simple int return (botid) by {botid,bbm}
 // previous empty (zero) return moved to {0,0.0f}
-BotIdEntry TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(int nSpawnTableId, int nSpawnGroup, int* outBotCount) {
+BotIdEntry TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(
+		int nSpawnTableId, int nSpawnGroup, int* outBotCount,
+		uint64_t rngKey, uint64_t rngIndex) {
 	EnsureSpawnTablesLoaded();
 	EnsureRandSeeded();
 
@@ -503,7 +497,8 @@ BotIdEntry TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(int nSpawn
 	float total = 0.0f;
 	for (const auto& r : groupIt->second) total += r.SpawnChance;
 	if (total <= 0.0f) return BotIdEntry();
-	float roll = SpawnRollFloat(total);
+	GameRng::Stream rng(GameRng::Purpose::SpawnEntryType, rngKey, rngIndex);
+	float roll = rng.FloatSpan(total);
 	const SpawnTableEntry* picked = &groupIt->second.back();
 	for (const auto& r : groupIt->second) {
 		if (roll < r.SpawnChance) { picked = &r; break; }
@@ -524,7 +519,8 @@ int TgBotFactory__LoadObjectConfig::GetGroupNumberByIndex(int nSpawnTableId, int
 	return -1;
 }
 
-std::vector<SpawnGroupPlan> TgBotFactory__LoadObjectConfig::RollSpawnPlan(int nSpawnTableId) {
+std::vector<SpawnGroupPlan> TgBotFactory__LoadObjectConfig::RollSpawnPlan(
+		int nSpawnTableId, uint64_t rngKey, uint64_t rngActivation) {
 	EnsureSpawnTablesLoaded();
 	EnsureRandSeeded();
 
@@ -537,35 +533,53 @@ std::vector<SpawnGroupPlan> TgBotFactory__LoadObjectConfig::RollSpawnPlan(int nS
 		return plan;
 	}
 
+	// One stream per (factory, activation): the group walk order is the sorted
+	// spawn_group order, so each group's roll is at a stable position.
+	GameRng::Stream planRng(GameRng::Purpose::SpawnPlan, rngKey, rngActivation);
 	for (const auto& groupKV : tableIt->second) {
 		SpawnGroupPlan gp;
 		gp.GroupNumber  = groupKV.first;
 		gp.EntryCount   = 0;
 		gp.RolledBotId  = 0;
+		gp.PerEntryRoll = true;   // default: resolve per spawn (mixed packs)
 		gp.BBM.zero ();
 		gp.Detail.nMinCount       = 0;
 		gp.Detail.nMaxCount       = 0;
 		gp.Detail.nCurrentCount   = 0;
 		gp.Detail.nRespawnSeconds = 0;
 
-		const SpawnTableEntry* row = RollGroupRow(groupKV.second);
+		const SpawnTableEntry* row = RollGroupRow(groupKV.second, planRng);
 		if (row != nullptr) {
 			if (row->GroupMax > 0) {
 				// Random roster: rand[gmin..gmax] entries (incubator-style),
 				// each entry re-rolls its bot at spawn (mixed brood).
 				const int lo = row->GroupMin > 0 ? row->GroupMin : row->GroupMax;
 				const int hi = row->GroupMax >= lo ? row->GroupMax : lo;
-				gp.EntryCount = (hi > lo) ? SpawnRollInt(lo, hi) : lo;
+				gp.EntryCount = (hi > lo) ? planRng.Int(lo, hi) : lo;
 				gp.Detail.nMinCount = lo;
 				gp.Detail.nMaxCount = hi;
 			} else {
-				// bot_count group: ONE roll fields the whole group — every
-				// entry spawns the rolled bot (vanilla per-group semantics).
+				// bot_count group: the roll decides the roster size.
 				gp.EntryCount  = row->BotCount > 0 ? row->BotCount : 1;
-				gp.RolledBotId = row->EnemyBotId;
 				gp.BBM         = row->BBM;
 				gp.Detail.nMinCount = gp.EntryCount;
 				gp.Detail.nMaxCount = gp.EntryCount;
+
+				gp.RolledBotId = row->EnemyBotId;
+				// Pin the bot per group only when the group's rows disagree on
+				// bot_count, i.e. when the count is part of the composition
+				// (e.g. table 33 group 1 = "8 Dismantlers" OR "2 Elite
+				// Assassins"). When every row shares one bot_count — 111
+				// shipped groups, e.g. table 28 group 2 = 2x one of Elite
+				// Techro / Alchemist / Assassin / Helot — the count carries no
+				// composition, so re-roll the type per entry: retail spawns
+				// mixed elite packs, while pinning produced N copies of
+				// whichever single row won the group roll.
+				bool countsDiffer = false;
+				for (const auto& r : groupKV.second) {
+					if (r.BotCount != row->BotCount) { countsDiffer = true; break; }
+				}
+				gp.PerEntryRoll = !countsDiffer;
 			}
 			gp.Detail.nRespawnSeconds = row->RespawnSec;
 		}
@@ -584,6 +598,14 @@ static uint64_t FactoryKey(ATgBotFactory* f) {
 	uint32_t number = 0;
 	std::memcpy(&number, ((const char*)&f->Name) + 4, sizeof(number));
 	return (static_cast<uint64_t>(static_cast<uint32_t>(f->Name.Index)) << 32) | number;
+}
+
+uint64_t TgBotFactory__LoadObjectConfig::FactoryRngKey(ATgBotFactory* factory) {
+	if (factory == nullptr) return 0;
+	// map_object_id is stable per map placement and unique per actor; the FName
+	// hash covers dynamically created factories (map object id 0).
+	if (factory->m_nMapObjectId > 0) return (uint64_t)factory->m_nMapObjectId;
+	return 0x100000000ull | FactoryKey(factory);
 }
 
 void TgBotFactory__LoadObjectConfig::SetFactoryGroupRolls(

@@ -1992,6 +1992,26 @@ void Database::Init() {
 		err = nullptr;
 	}
 
+	// Match seed per instance (UNCONDITIONAL + idempotent, same rationale as the
+	// moderation block below: the version counter is shared with the DLL).
+	//   match_seed — the seed the control server minted and passed to the
+	//                instance as -seed=. 0 = unknown/legacy row.
+	//   seed_scheme— the GameRng derivation scheme the seed is valid under
+	//                (src/Shared/MatchSeed.hpp kMatchSeedScheme). A seed is only
+	//                replayable by a build whose scheme matches, so the stats
+	//                site must compare before offering "play this seed".
+	{
+		const char* kSeedAlters[] = {
+			"ALTER TABLE ga_instances ADD COLUMN match_seed  INTEGER NOT NULL DEFAULT 0;",
+			"ALTER TABLE ga_instances ADD COLUMN seed_scheme INTEGER NOT NULL DEFAULT 0;",
+		};
+		for (const char* sql : kSeedAlters) {
+			if (sqlite3_exec(db, sql, nullptr, nullptr, &err) != SQLITE_OK) {
+				sqlite3_free(err); err = nullptr;   // duplicate column on 2nd boot
+			}
+		}
+	}
+
 	// User-moderation tables (sessions, account bans, IP bans). UNCONDITIONAL +
 	// idempotent because the version counter is shared with the DLL and has
 	// already been bumped past any reasonable migration number — same

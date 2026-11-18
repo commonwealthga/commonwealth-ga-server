@@ -2,11 +2,26 @@
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/MatchmakingService/MatchmakingService.hpp"
+#include "src/Shared/MatchSeed.hpp"
 #include "sqlite3.h"
+#include <random>
 #include <set>
 
 std::mutex InstanceRegistry::mutex_;
 //std::string InstanceRegistry::s_host_ = "127.0.0.1";
+
+namespace {
+
+// A fresh match seed. Positive (SQLite INTEGER is signed) and non-zero (0 is
+// the "unknown/legacy" sentinel), from std::random_device so two instances
+// spawned in the same tick don't share a rollout.
+uint64_t MintMatchSeed() {
+	static std::mt19937_64 eng{std::random_device{}()};
+	const uint64_t v = eng() & kMatchSeedMax;
+	return v ? v : 1;
+}
+
+}  // namespace
 
 void InstanceRegistry::Init() {
     // No-op: mutex_ is default-constructed.
@@ -149,8 +164,8 @@ void InstanceRegistry::SeedHomeMapInstance(const std::string& map_name, uint16_t
     sqlite3_stmt* stmt = nullptr;
     rc = sqlite3_prepare_v2(db,
         "INSERT INTO ga_instances "
-        "(map_name, state, pid, udp_port, ip_address, player_count, started_at) "
-        "VALUES (?, 'READY', 0, ?, ?, 0, strftime('%s','now'))",
+        "(map_name, state, pid, udp_port, ip_address, player_count, started_at, match_seed, seed_scheme) "
+        "VALUES (?, 'READY', 0, ?, ?, 0, strftime('%s','now'), ?, ?)",
         -1, &stmt, nullptr);
     if (rc != SQLITE_OK || !stmt) {
         Logger::Log("db", "[InstanceRegistry] SeedHomeMapInstance prepare failed: %s\n",
@@ -161,6 +176,10 @@ void InstanceRegistry::SeedHomeMapInstance(const std::string& map_name, uint16_t
     sqlite3_bind_text(stmt, 1, map_name.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt,  2, static_cast<int>(udp_port));
     sqlite3_bind_text(stmt, 3, /*s_host_*/localhost.c_str(), -1, SQLITE_TRANSIENT);
+    // Home maps are seeded too, so ad-hoc tests on them are reproducible.
+    const uint64_t home_seed = MintMatchSeed();
+    sqlite3_bind_int64(stmt, 4, static_cast<int64_t>(home_seed));
+    sqlite3_bind_int  (stmt, 5, kMatchSeedScheme);
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -173,6 +192,43 @@ void InstanceRegistry::SeedHomeMapInstance(const std::string& map_name, uint16_t
 
     Logger::Log("db", "[InstanceRegistry] Seeded instance: map=%s udp_port=%d\n",
         map_name.c_str(), (int)udp_port);
+}
+
+uint64_t InstanceRegistry::GetMatchSeed(int64_t instance_id) {
+    if (instance_id <= 0) return 0;
+    sqlite3* db = Database::GetConnection();
+    if (!db) return 0;
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db,
+        "SELECT match_seed FROM ga_instances WHERE instance_id = ? LIMIT 1",
+        -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+        return 0;
+    }
+    sqlite3_bind_int64(stmt, 1, instance_id);
+    uint64_t seed = 0;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        const sqlite3_int64 v = sqlite3_column_int64(stmt, 0);
+        if (v > 0) seed = (uint64_t)v;
+    }
+    sqlite3_finalize(stmt);
+    return seed;
+}
+
+void InstanceRegistry::SetMatchSeed(int64_t instance_id, uint64_t seed, int seed_scheme) {
+    if (instance_id <= 0) return;
+    sqlite3* db = Database::GetConnection();
+    if (!db) return;
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db,
+        "UPDATE ga_instances SET match_seed = ?, seed_scheme = ? WHERE instance_id = ?",
+        -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+        return;
+    }
+    sqlite3_bind_int64(stmt, 1, (sqlite3_int64)(seed & kMatchSeedMax));
+    sqlite3_bind_int  (stmt, 2, seed_scheme);
+    sqlite3_bind_int64(stmt, 3, instance_id);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
 }
 
 int64_t InstanceRegistry::InsertStarting(const std::string& map_name, const std::string& game_mode,
@@ -191,9 +247,9 @@ int64_t InstanceRegistry::InsertStarting(const std::string& map_name, const std:
     // challenge bonus off.
     int rc = sqlite3_prepare_v2(db,
         "INSERT INTO ga_instances "
-        "(map_name, game_mode, state, pid, udp_port, ip_address, player_count, started_at, instance_id, is_home_map, queue_id, predecessor_instance_id, access_mode, owner_party_ids, victory_bonus_lives) "
+        "(map_name, game_mode, state, pid, udp_port, ip_address, player_count, started_at, instance_id, is_home_map, queue_id, predecessor_instance_id, access_mode, owner_party_ids, victory_bonus_lives, match_seed, seed_scheme) "
         "VALUES (?, ?, 'STARTING', ?, ?, ?, 0, strftime('%s','now'), 0, ?, ?, ?, ?, ?, "
-        "COALESCE((SELECT victory_bonus_lives FROM ga_queues WHERE queue_id = ?), 0))",
+        "COALESCE((SELECT victory_bonus_lives FROM ga_queues WHERE queue_id = ?), 0), ?, ?)",
         -1, &stmt, nullptr);
     if (rc != SQLITE_OK || !stmt) {
         Logger::Log("db", "[InstanceRegistry] InsertStarting prepare failed: %s\n",
@@ -214,6 +270,9 @@ int64_t InstanceRegistry::InsertStarting(const std::string& map_name, const std:
     sqlite3_bind_text(stmt, 9, access_mode.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 10, owner_party_ids.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int64(stmt, 11, static_cast<int64_t>(queue_id));  // victory_bonus_lives subselect
+    const uint64_t match_seed = MintMatchSeed();
+    sqlite3_bind_int64(stmt, 12, static_cast<int64_t>(match_seed));
+    sqlite3_bind_int (stmt, 13, kMatchSeedScheme);
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -238,9 +297,10 @@ int64_t InstanceRegistry::InsertStarting(const std::string& map_name, const std:
         sqlite3_free(err);
     }
 
-    Logger::Log("db", "[InstanceRegistry] InsertStarting: map=%s udp_port=%d pid=%d is_home_map=%d queue_id=%u predecessor=%lld -> instance_id=%lld\n",
+    Logger::Log("db", "[InstanceRegistry] InsertStarting: map=%s udp_port=%d pid=%d is_home_map=%d queue_id=%u predecessor=%lld -> instance_id=%lld seed=%llu scheme=%d\n",
         map_name.c_str(), (int)udp_port, pid, (int)is_home_map,
-        queue_id, (long long)predecessor_instance_id, (long long)rowid);
+        queue_id, (long long)predecessor_instance_id, (long long)rowid,
+        (unsigned long long)match_seed, kMatchSeedScheme);
     return rowid;
 }
 

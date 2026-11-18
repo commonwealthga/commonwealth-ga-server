@@ -16,6 +16,7 @@
 #include "src/GameServer/TgGame/TgPawn/TrackKill/TgPawn__TrackKill.hpp"
 #include "src/GameServer/TgGame/TgPawn/TrackKilledBot/TgPawn__TrackKilledBot.hpp"
 #include "src/GameServer/TgGame/Morale/MoraleCredit.hpp"
+#include "src/GameServer/GameModes/MatchGate.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
 #include "src/GameServer/Stats/DeviceStats.hpp"
 #include "src/GameServer/TgGame/_effect_core/BuffWindowTracking.hpp"
@@ -278,6 +279,12 @@ void __fastcall TgEffect__TrackStats::Call(UTgEffect* /*Effect*/, void* /*edx*/,
 		}
 		return;  // self-effects still never credit stats/morale
 	}
+
+	// Pre-match gate. Until the match has actually started, damage/heal must
+	// not move the scoreboard, device stats, match events or morale — that
+	// window is farmable at zero risk. Self-effects above are handled before
+	// the gate so their stealth reveal / death-info side effects still run.
+	if (!MatchGate::MatchLive(Instigator)) return;
 
 	const bool isHeal = (fDamage < 0.0f);
 	const float magnitude = isHeal ? -fDamage : fDamage;

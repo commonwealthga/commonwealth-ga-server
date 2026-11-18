@@ -5,6 +5,7 @@
 #include "sqlite3.h"
 
 #include "src/Database/Database.hpp"
+#include "src/GameServer/GameModes/MatchGate.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 namespace MoraleCredit {
@@ -247,6 +248,11 @@ void Award(ATgPawn* recipient, float magnitude, bool isHeal,
 	if (!recipient) return;
 	if (magnitude <= 0.0f) return;
 
+	// Pre-match gate: morale is the most farmable pre-match resource (heal a
+	// teammate in spawn and the meter is full before the round starts). Same
+	// gate the stats dispatcher uses — see GameModes/MatchGate.hpp.
+	if (!MatchGate::MatchLive(recipient)) return;
+
 	DumpMoraleBuffEntriesOnce(recipient);
 
 	// Anti-feedback: a morale-device source never credits. `g_moraleDeviceModeIds`
@@ -301,8 +307,9 @@ void Award(ATgPawn* recipient, float magnitude, bool isHeal,
 	if (points <= 0.0f) return;
 
 	// Accumulator math (mirrors the AddMoralePoints native body, minus the
-	// device-mode lookup we already handled above and the GameInfo state
-	// flag gate which we always satisfy on a running match).
+	// device-mode lookup we already handled above). The native's own
+	// "game is live" gate is reproduced by the MatchGate check at the top of
+	// this function.
 	const float before    = recipient->m_fCurrentMoralePoints;
 	const float threshold = recipient->r_fRequiredMoralePoints;
 	float after = before + points;

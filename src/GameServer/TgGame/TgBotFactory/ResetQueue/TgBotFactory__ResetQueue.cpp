@@ -4,7 +4,20 @@
 #include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
+#include <map>
 #include <vector>
+
+namespace {
+
+// Per-factory activation counter — the rng index for the spawn-plan roll
+// (GameRng::Purpose::SpawnPlan). Keyed by mapObjectId/FName hash, not the actor
+// pointer, so a re-spawned factory keeps counting instead of repeating index 0.
+std::map<uint64_t, uint64_t>& ActivationCounters() {
+	static std::map<uint64_t, uint64_t> counters;
+	return counters;
+}
+
+}  // namespace
 
 // UC signature: native function ResetQueue(optional int nOverrideSpawnTableId = 0);
 //
@@ -81,7 +94,12 @@ void __fastcall TgBotFactory__ResetQueue::Call(ATgBotFactory* BotFactory, void* 
 		}
 	}
 
-	const auto plan = TgBotFactory__LoadObjectConfig::RollSpawnPlan(tableId);
+	// Address the plan roll inside the match seed: (factory, activation).
+	// Reproducible under a recorded seed regardless of when this activation
+	// happened or what else drew in between.
+	const uint64_t rngKey = TgBotFactory__LoadObjectConfig::FactoryRngKey(BotFactory);
+	const uint64_t activation = ActivationCounters()[rngKey]++;
+	const auto plan = TgBotFactory__LoadObjectConfig::RollSpawnPlan(tableId, rngKey, activation);
 
 	BotFactory->m_SpawnGroups.Clear();
 	std::vector<BotIdEntry> groupRolls;	// skal: replace botid with {botid,bbm}
@@ -90,7 +108,8 @@ void __fastcall TgBotFactory__ResetQueue::Call(ATgBotFactory* BotFactory, void* 
 		FSpawnGroupDetail gd = plan[i].Detail;
 		if (i < aliveByIndex.size()) gd.nCurrentCount = aliveByIndex[i];
 		BotFactory->m_SpawnGroups.Add(gd);
-		groupRolls.push_back(BotIdEntry (plan[i].RolledBotId,plan[i].BBM));
+		groupRolls.push_back(BotIdEntry(
+			plan[i].PerEntryRoll ? 0 : plan[i].RolledBotId, plan[i].BBM));
 
 		for (int k = 0; k < plan[i].EntryCount; ++k) {
 			FSpawnQueueEntry entry;
@@ -106,12 +125,15 @@ void __fastcall TgBotFactory__ResetQueue::Call(ATgBotFactory* BotFactory, void* 
 			"  ResetQueue: groupIdx=%zu (group=%d) -> %s bot=%d x%d bbm=%f\n",
 			i, plan[i].GroupNumber,
 			plan[i].EntryCount == 0 ? "EMPTY roll" :
-				(plan[i].RolledBotId > 0 ? "rolled" : "roster (per-entry roll)"),
+				(plan[i].PerEntryRoll ? "per-entry roll" : "rolled (count-bound)"),
 			plan[i].RolledBotId, plan[i].EntryCount, plan[i].BBM);
 	}
 
-	// Vanilla group semantics: the whole group — including BotDied replacement
-	// entries — spawns the ONE bot its roll picked (0 = roster group).
+	// PerEntryRoll = 0 pinned bot: roster groups and bot_count groups whose
+	// rows share one count resolve their bot per spawn (mixed packs, including
+	// BotDied replacements). Groups whose rows disagree on bot_count, and
+	// SuperAgent curated rosters (which overwrite these pins in OwnedSetQueue),
+	// stay pinned.
 	TgBotFactory__LoadObjectConfig::SetFactoryGroupRolls(BotFactory, groupRolls);
 
 	// The intact BotDied's FactoryEmpty kismet pin fires when

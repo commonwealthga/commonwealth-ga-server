@@ -21,6 +21,10 @@ public:
 	static uint16_t GetIpcPort();
 	static std::string GetIpcHost();
 	static int64_t GetInstanceId();
+	// Match seed for this instance, from -seed=<u64> (control server mints it
+	// from ga_instances.match_seed). 0 = none given; the DLL then generates a
+	// random one and reports it back, so the run is still recorded/replayable.
+	static uint64_t GetMatchSeed();
 	static std::string GetDbPath();
 	static std::string GetGamePath();
 	static bool GetFixPackageGuids();

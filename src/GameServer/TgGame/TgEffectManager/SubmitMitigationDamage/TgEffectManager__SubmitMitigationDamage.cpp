@@ -1,5 +1,6 @@
 #include "src/GameServer/TgGame/TgEffectManager/SubmitMitigationDamage/TgEffectManager__SubmitMitigationDamage.hpp"
 #include "src/GameServer/TgGame/TgEffectManager/RemoveEffectGroup/TgEffectManager__RemoveEffectGroup.hpp"
+#include "src/GameServer/GameModes/MatchGate.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
@@ -80,9 +81,11 @@ void __fastcall TgEffectManager__SubmitMitigationDamage::Call(
 		// STYPE_DEFENSE credit — the personal-shield branch of the user's
 		// "defense" definition (damage absorbed by personal shields). The
 		// forcefield-deployable branch lives in TrackStats. PRI may be null
-		// briefly during pawn teardown; skip rather than crash.
+		// briefly during pawn teardown; skip rather than crash. Shield pool
+		// bookkeeping above is gameplay, not score, so it runs regardless of
+		// the match gate — only the scoreboard credit is gated.
 		ATgRepInfo_Player* PRI = (ATgRepInfo_Player*)pawn->PlayerReplicationInfo;
-		if (PRI != nullptr) {
+		if (PRI != nullptr && MatchGate::MatchLive(pawn)) {
 			PRI->r_Scores[7] += nDamage;  // STYPE_DEFENSE
 			PRI->bNetDirty = 1;
 		}

@@ -4,6 +4,7 @@
 #include "src/Utils/CrashHandler/CrashHandler.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Config/Config.hpp"
+#include "src/Utils/GameRng.hpp"
 #include "src/Utils/DebugWindow/DebugWindow.hpp"
 #include "src/Database/Database.hpp"
 #include "src/GameServer/Engine/GameEngine/Init/GameEngine__Init.hpp"
@@ -797,6 +798,17 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
                 Logger::ClearEnabledChannelFiles();
             }
             CrashHandler::Init(Config::GetCrashDir());
+            // Match seed: the control server mints one per instance
+            // (ga_instances.match_seed) and passes it as -seed=<u64>, so the
+            // whole spawn/objective/variant rollout replays under the same
+            // seed. 0 = none given -> GameRng falls back to a random seed,
+            // which it reports back over IPC so the run is still recorded.
+            GameRng::SetMatchSeed(Config::GetMatchSeed());
+            Logger::Log("matchstats",
+                "[GameRng] match seed=%llu scheme=%d source=%s\n",
+                (unsigned long long)GameRng::MatchSeed(),
+                GameRng::SeedScheme(),
+                GameRng::MatchSeedFromCommandLine() ? "control-server" : "generated");
 			CreateThread(0, 0, ModuleThread, 0, 0, 0);
 			
 			// DebugWindow::WindowTitle = "SERVER";

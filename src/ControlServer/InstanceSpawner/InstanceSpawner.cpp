@@ -243,7 +243,8 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
                               int64_t instance_id,
                               eDifficulty difficulty_type,
                               uint32_t difficulty_value_id,
-                              DifficultyScalar difficulty_scalar) {
+                              DifficultyScalar difficulty_scalar,
+                              uint64_t match_seed) {
 
     // skal: difficulty args lambda
     const auto build_difficulty_args=[&]() -> std::string {
@@ -338,6 +339,10 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
     const std::string port_arg    = "-port=" + std::to_string(udp_port);
     const std::string ipc_port_arg  = "-ipcport=" + std::to_string(cfg.ipc_port);
     const std::string inst_id_arg   = "-instanceid=" + std::to_string(instance_id);
+    // Match seed (ga_instances.match_seed) — makes the spawn/objective/variant
+    // rollout replayable. Empty when the row has no seed yet; the DLL then
+    // generates one and reports it back so the row can be updated.
+    const std::string seed_arg      = "-seed=" + std::to_string(match_seed);
     const std::string dbpath_arg    = "-dbpath=" + AbsolutePathFromCwd(cfg.db_path);
     const std::string gamepath_arg  = "-gamepath=" + game_binary_path;
     const std::string fixguids_arg  = std::string("-fixpackageguids=") + (cfg.fix_package_guids ? "1" : "0");
@@ -365,7 +370,7 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         "-nolog", "-noconsole", "-unattended",
         /*host_arg, hostdns_arg,*/ port_arg,    // skal those 2 are unused
         "-seekfreeloading", "-tcp=300", "-nullrhi",
-        ipc_port_arg, inst_id_arg, dbpath_arg, gamepath_arg,
+        ipc_port_arg, inst_id_arg, seed_arg, dbpath_arg, gamepath_arg,
         fixguids_arg, clearlogs_arg, crashdir_arg, logdir_arg,
         enabled_channels_arg, enabled_crash_channels_arg, nativewindows_arg,
     };
@@ -504,6 +509,7 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         std::string port_arg    = "-port=" + std::to_string(udp_port);
         std::string ipc_port_arg  = "-ipcport=" + std::to_string(cfg.ipc_port);
         std::string inst_id_arg   = "-instanceid=" + std::to_string(instance_id);
+        std::string seed_arg      = "-seed=" + std::to_string(match_seed);
         std::string dbpath_arg    = "-dbpath=" + AbsolutePathFromCwd(cfg.db_path);
         std::string gamepath_arg  = "-gamepath=" + cfg.game_binary;
         std::string fixguids_arg  = std::string("-fixpackageguids=") + (cfg.fix_package_guids ? "1" : "0");
@@ -553,7 +559,7 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
             "-nolog", "-noconsole", "-unattended",
             /*host_arg.c_str(), hostdns_arg.c_str(),*/ port_arg.c_str(), // skal those 2 are unused
             "-seekfreeloading", "-tcp=300", "-nullrhi",
-            ipc_port_arg.c_str(), inst_id_arg.c_str(), dbpath_arg.c_str(), gamepath_arg.c_str(),
+            ipc_port_arg.c_str(), inst_id_arg.c_str(), seed_arg.c_str(), dbpath_arg.c_str(), gamepath_arg.c_str(),
             fixguids_arg.c_str(), clearlogs_arg.c_str(),
             crashdir_arg.c_str(), logdir_arg.c_str(),
             enabled_channels_arg.c_str(), enabled_crash_channels_arg.c_str(),

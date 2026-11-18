@@ -52,11 +52,18 @@ struct SpawnGroupPlan {
 	int EntryCount;       // rolled roster: rand[gmin..gmax], or picked row's
 	                      // bot_count, or 0 (chance roll landed in the empty
 	                      // remainder when the group's chances sum < 1.0)
-	int RolledBotId;      // bot_count-style groups (gmax==0): the ONE bot the
-	                      // group roll picked — every entry of the group spawns
-	                      // this bot (vanilla: per-group roll, not per-entry).
-	                      // 0 for roster-style groups (gmax>0, incubators) —
-	                      // those keep a fresh per-entry roll (mixed brood).
+	int RolledBotId;      // The bot the group roll picked (bot_count groups
+	                      // only; 0 for roster-style groups, gmax>0).
+	bool PerEntryRoll;    // True when the group's bot should be re-rolled for
+	                      // EVERY spawn instead of pinned to RolledBotId:
+	                      // roster-style groups, and bot_count groups whose rows
+	                      // all share one bot_count (the count then carries no
+	                      // composition, so a multi-row group — 111 shipped
+	                      // groups, e.g. table 28 group 2 = 2x one of 4 elites —
+	                      // must produce a mixed pack). When the rows disagree
+	                      // on bot_count the count IS the composition ("8
+	                      // Dismantlers" OR "2 Elite Assassins") and the group
+	                      // stays pinned to the rolled row.
 	DifficultyScalar BBM;	// skal: add spawn-table bbm
 	FSpawnGroupDetail Detail; // nMin/nMaxCount + nRespawnSeconds seeded;
 	                          // nCurrentCount = 0 (caller preserves alive)
@@ -89,7 +96,19 @@ public:
 	// SpawnGroupPlan per group index (sorted spawn_group order). Each group
 	// rolls its chance-weighted row once — a below-1.0 chance sum can yield
 	// EntryCount=0 ("group spawns nothing this activation").
-	static std::vector<SpawnGroupPlan> RollSpawnPlan(int nSpawnTableId);
+	//
+	// rngKey/rngActivation address the roll inside the match seed
+	// (GameRng::Purpose::SpawnPlan): pass FactoryRngKey(factory) and the
+	// factory's activation counter so the roster reproduces exactly under a
+	// recorded seed no matter when the activation happened.
+	static std::vector<SpawnGroupPlan> RollSpawnPlan(int nSpawnTableId,
+	                                                 uint64_t rngKey = 0,
+	                                                 uint64_t rngActivation = 0);
+
+	// Stable per-actor RNG key: map_object_id when the actor carries one
+	// (stable per map placement), else the FName (Index<<32|Number) so
+	// dynamically spawned factories still get a unique, deterministic key.
+	static uint64_t FactoryRngKey(ATgBotFactory* factory);
 
 	// Table's spawn_group value for a group INDEX (sorted order), or -1.
 	// Queue entries and m_nFactorySpawnGroup carry indices; bot picks need
@@ -99,9 +118,19 @@ public:
 	// Weighted-random pick of one bot_id from one (spawn table, spawn group
 	// VALUE) at the current difficulty. Weight = spawn_chance. Returns 0 if
 	// no rows exist at the current difficulty. Used per consumed queue entry
-	// of roster-style groups (fresh roll each spawn) and by SpawnObjectiveBot.
+	// (fresh roll each spawn) and by SpawnObjectiveBot.
+	//
+	// Fresh roll each spawn for groups with PerEntryRoll (RollSpawnPlan leaves
+	// those unpinned so a multi-row group produces a mixed pack instead of N
+	// copies of one row).
 	// skal: return value was botid, replace with {botid,bbm} the previous 'zero' return is simply moved to the entry.botid
-	static BotIdEntry PickBotFromSpawnTableGroup(int nSpawnTableId, int nSpawnGroup, int* outBotCount = nullptr);
+	// rngKey/rngIndex address the roll inside the match seed
+	// (GameRng::Purpose::SpawnEntryType) — normally
+	// FactoryRngKey(factory) + the factory's per-spawn counter.
+	static BotIdEntry PickBotFromSpawnTableGroup(int nSpawnTableId, int nSpawnGroup,
+	                                            int* outBotCount = nullptr,
+	                                            uint64_t rngKey = 0,
+	                                            uint64_t rngIndex = 0);
 
 	// Per-factory storage of the group rolls from the last ResetQueue, keyed
 	// by the factory's FName (collision-safe across actor address reuse).

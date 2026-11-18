@@ -321,7 +321,9 @@ static bool SpawnAdminInstance(const ControlServerConfig& cfg, const std::string
         map_name, game_mode, *port, 0, /*is_home_map=*/false);
     InstanceRegistry::SetMaxPlayers(instance_id, max_players);
 
-    pid_t pid = InstanceSpawner::Spawn(cfg, map_name, game_mode, *port, instance_id);
+    pid_t pid = InstanceSpawner::Spawn(cfg, map_name, game_mode, *port, instance_id,
+        eDifficulty::Default, 0, DifficultyScalar(),
+        InstanceRegistry::GetMatchSeed(instance_id));
     if (pid < 0) {
         InstanceRegistry::MarkStopped(instance_id);
         message = "InstanceSpawner::Spawn failed";
@@ -665,7 +667,8 @@ int main(int argc, char* argv[]) {
             }
 
             pid_t pid = InstanceSpawner::Spawn(
-                cfg, result.map_name, result.game_mode, *port, instance_id, difficulty_type, difficulty_id, difficulty_scalar);
+                cfg, result.map_name, result.game_mode, *port, instance_id, difficulty_type, difficulty_id, difficulty_scalar,
+                InstanceRegistry::GetMatchSeed(instance_id));
 
             if (pid < 0) {
                 Logger::Log("matchmaking",
@@ -748,7 +751,8 @@ int main(int argc, char* argv[]) {
         // skal: afaik this is never used for pve mission, therefore the difficulty is always stock one
         //Logger::Log("skal","[main] spawn instance, default difficulty from being 'successor' map)\n");
         pid_t pid = InstanceSpawner::Spawn(
-            cfg, picked->map_name, picked->game_mode, *port, instance_id, eDifficulty::Id, queue_difficulty);
+            cfg, picked->map_name, picked->game_mode, *port, instance_id, eDifficulty::Id, queue_difficulty,
+            DifficultyScalar(), InstanceRegistry::GetMatchSeed(instance_id));
         if (pid < 0) {
             Logger::Log("main", "[SuccessorSpawner] Failed to spawn successor for parent=%lld\n",
                 (long long)parent_instance_id);
@@ -779,7 +783,8 @@ int main(int argc, char* argv[]) {
         int64_t instance_id = InstanceRegistry::InsertStarting(
             map_name, game_mode, *port, 0, /*is_home_map=*/false);
         Logger::Log("main","[main] spawn instance, will use default difficulty (from being open world map)\n");
-        pid_t pid = InstanceSpawner::Spawn(cfg, map_name, game_mode, *port, instance_id, eDifficulty::Id, difficulty_value_id);
+        pid_t pid = InstanceSpawner::Spawn(cfg, map_name, game_mode, *port, instance_id, eDifficulty::Id, difficulty_value_id,
+            DifficultyScalar(), InstanceRegistry::GetMatchSeed(instance_id));
         if (pid < 0) {
             Logger::Log("travel", "[OpenWorldSpawner] Spawn failed for '%s'\n", map_name.c_str());
             InstanceRegistry::MarkStopped(instance_id);
@@ -812,7 +817,9 @@ int main(int argc, char* argv[]) {
         int64_t instance_id = InstanceRegistry::InsertStarting(
             cfg.home_map_name, cfg.home_map_game_mode, *port, 0, /*is_home_map=*/true);
 
-        pid_t pid = InstanceSpawner::Spawn(cfg, cfg.home_map_name, cfg.home_map_game_mode, *port, instance_id);
+        pid_t pid = InstanceSpawner::Spawn(cfg, cfg.home_map_name, cfg.home_map_game_mode, *port, instance_id,
+            eDifficulty::Default, 0, DifficultyScalar(),
+            InstanceRegistry::GetMatchSeed(instance_id));
         if (pid < 0) {
             Logger::Log("main", "Failed to spawn home map instance\n");
             InstanceRegistry::MarkStopped(instance_id);

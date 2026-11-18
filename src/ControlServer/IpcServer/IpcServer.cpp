@@ -233,8 +233,25 @@ private:
 
         if (type == IpcProtocol::MSG_INSTANCE_HELLO) {
             int64_t inst_id = j.value("instance_id", (int64_t)0);
-            Logger::Log("ipc", "[IpcServer] INSTANCE_HELLO: instance_id=%lld\n",
-                (long long)inst_id);
+            // Effective match seed reported by the DLL. When the row had none
+            // (ad-hoc/manual spawn, or an older control server) this is the
+            // value to remember; when it disagrees with what we passed, the
+            // DLL's value is authoritative — it's the one the rollout used.
+            const uint64_t reported_seed =
+                (uint64_t)j.value("match_seed", (unsigned long long)0);
+            const int reported_scheme = j.value("seed_scheme", 0);
+            if (reported_seed != 0 && inst_id != 0) {
+                const uint64_t stored = InstanceRegistry::GetMatchSeed(inst_id);
+                if (stored != reported_seed) {
+                    InstanceRegistry::SetMatchSeed(inst_id, reported_seed, reported_scheme);
+                    Logger::Log("ipc",
+                        "[IpcServer] match seed for instance %lld: stored=%llu reported=%llu scheme=%d (adopted reported)\n",
+                        (long long)inst_id, (unsigned long long)stored,
+                        (unsigned long long)reported_seed, reported_scheme);
+                }
+            }
+            Logger::Log("ipc", "[IpcServer] INSTANCE_HELLO: instance_id=%lld seed=%llu scheme=%d\n",
+                (long long)inst_id, (unsigned long long)reported_seed, reported_scheme);
 
             // Reject if instance_id is 0 (unassigned).
             if (inst_id == 0) {

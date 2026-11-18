@@ -2,6 +2,7 @@
 #include "src/GameServer/GameModes/SuperAgent/SuperAgent.hpp"
 
 #include "src/Config/Config.hpp"
+#include "src/Utils/GameRng.hpp"
 #include "src/GameServer/Combat/MissionAlerts/SendAlert.hpp"
 #include "src/GameServer/Audio/BotVoice/BotVoice.hpp"
 #include "src/GameServer/Cosmetics/CosmeticEquip.hpp"
@@ -114,8 +115,15 @@ struct CombinedPlan {
 
 CombinedPlan RollCombinedPlan(int tableId, int reps) {
 	CombinedPlan c;
+	// Each repetition is its own plan roll, addressed by (table, wave, rep) so
+	// the escape wave's roster reproduces under a recorded match seed. rep is
+	// packed into the low bits of the ordinal; 64 repetitions per wave is far
+	// beyond anything a wave roster uses.
+	static std::map<int, uint64_t> s_planOrdinals;
+	const uint64_t waveOrdinal = s_planOrdinals[tableId]++;
 	for (int r = 0; r < reps; r++) {
-		const auto plan = TgBotFactory__LoadObjectConfig::RollSpawnPlan(tableId);
+		const auto plan = TgBotFactory__LoadObjectConfig::RollSpawnPlan(
+			tableId, (uint64_t)tableId, waveOrdinal * 64 + (uint64_t)r);
 		for (size_t i = 0; i < plan.size(); i++) {
 			const int gIdx = (int)c.groups.size();
 			c.groups.push_back(plan[i].Detail);
@@ -343,11 +351,12 @@ float Dist2(const FVector& a, const FVector& b) {
 	return dx * dx + dy * dy + dz * dz;
 }
 
-// Uniform random in [lo, hi]. rand() is process-seeded by the bot-factory code
-// at map load; good enough for ambush jitter.
+// Uniform random in [lo, hi] from the shared gameplay RNG (Utils/GameRng.hpp).
+// CRT rand() replays the same sequence on every map load, which made ambush
+// placement/jitter identical game to game.
 float RandRange(float lo, float hi) {
 	if (hi <= lo) return lo;
-	return lo + (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * (hi - lo);
+	return lo + GameRng::Float01() * (hi - lo);
 }
 
 // Normalized projection onto the boss->dropship axis, clamped [0,1].
@@ -1076,7 +1085,7 @@ void Unleash(int tableId, float spawnDelay) {
 		valid.push_back(f);
 	}
 	if (valid.empty()) { Log("Adds::Unleash(%d): no factories\n", tableId); return; }
-	ATgBotFactory* f = valid[rand() % valid.size()];
+	ATgBotFactory* f = valid[GameRng::Index((int)valid.size())];
 
 	UnleashFactory(f, tableId, spawnDelay);
 
@@ -1384,7 +1393,7 @@ static void FireGlobalAlarm(const Escape::AlarmWave* wave) {
 		// factory's own default roster" is inherently per-factory, so each
 		// rolls its own (reps still applies).
 		reps = w.rosterMin > 0 ? w.rosterMin : 1;
-		if (w.rosterMax > reps) reps += rand() % (w.rosterMax - reps + 1);
+		if (w.rosterMax > reps) reps += GameRng::Int(0, w.rosterMax - reps);
 		CombinedPlan combined;
 		if (w.tableId > 0) combined = RollCombinedPlan(w.tableId, reps);
 
@@ -2177,7 +2186,7 @@ void OnCaptureTick(ATgMissionObjective_Proximity* Obj) {
 					}
 				}
 				if (!pool.empty()) {
-					ATgPawn* victim = pool[rand() % pool.size()];
+					ATgPawn* victim = pool[GameRng::Index((int)pool.size())];
 					((ATgAIController*)p->Controller)->SetTargetActor((AActor*)victim);
 				}
 				it->second.nextSwitch = now + it->second.interval;
@@ -2202,7 +2211,7 @@ void OnCaptureTick(ATgMissionObjective_Proximity* Obj) {
 				continue;
 			}
 			if (now >= it->second.nextBark) {
-				const int cue = it->second.cues[rand() % it->second.cues.size()];
+				const int cue = it->second.cues[GameRng::Index((int)it->second.cues.size())];
 				// Pitched path first when asked for; it needs a server-resident
 				// USoundCue*, so a failed resolve/load falls through to the
 				// plain replicated bark instead of going silent.

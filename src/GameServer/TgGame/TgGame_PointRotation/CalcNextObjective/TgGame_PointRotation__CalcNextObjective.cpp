@@ -3,6 +3,7 @@
 #include "src/GameServer/Engine/World/GetWorldInfo/World__GetWorldInfo.hpp"
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/TgGame/TgMissionObjective/SetObjectivePending/TgMissionObjective__SetObjectivePending.hpp"
+#include "src/Utils/GameRng.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 // Picks a random objective from GRI->m_MissionObjectives, excluding m_PreviousObjective.
@@ -37,8 +38,12 @@ void __fastcall TgGame_PointRotation__CalcNextObjective::Call(ATgGame_PointRotat
 		return;
 	}
 
-	// Pick a random candidate
-	int index = rand() % numCandidates;
+	// Pick a random candidate. Keyed by (round number) so the rotation replays
+	// under a recorded match seed; CTR rand() would replay the same sequence on
+	// every map load instead (the same objective order every game).
+	GameRng::Stream rng(GameRng::Purpose::Objective, 0,
+		(uint64_t)(uint32_t)Game->s_nRoundNumber);
+	int index = rng.Index(numCandidates);
 	Game->m_NextObjective = candidates[index];
 	Game->m_PreviousObjective = Game->m_NextObjective;
 

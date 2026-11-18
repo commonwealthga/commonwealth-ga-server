@@ -3,14 +3,17 @@
 #include "src/GameServer/Globals.hpp"
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
+#include "src/Utils/GameRng.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 #include <cstdlib>
+#include <cstring>
 #include <string>
 
 // Vanilla wave model, reconstructed from the Raid_DomeCityDefense_P kismet:
 // every m_fSpawnFrequency seconds a due node spawns the full roster of ONE
-// factory from Targets (round-robin in array order) and pulses "Activated".
+// factory from Targets (round-robin over a per-cycle shuffled order) and
+// pulses "Activated".
 // Evidence:
 //  - "Wave 4 Juggernaut": 3 factories, freq 80, VO per pulse -> one
 //    juggernaut gate per pulse (t=0/80/160 of the 210s round), each
@@ -43,18 +46,31 @@ namespace {
 
 // Retail evaluated the node's "Spawn Frequency" SeqVar per read, so a
 // SeqVar_RandomFloat link (e.g. wave-1 minions 11-18s) re-rolls every pulse.
-float RollFrequency(UTgSeqAct_DefenseWaveSpawner* Spawner) {
+// Addressed by (node, round, pulse ordinal) so the pacing sequence reproduces
+// under a recorded match seed even when pulses land at different wall-clock
+// times than in the original run.
+float RollFrequency(UTgSeqAct_DefenseWaveSpawner* Spawner, GameRng::Stream& rng) {
 	auto it = TgGame_Defense__TickWaveNodes::s_nodeState.find(Spawner);
 	if (it != TgGame_Defense__TickWaveNodes::s_nodeState.end() &&
 	    it->second.fMaxFreq > 0.0f) {
 		const float lo = it->second.fMinFreq;
 		const float hi = it->second.fMaxFreq;
 		if (hi > lo) {
-			return lo + (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * (hi - lo);
+			// Keyed gameplay RNG — CRT rand() replays the same sequence on every
+			// map load, which made wave pacing identical game to game.
+			return lo + rng.Float01() * (hi - lo);
 		}
 		return hi;
 	}
 	return Spawner->m_fSpawnFrequency > 0.0f ? Spawner->m_fSpawnFrequency : 1.0f;
+}
+
+// Stable rng key for a wave-spawner node: kismet objects have no map object id
+// field we can rely on, so hash the FName (Index<<32|Number) — stable per map.
+uint64_t SpawnerRngKey(UTgSeqAct_DefenseWaveSpawner* Spawner) {
+	uint32_t number = 0;
+	std::memcpy(&number, ((const char*)&Spawner->Name) + 4, sizeof(number));
+	return (static_cast<uint64_t>(static_cast<uint32_t>(Spawner->Name.Index)) << 32) | number;
 }
 
 // TEMP DIAGNOSTIC (channel "bosshud") — Solar Farm: boss objective never shows
@@ -137,20 +153,57 @@ void __fastcall TgGame_Defense__TickWaveNodes::Call(ATgGame_Defense* Game, void*
 		if (Spawner->m_nRoundNumber != Game->s_nRoundNumber) continue;
 		if (Spawner->m_fNextSpawnTime > Now) continue;
 
-		const float Frequency = RollFrequency(Spawner);
+		// Pulse ordinal within the current round: pairs with the round number to
+		// address this pulse's pacing roll, so the interval sequence is the same
+		// under a recorded seed regardless of when the pulse landed.
+		NodeState& st = s_nodeState[Spawner];
+		if (st.nRound != Game->s_nRoundNumber) {
+			st.nRound = Game->s_nRoundNumber;
+			st.nPulse = 0;
+		}
+		const uint64_t rngKey   = SpawnerRngKey(Spawner);
+		const uint64_t pulseOrd = ((uint64_t)(uint32_t)Game->s_nRoundNumber << 20) | (uint64_t)st.nPulse++;
+		GameRng::Stream paceRng(GameRng::Purpose::WavePace, rngKey, pulseOrd);
+
+		const float Frequency = RollFrequency(Spawner, paceRng);
 		Spawner->m_fNextSpawnTime = Now + Frequency;
 
-		// ONE factory per pulse, round-robin in Targets order (targets are
-		// pre-filtered to TgBotFactory by CacheKismetConfiguration).
+		// ONE factory per pulse, walking a shuffled permutation of Targets
+		// (targets are pre-filtered to TgBotFactory by CacheKismetConfiguration).
+		// Every factory still fires exactly once per cycle — duplicate Targets
+		// entries still weight it — but the ORDER is re-rolled each cycle, so
+		// the spot a pulse uses varies between games instead of always walking
+		// Targets in array order (which made "wave 4 juggernauts" always take
+		// the same 3 spots in the same sequence).
 		ATgBotFactory* Factory = nullptr;
 		const int targetCount = Spawner->Targets.Num();
 		if (targetCount > 0 && Spawner->Targets.Data != nullptr) {
-			int& cursor = s_nodeState[Spawner].nCursor;
+			if ((int)st.order.size() != targetCount) {
+				st.order.resize(targetCount);
+				for (int k = 0; k < targetCount; k++) st.order[k] = k;
+				st.nCursor = 0;
+			}
+			if (st.nCursor <= 0) {
+				// New cycle: fresh Fisher-Yates shuffle, addressed by
+				// (node, round, cycle) so the order sequence replays under a
+				// recorded match seed.
+				GameRng::Stream orderRng(GameRng::Purpose::WaveOrder, rngKey,
+					((uint64_t)(uint32_t)Game->s_nRoundNumber << 20) | (uint64_t)st.nCycle++);
+				for (int k = targetCount - 1; k > 0; k--) {
+					const int j = orderRng.Index(k + 1);
+					const int t = st.order[k];
+					st.order[k] = st.order[j];
+					st.order[j] = t;
+				}
+				st.nCursor = 0;
+			}
 			for (int probe = 0; probe < targetCount; probe++) {
-				UObject* Target = Spawner->Targets.Data[cursor % targetCount];
-				cursor = (cursor + 1) % targetCount;
+				const int idx = st.order[(st.nCursor + probe) % targetCount];
+				if (idx < 0 || idx >= targetCount) continue;
+				UObject* Target = Spawner->Targets.Data[idx];
 				if (Target != nullptr) {
 					Factory = (ATgBotFactory*)Target;
+					st.nCursor = (st.nCursor + probe + 1) % targetCount;
 					break;
 				}
 			}

@@ -8,6 +8,7 @@
 #include "src/GameServer/Storage/TeamsData/TeamsData.hpp"
 #include "src/GameServer/Utils/ObjectClassCache/ObjectClassCache.hpp"
 #include "src/GameServer/Globals.hpp"
+#include "src/Utils/GameRng.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 
 #include <cmath>
@@ -15,6 +16,13 @@
 #include <cstring>
 
 std::map<int, ATgPawn*> TgBotFactory__SpawnNextBot::m_lastSpawnedBot;
+
+// Per-factory spawn ordinal — the rng index for this spawn's type and location
+// rolls (GameRng::Purpose::SpawnEntryType / SpawnLocation). Diagnostics keyed by
+// mapObjectId; the RNG key itself is FactoryRngKey() so dynamic factories work
+// too. Monotonic for the map's lifetime: spawn #N always gets the same roll
+// under a given match seed, whatever the wall-clock timing was.
+std::map<uint64_t, uint64_t> TgBotFactory__SpawnNextBot::m_spawnCounters;
 std::map<int, std::vector<TgBotFactory__SpawnNextBot::EscortDroneRef>>
 	TgBotFactory__SpawnNextBot::m_escortDrones;
 
@@ -46,13 +54,19 @@ constexpr float kSpawnJitterRadius = 120.0f;
 // >= 0.2 already; belt-and-suspenders so tiny overrides don't melt the CPU.
 constexpr float kMinSpawnDelay = 0.1f;
 
-int PickNextLocationIndex(ATgBotFactory* f) {
+int PickNextLocationIndex(ATgBotFactory* f, GameRng::Stream& rng) {
 	const int n = f->LocationList.Num();
 	if (n <= 0 || f->LocationList.Data == nullptr) return -1;
 
 	int startIdx;
 	if (f->LocationSelection == 0) {       // RANDOM
-		startIdx = rand() % n;
+		// Keyed gameplay RNG, NOT CRT rand(): rand() replays the same sequence
+		// on every map load (the game binary re-seeds srand() deterministically
+		// during load), so RANDOM factories always picked the same nav point —
+		// "the Hunter Spider always spawns there", "wave 4 juggernauts always
+		// take the same 1 of 3 spots". Keyed by (factory, spawn ordinal) so the
+		// same spawn always lands on the same nav point under a match seed.
+		startIdx = rng.Index(n);
 	} else {                                // SEQUENTIAL
 		startIdx = f->s_nCurLocationIndex + 1;
 		if (startIdx >= n) startIdx = 0;
@@ -67,9 +81,9 @@ int PickNextLocationIndex(ATgBotFactory* f) {
 	return -1;
 }
 
-void ApplyXYJitter(FVector& loc) {
-	const float angle  = (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 6.2831853f;
-	const float radius = (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * kSpawnJitterRadius;
+void ApplyXYJitter(FVector& loc, GameRng::Stream& rng) {
+	const float angle  = rng.Float01() * 6.2831853f;
+	const float radius = rng.Float01() * kSpawnJitterRadius;
 	loc.X += std::cos(angle) * radius;
 	loc.Y += std::sin(angle) * radius;
 }
@@ -183,13 +197,22 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 				TgBotFactory__LoadObjectConfig::GetGroupNumberByIndex(tableId, groupIdx);
 		}
 
-		// Vanilla: the group's bot type was rolled ONCE at ResetQueue — every
-		// entry (and BotDied replacements) spawns that same bot. 0 = roster
-		// group (gmin/gmax, incubators) → fresh per-entry roll.
+		// This spawn's rng address: (factory, spawn ordinal). Type and location
+		// rolls both hang off it, so the pair reproduces exactly under a
+		// recorded match seed.
+		const uint64_t rngKey   = TgBotFactory__LoadObjectConfig::FactoryRngKey(BotFactory);
+		const uint64_t spawnOrd = m_spawnCounters[rngKey]++;
+		GameRng::Stream locationRng(GameRng::Purpose::SpawnLocation, rngKey, spawnOrd);
+
+		// Bot type: a fresh per-entry roll within the group (mixed packs).
+		// A non-zero pinned id means the group's rows disagree on bot_count
+		// (composition bound to the row) or it is a SuperAgent curated roster —
+		// both are honoured verbatim. See RollSpawnPlan.
 		// skal: replace botid by {botid,bbm}
 		BotIdEntry Entry = TgBotFactory__LoadObjectConfig::GetFactoryGroupRoll(BotFactory, groupIdx);
 		if ((Entry.BotId <= 0)&&(groupNumber >= 0)) {
-			Entry = TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(tableId, groupNumber);
+			Entry = TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(
+				tableId, groupNumber, /*outBotCount=*/nullptr, rngKey, spawnOrd);
 		}
 		if (Entry.BotId <= 0) {
 			Logger::Log("tgbotfactory",
@@ -199,7 +222,7 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 			continue;
 		}
 
-		const int lIdx = PickNextLocationIndex(BotFactory);
+		const int lIdx = PickNextLocationIndex(BotFactory, locationRng);
 		if (lIdx < 0) {
 			Logger::Log("tgbotfactory", "  no valid location for factory %d — bailing\n", mid);
 			return;
@@ -222,7 +245,7 @@ void __fastcall TgBotFactory__SpawnNextBot::Call(ATgBotFactory* BotFactory, void
 			if (halfHeight > 0.0f) loc.Z += halfHeight + 5.0f;
 		}
 		const bool jittered = !isPetFactory && gd != nullptr && gd->nCurrentCount > 0;
-		if (jittered) ApplyXYJitter(loc);
+		if (jittered) ApplyXYJitter(loc, locationRng);
 
 		// Facing: nav point rotation, with optional per-factory yaw override.
 		FRotator spawnRot = BotStart->Rotation;

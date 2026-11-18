@@ -97,8 +97,11 @@ void __fastcall TgMissionObjective_Bot__SpawnObjectiveBot::Call(ATgMissionObject
 		const int firstGroup = TgBotFactory__LoadObjectConfig::GetGroupNumberByIndex(
 			Obj->s_nSpawnTableId, 0);
 		if (firstGroup >= 0) {
+			// Keyed by the objective's map object id so a boss spawns the same
+			// bot under a recorded match seed (index 0: one boss per objective).
 			Entry = TgBotFactory__LoadObjectConfig::PickBotFromSpawnTableGroup(
-				Obj->s_nSpawnTableId, firstGroup);
+				Obj->s_nSpawnTableId, firstGroup, /*outBotCount=*/nullptr,
+				(uint64_t)Obj->m_nMapObjectId, 0);
 		}
 		if (Entry.BotId == 0) {
 			Logger::Log("tgmissionobjective_bot",

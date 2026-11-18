@@ -73,6 +73,17 @@ public:
     // Store the real PID after the process has been spawned.
     static void UpdatePid(int64_t instance_id, int pid);
 
+    // Match seed for an instance (ga_instances.match_seed), or 0 when the row
+    // predates seeding / doesn't exist. Minted by the Insert* calls below and
+    // handed to the instance as -seed=, so the whole spawn/objective/variant
+    // rollout replays under it. See src/Shared/MatchSeed.hpp for the scheme.
+    static uint64_t GetMatchSeed(int64_t instance_id);
+
+    // Overwrite the stored seed (used when the DLL reports the seed it actually
+    // used — an instance started without -seed= generates its own, and we still
+    // want the row to be replay-referenceable).
+    static void SetMatchSeed(int64_t instance_id, uint64_t seed, int seed_scheme);
+
     // Transition STARTING -> READY when INSTANCE_READY IPC arrives.
     static void MarkReady(int64_t instance_id, int max_players);
     static void SetMaxPlayers(int64_t instance_id, int max_players);

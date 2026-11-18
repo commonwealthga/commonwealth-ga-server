@@ -1,4 +1,5 @@
 #include "src/Config/Config.hpp"
+#include "src/Shared/MatchSeed.hpp"
 #include "src/GameServer/Constants/GameTypes.h"
 #include "src/Utils/CommandLineParser/CommandLineParser.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -207,6 +208,26 @@ int64_t Config::GetInstanceId() {
 	std::wstring val = options.switches[L"instanceid"];
 	if (val.empty()) return 0;
 	return static_cast<int64_t>(std::stoll(CommandLineParser::WideToUtf8(val)));
+}
+
+uint64_t Config::GetMatchSeed() {
+	// -seed=<u64>, minted by the control server from ga_instances.match_seed.
+	// Also accept -matchseed= for readability in manual spawns. Clamped to
+	// kMatchSeedMax so the value round-trips through SQLite INTEGER.
+	ParsedOptions options = CommandLineParser::ParseCommandLine();
+	std::wstring val = options.switches[L"seed"];
+	if (val.empty()) val = options.switches[L"matchseed"];
+	if (val.empty()) return 0;
+	try {
+		unsigned long long parsed = std::stoull(CommandLineParser::WideToUtf8(val));
+		if (parsed == 0) return 0;
+		if (parsed > kMatchSeedMax) parsed = kMatchSeedMax;
+		return (uint64_t)parsed;
+	} catch (...) {
+		// Malformed seed — fall through to "none given" rather than crash the
+		// instance over a bad command line.
+		return 0;
+	}
 }
 
 std::string Config::GetDbPath() {

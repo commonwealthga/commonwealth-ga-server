@@ -1,3 +1,4 @@
+#include "src/Utils/GameRng.hpp"
 #include "src/IpcClient/IpcClient.hpp"
 #include "src/Shared/IpcFraming.hpp"
 #include "src/Utils/Logger/Logger.hpp"
@@ -257,8 +258,16 @@ DWORD WINAPI IpcClient::IpcThread(LPVOID) {
                 nlohmann::json hello;
                 hello["type"]        = IpcProtocol::MSG_INSTANCE_HELLO;
                 hello["instance_id"] = instance_id_;
+                // Effective match seed + derivation scheme. The control server
+                // stores what we actually used, so instances started without
+                // -seed= (home maps, manual spawns) are still recorded and can
+                // be replayed later. See src/Shared/MatchSeed.hpp.
+                hello["match_seed"]  = (unsigned long long)GameRng::MatchSeed();
+                hello["seed_scheme"] = GameRng::SeedScheme();
                 Send(hello.dump());
-                Logger::Log("ipc", "[IPC] Sent INSTANCE_HELLO: instance_id=%lld\n", instance_id_);
+                Logger::Log("ipc",
+                    "[IPC] Sent INSTANCE_HELLO: instance_id=%lld seed=%llu scheme=%d\n",
+                    instance_id_, (unsigned long long)GameRng::MatchSeed(), GameRng::SeedScheme());
 
                 // Arm the first async read.
                 do_read_header();

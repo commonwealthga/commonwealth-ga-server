@@ -1,3 +1,4 @@
+#include "src/Utils/GameRng.hpp"
 #include "src/GameServer/Engine/MapObjectConfig/MapObjectConfig.hpp"
 #include "src/Config/Config.hpp"
 #include "src/Database/Database.hpp"
@@ -141,11 +142,10 @@ void MapObjectConfig::Init() {
 		}
 	}
 
-	// Seed once per Init() so calling Init() twice in the same second still
-	// rolls differently (rand_r would be nicer but srand+rand is plenty here).
-	static bool seeded = false;
-	if (!seeded) { srand(static_cast<unsigned>(time(nullptr))); seeded = true; }
-
+	// Variant picks use the keyed gameplay RNG: CRT rand() replays the same
+	// sequence on every map load, so the same variant won on every run. Keyed
+	// by (mapObjectId, variant group) — map-load time, so the ordinal is 0 and
+	// a recorded match seed reproduces the same variant set.
 	int variantCount = 0;
 	for (auto& kv : groups) {
 		auto& variantMap = kv.second;
@@ -155,7 +155,10 @@ void MapObjectConfig::Init() {
 		for (const auto& v : variantMap) totalWeight += v.second.weight;
 		if (totalWeight <= 0.0f) continue;
 
-		float pick = (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * totalWeight;
+		GameRng::Stream rng(GameRng::Purpose::Variants,
+			((uint64_t)(uint32_t)kv.first.mapObjectId << 32) ^ GameRng::HashString(kv.first.variantGroup),
+			0);
+		float pick = rng.Float01() * totalWeight;
 		float accum = 0.0f;
 		const Bucket* chosen = nullptr;
 		for (const auto& v : variantMap) {
