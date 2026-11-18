@@ -194,9 +194,16 @@ static void SeedPropertiesFromDeviceModeDb(ATgDeployable* Deployable, int deploy
 // does: ATgDeployable::ApplyProperty only mirrors props 8 and 278; everything
 // else stays in s_Properties for GetProperty consumers like the damage path).
 //
-// SQL uses DISTINCT to collapse the duplicate rows asm.dat capture currently
-// produces (otherwise +100 protection would compound to +200/+300 across
-// repeated startup runs).
+// No DISTINCT: one row per effect the group actually contains.
+// asm_data_set_effects holds genuinely repeated rows inside a single group
+// (egId 10834 = seven prop-140 rows, egId 16329 = three prop-208 rows), which a
+// DISTINCT silently collapsed into one — an under-apply, not a duplicated
+// protection. The captured-duplicate-row worry was asm_data_set_effect_groups
+// appearing twice; that cannot fire here because no (device_id,
+// effect_group_id) pair is duplicated and none of the device-equip
+// effect_group_ids appears twice in asm_data_set_effect_groups (verified
+// against server.db). The per-device cache below still folds the rows in once
+// per process, so repeated spawns don't compound.
 static void ApplyDeviceEquipEffects(ATgDeployable* Deployable, int deviceId) {
 	if (!Deployable || deviceId <= 0) return;
 	if (Deployable->s_Properties.Data == nullptr) return;
@@ -208,7 +215,7 @@ static void ApplyDeviceEquipEffects(ATgDeployable* Deployable, int deviceId) {
 		if (db) {
 			sqlite3_stmt* stmt = nullptr;
 			static const char* kSql =
-				"SELECT DISTINCT e.prop_id, e.base_value, e.calc_method_value_id "
+				"SELECT e.prop_id, e.base_value, e.calc_method_value_id "
 				"FROM asm_data_set_device_effect_groups deg "
 				"JOIN asm_data_set_effect_groups eg ON eg.effect_group_id = deg.effect_group_id "
 				"JOIN asm_data_set_effects e ON e.effect_group_id = deg.effect_group_id "

@@ -176,7 +176,7 @@ DifficultyScalar Config::GetDifficultyScalar(int DifficultyId) {
 		case GA_G::DIFFICULTY_VALUE_ID_ADVANCED:             		return DifficultyScalar(1.50f, 1.30f);
 		case GA_G::DIFFICULTY_VALUE_ID_MAXIMUM_SECURITY:
 		case GA_G::DIFFICULTY_VALUE_ID_EXPERT:               		return DifficultyScalar(1.75f, 1.52f);
-		case GA_G::DIFFICULTY_VALUE_ID_ULTRA_MAX_SECURITY:   		return DifficultyScalar(2.00f, 1.74f);
+		case GA_G::DIFFICULTY_VALUE_ID_ULTRA_MAX_SECURITY:   		return DifficultyScalar(1.80f, 1.74f);
 		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_MEGA_MAX_SECURITY:return DifficultyScalar(2.90f, 2.30f);
 		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_GIGA_MAX_SECURITY:return DifficultyScalar(3.20f, 2.40f);
 		case GA_G::DIFFICULTY_VALUE_ID_CUSTOM_HARDCORE_SECURITY:return DifficultyScalar(2.25f, 1.96f);
