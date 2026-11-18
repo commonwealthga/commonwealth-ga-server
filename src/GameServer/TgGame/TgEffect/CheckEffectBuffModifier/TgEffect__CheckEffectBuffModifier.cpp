@@ -1,7 +1,6 @@
 #include "src/GameServer/TgGame/TgEffect/CheckEffectBuffModifier/TgEffect__CheckEffectBuffModifier.hpp"
 #include "src/GameServer/TgGame/_effect_core/OriginResolver.hpp"
 #include "src/GameServer/TgGame/_effect_core/DeviceLookup.hpp"
-#include "src/GameServer/TgGame/_effect_core/HitSituationalMitigation.hpp"
 #include "src/GameServer/TgGame/_effect_core/CleanseTracking.hpp"
 #include "src/GameServer/TgGame/_effect_core/EffectCredit.hpp"
 #include "src/GameServer/Stats/MatchStats.hpp"
@@ -106,10 +105,7 @@ void __fastcall TgEffect__CheckEffectBuffModifier::Call(UTgEffect* effect, void*
 	// it). Both calls come first so the early-outs below can't skip them.
 	// See HitSituationalMitigation.hpp.
 	const bool isDamage = ObjectClassCache::ClassNameContains(effect, "TgEffectDamage");
-	if (isDamage) {
-		HitSituationalMitigation::BeginImpactMitigation(effect);
-	} else {
-		HitSituationalMitigation::NoteDebuffApplied(effect);
+	if (!isDamage) {
 		// Tracked-boost registry (reach + overwrite waste). Gated inside on
 		// the group id; HoT ticks and multi-effect groups dedupe there too.
 		MatchStats::OnBoostApply(g);

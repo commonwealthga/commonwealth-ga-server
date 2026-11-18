@@ -272,7 +272,6 @@ SOURCE_FILES= \
 			  $(SRC_DIR)/GameServer/TgGame/_effect_core/BuffWindowTracking.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/_effect_core/CleanseTracking.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/_effect_core/DeviceCategorySkill.cpp \
-			  $(SRC_DIR)/GameServer/TgGame/_effect_core/HitSituationalMitigation.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/_effect_core/ScaleTargetProperties.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/_deployable_classify/DeployableClassify.cpp \
 			  $(SRC_DIR)/GameServer/TgGame/_surface_rotation/SurfaceRotation.cpp \
