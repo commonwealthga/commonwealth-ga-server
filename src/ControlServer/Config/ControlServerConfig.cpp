@@ -80,6 +80,16 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
     }
 
     if (j.contains("wine_binary"))        cfg.wine_binary        = j["wine_binary"].get<std::string>();
+    if (j.contains("role") && j["role"].is_string()) {
+        const std::string role = j["role"].get<std::string>();
+        if (role == "master" || role == "node") {
+            cfg.role = role;
+        } else {
+            Logger::Log("config",
+                "[ControlServerConfig] Unknown role '%s' (expected 'master' or 'node') — using 'master'\n",
+                role.c_str());
+        }
+    }
     if (j.contains("wine_prefix"))        cfg.wine_prefix        = j["wine_prefix"].get<std::string>();
     if (j.contains("xvfb_run_path"))      cfg.xvfb_run_path      = j["xvfb_run_path"].get<std::string>();
     if (j.contains("game_binary"))        cfg.game_binary        = j["game_binary"].get<std::string>();
@@ -93,6 +103,12 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
     if (j.contains("tcp_port"))           cfg.tcp_port           = j["tcp_port"].get<uint16_t>();
     if (j.contains("chat_port"))          cfg.chat_port          = j["chat_port"].get<uint16_t>();
     if (j.contains("ipc_port"))           cfg.ipc_port           = j["ipc_port"].get<uint16_t>();
+    if (j.contains("ipc_bind"))           cfg.ipc_bind           = j["ipc_bind"].get<std::string>();
+    if (j.contains("node_port"))          cfg.node_port          = j["node_port"].get<uint16_t>();
+    if (j.contains("node_bind"))          cfg.node_bind          = j["node_bind"].get<std::string>();
+    if (j.contains("content_dir"))        cfg.content_dir        = j["content_dir"].get<std::string>();
+    if (j.contains("base_db"))            cfg.base_db            = j["base_db"].get<std::string>();
+    if (j.contains("apply_content"))      cfg.apply_content      = j["apply_content"].get<bool>();
     if (j.contains("admin_token"))        cfg.admin_token        = j["admin_token"].get<std::string>();
     if (j.contains("overlay_http_port"))  cfg.overlay_http_port  = j["overlay_http_port"].get<uint16_t>();
     if (j.contains("overlay_token"))      cfg.overlay_token      = j["overlay_token"].get<std::string>();
@@ -121,6 +137,47 @@ ControlServerConfig ControlServerConfig::Load(const std::string& path) {
             if (item.is_string()) cfg.enabled_channels.push_back(item.get<std::string>());
         }
     }
+    if (j.contains("node") && j["node"].is_object()) {
+        const auto& n = j["node"];
+        try {
+            if (n.contains("id") && n["id"].is_string())
+                cfg.node.id = n["id"].get<std::string>();
+            if (n.contains("key") && n["key"].is_string())
+                cfg.node.key = n["key"].get<std::string>();
+            if (n.contains("master_addr") && n["master_addr"].is_string())
+                cfg.node.master_addr = n["master_addr"].get<std::string>();
+        } catch (const std::exception& e) {
+            Logger::Log("config", "[ControlServerConfig] node block ignored: %s\n", e.what());
+        }
+    }
+
+    if (j.contains("nodes") && j["nodes"].is_array()) {
+        // Guarded per-entry: a typo in one volunteer's block must not stop the
+        // server from starting; it just leaves that node out (and logged).
+        for (const auto& item : j["nodes"]) {
+            if (!item.is_object()) {
+                Logger::Log("config", "[ControlServerConfig] nodes[]: non-object entry ignored\n");
+                continue;
+            }
+            try {
+                NodeEntryConfig n;
+                n.id       = item.value("id", 0);
+                n.name     = item.value("name", std::string());
+                n.key      = item.value("key", std::string());
+                n.site     = item.value("site", 0);
+                n.address  = item.value("address", std::string());
+                n.capacity = item.value("capacity", 0);
+                n.home_map = item.value("home_map", false);
+                n.enabled  = item.value("enabled", true);
+                cfg.nodes.push_back(std::move(n));
+            } catch (const std::exception& e) {
+                Logger::Log("config",
+                    "[ControlServerConfig] nodes[]: entry ignored (bad field type: %s)\n",
+                    e.what());
+            }
+        }
+    }
+
     if (j.contains("announcers") && j["announcers"].is_array()) {
         for (const auto& item : j["announcers"]) {
             if (item.is_string()) cfg.announcers.push_back(item.get<std::string>());

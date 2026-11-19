@@ -5920,10 +5920,47 @@ void TcpSession::send_go_play_response()
 {
 	auto instance = InstanceRegistry::GetReadyHomeInstance();
 	if (!instance) {
-		Logger::Log("tcp", "[TcpSession] No READY home map instance for go_play\n");
+		// Spawning the home map happens on demand at login, so the very first
+		// player always races the instance load: the client asks for go-play while
+		// the instance is still STARTING. Dropping the request here is what left
+		// that player staring at a blank loading screen. Park it and let
+		// OnHomeMapReady() re-drive it.
+		pending_go_play_ = true;
+		Logger::Log("tcp",
+			"[TcpSession] No READY home map instance for go_play -- request parked "
+			"until it loads\n");
 		return;
 	}
+	pending_go_play_ = false;
 	send_go_play_to_instance(*instance, home_task_force_);
+}
+
+void TcpSession::OnHomeMapReady()
+{
+	auto instance = InstanceRegistry::GetReadyHomeInstance();
+	if (!instance) return;
+
+	std::vector<std::shared_ptr<TcpSession>> parked;
+	{
+		std::lock_guard<std::mutex> lock(sessions_mutex_);
+		for (auto it = g_sessions_.begin(); it != g_sessions_.end();) {
+			auto session = it->second.lock();
+			if (!session) {
+				it = g_sessions_.erase(it);
+				continue;
+			}
+			if (session->pending_go_play_) parked.push_back(session);
+			++it;
+		}
+	}
+
+	for (const auto& session : parked) {
+		Logger::Log("tcp",
+			"[TcpSession] home map is READY -- sending the parked go_play (%s)\n",
+			session->player_name.c_str());
+		session->pending_go_play_ = false;
+		session->send_go_play_to_instance(*instance, session->home_task_force_);
+	}
 }
 
 void TcpSession::send_go_play_to_instance(const InstanceInfo& target, int task_force)

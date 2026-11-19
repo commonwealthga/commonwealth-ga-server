@@ -128,3 +128,60 @@ TEST(coop_empty_parties_no_match) {
     auto r = rule.Evaluate({}, {});
     CHECK(!r.has_value());
 }
+
+TEST(coop_min_distinct_classes_holds_pop) {
+    // Raid rule (GA 1.36, opt-in): fresh pop needs every class present.
+    auto cfg = Cfg("Coop", TaskforcePolicy::Pinned2, TeamPolicy::Mixed, TeamSidePolicy::Preferred, 10);
+    cfg.min_distinct_classes = 4;
+    CoopMatchRule rule(&cfg);
+    CHECK(!rule.Evaluate({ Solo(A,0), Solo(M,1), Solo(R,2) }, {}).has_value());
+    auto r = rule.Evaluate({ Solo(A,0), Solo(M,1), Solo(R,2), Solo(B,3) }, {});
+    CHECK(r.has_value());
+    CHECK_EQ((int)r->session_guids.size(), 4);
+}
+
+TEST(coop_min_distinct_classes_off_by_default) {
+    auto cfg = Cfg("Coop", TaskforcePolicy::Pinned2, TeamPolicy::Mixed, TeamSidePolicy::Preferred, 10);
+    CoopMatchRule rule(&cfg);
+    CHECK(rule.Evaluate({ Solo(A,0) }, {}).has_value());
+}
+
+TEST(coop_min_distinct_classes_dropin_unaffected) {
+    auto cfg = Cfg("Coop", TaskforcePolicy::Pinned2, TeamPolicy::Mixed, TeamSidePolicy::Preferred, 10);
+    cfg.min_distinct_classes = 4;
+    CoopMatchRule rule(&cfg);
+    auto r = rule.Evaluate({ Solo(A,0) }, { OpenInst(7, 3, 10) });
+    CHECK(r.has_value());
+    CHECK(r->existing_instance_id.has_value());
+}
+
+TEST(coop_max_class_per_side_fresh_pop) {
+    // Merc rule (GA 1.39): at most N of a class per side -> 2N per match.
+    auto cfg = Cfg("Coop", TaskforcePolicy::BalancedPvp, TeamPolicy::Mixed, TeamSidePolicy::Preferred, 20);
+    cfg.max_class_per_side = 1;
+    CoopMatchRule rule(&cfg);
+    auto r = rule.Evaluate({ Solo(A,0), Solo(A,1), Solo(A,2), Solo(M,3) }, {});
+    CHECK(r.has_value());
+    CHECK_EQ((int)r->session_guids.size(), 3);  // third assault waits
+}
+
+TEST(coop_max_class_per_side_dropin_counts_instance) {
+    auto cfg = Cfg("Coop", TaskforcePolicy::BalancedPvp, TeamPolicy::Mixed, TeamSidePolicy::Preferred, 20);
+    cfg.max_class_per_side = 1;
+    CoopMatchRule rule(&cfg);
+    RunningInstance inst = OpenInst(5, 2, 20);
+    inst.team1.class_counts[A] = 1;
+    inst.team2.class_counts[A] = 1;
+    auto r = rule.Evaluate({ Solo(A,0), Solo(M,1) }, { inst });
+    CHECK(r.has_value());
+    CHECK_EQ((int)r->session_guids.size(), 1);  // only the medic joins
+    CHECK(r->existing_instance_id.has_value());
+}
+
+TEST(coop_max_class_per_side_off_by_default) {
+    auto cfg = Cfg("Coop", TaskforcePolicy::BalancedPvp, TeamPolicy::Mixed, TeamSidePolicy::Preferred, 20);
+    CoopMatchRule rule(&cfg);
+    auto r = rule.Evaluate({ Solo(A,0), Solo(A,1), Solo(A,2) }, {});
+    CHECK(r.has_value());
+    CHECK_EQ((int)r->session_guids.size(), 3);
+}

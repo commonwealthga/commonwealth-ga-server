@@ -95,6 +95,7 @@ Bigger detail lives in `docs/claude/`. Don't load eagerly; pull when relevant.
 - [`docs/claude/logging.md`](docs/claude/logging.md) — channel conventions, log file locations, single-channel-when-asking, common channels
 - [`docs/claude/effect-system.md`](docs/claude/effect-system.md) — template/clone model, m_bIsManaged, m_bRemovable, displacement+revert, BUFF_PAWN/PROP_LIST, death cleanup, RCST on revive
 - [`docs/claude/replication.md`](docs/claude/replication.md) — bNetInitial vs. delta gating, GetOptimizedRepListV2 conventions, CPF_Net rep gaps, NetGUID race, TCP per-message ~1450-byte cap
+- [`docs/claude/database.md`](docs/claude/database.md) — database bootstrap: one writer (control server), `dbbase/base.db` baseline, forward-only `migrations/NNNN-*.sql`, why the DLL must never migrate again, schema drift between master and node
 
 ## Working agreement (style)
 

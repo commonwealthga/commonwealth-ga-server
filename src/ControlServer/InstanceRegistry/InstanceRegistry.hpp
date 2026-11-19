@@ -25,6 +25,11 @@ struct InstanceInfo {
     bool        is_home_map   = false; // true if spawned for home map
     int         max_players   = 0;  // filled by INSTANCE_READY
 
+    // Owning node. 0 = this machine (the master is node 0), so single-node
+    // deployments and every pre-multi-node row stay valid as-is. Non-zero
+    // means the process runs elsewhere and `pid` is only meaningful for logs.
+    int         node_id       = 0;
+
     // Continuous-queue plumbing (NULL/0 for everything else).
     uint32_t    queue_id                  = 0;  // 0 = not from a matchmade queue
     int64_t     predecessor_instance_id   = 0;  // 0 = not a successor
@@ -68,10 +73,55 @@ public:
                                    uint32_t queue_id = 0,
                                    int64_t predecessor_instance_id = 0,
                                    const std::string& access_mode = "OPEN",
-                                   const std::string& owner_party_ids = "");
+                                   const std::string& owner_party_ids = "",
+                                   int node_id = 0);
+
+    // Mirror a master-owned instance row, keeping the master's instance id.
+    //
+    // A node uses this so an instance has one identity everywhere (logs, IPC,
+    // ga_instance_players, the DLL's own queries). Idempotent: a re-dispatch or a
+    // reconnect for the same id resets the existing row to STARTING instead of
+    // failing on the unique index, which also makes a node and master sharing one
+    // database (the single-machine test setup) work.
+    //
+    // victory_bonus_lives is passed explicitly because the master derives it from
+    // the queue at spawn time; the node's own database may not even have that
+    // queue row. The DLL reads this column in InitGameRepInfo.
+    // Returns the instance_id, or 0 on failure.
+    static int64_t InsertStartingWithId(int64_t instance_id,
+                                        const std::string& map_name,
+                                        const std::string& game_mode,
+                                        uint16_t udp_port, int pid, bool is_home_map,
+                                        uint32_t queue_id = 0,
+                                        int64_t predecessor_instance_id = 0,
+                                        const std::string& access_mode = "OPEN",
+                                        const std::string& owner_party_ids = "",
+                                        int node_id = 0,
+                                        uint64_t match_seed = 0,
+                                        int victory_bonus_lives = 0);
+
+    // How many non-STOPPED instances this node currently has. Used to enforce
+    // nodes[].capacity before dispatching more work to it.
+    static int CountActiveInstancesForNode(int node_id);
+
+    // Every non-STOPPED instance whose ga_instances.node_id is this node.
+    // A node uses this to find instances it still owns after a restart or a lost
+    // in-memory entry -- anything here that is not running locally is an orphan.
+    static std::vector<InstanceInfo> GetInstancesForNode(int node_id);
+
+    // ga_instances.victory_bonus_lives for an instance, 0 if the row is gone.
+    // The master forwards it in INSTANCE_SPAWN so a remote node's mirrored row
+    // carries the same challenge-bonus threshold.
+    static int GetVictoryBonusLives(int64_t instance_id);
 
     // Store the real PID after the process has been spawned.
     static void UpdatePid(int64_t instance_id, int pid);
+
+    // Store the UDP port an instance actually bound. A remote node picks the port
+    // itself, so the master inserts the row with 0 and fills it in when the node
+    // reports INSTANCE_SPAWNING -- which always precedes READY, so nothing can
+    // hand out a GO_PLAY for a port-0 instance.
+    static void UpdateUdpPort(int64_t instance_id, uint16_t udp_port);
 
     // Match seed for an instance (ga_instances.match_seed), or 0 when the row
     // predates seeding / doesn't exist. Minted by the Insert* calls below and

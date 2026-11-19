@@ -1,4 +1,5 @@
 #pragma once
+#include "src/ControlServer/IpcServer/FramePipe.hpp"
 #include <asio.hpp>
 #include <functional>
 #include <map>
@@ -10,7 +11,9 @@
 
 class IpcServer {
 public:
-    IpcServer(asio::io_context& io, uint16_t port);
+    // bind_addr is normally "127.0.0.1": instances are local, and the IPC
+    // protocol has no authentication (see ControlServerConfig::ipc_bind).
+    IpcServer(asio::io_context& io, uint16_t port, const std::string& bind_addr);
     bool IsListening() const { return listening_; }
 
     // Pending ACK management (called from TcpSession on ASIO thread)
@@ -19,8 +22,17 @@ public:
     static void ClearPendingAck(const std::string& session_guid);
 
     // Send a JSON message to a specific game instance by instance_id.
-    // Returns false if no session for that instance_id.
+    // Returns false if no session for that instance_id. Works unchanged for an
+    // instance hosted on another node: its session is driven by a FramePipe over
+    // the node link, so g_sessions holds it exactly like a local one.
     static bool SendToInstance(int64_t instance_id, const std::string& json_msg);
+
+    // Serve a game-instance IPC connection that does not come from a socket we
+    // accepted -- i.e. a tunnel stream from a remote node. Creates the session and
+    // starts its read loop; from there it is indistinguishable from a local
+    // instance (same INSTANCE_HELLO validation, same dispatch, same g_sessions
+    // entry).
+    static void AdoptPipe(std::shared_ptr<FramePipe> pipe);
 
     // Delivers ACK from dispatch -- looks up and invokes pending callback.
     // Called from IpcSession (same TU) when PLAYER_REGISTER_ACK arrives.

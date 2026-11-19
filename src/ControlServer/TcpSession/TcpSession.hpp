@@ -266,11 +266,20 @@ public:
     // and the GSC_CHANGE_INSTANCE return-to-home handler.
     static void EnsureHomeMapWarm(const char* reason);
 
+    // Called when a home-map instance reaches READY. A client that asked to go
+    // play before the instance finished loading has its request parked in
+    // pending_go_play_; this re-drives it instead of leaving the player on a
+    // blank loading screen until they reconnect.
+    static void OnHomeMapReady();
+
 private:
 
     // Set when a READY home map instance is found for this player.
     int64_t assigned_instance_id_ = 0;
     int home_task_force_ = 1;
+    // Set when the client asked for go-play and no READY home instance existed.
+    // Cleared when the transfer is actually sent.
+    bool pending_go_play_ = false;
 
     // True from a successful spectate-join PLAYER_REGISTER ACK (see
     // initiate_player_register_for_spectate) until -unspectate or disconnect.
