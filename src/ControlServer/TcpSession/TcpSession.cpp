@@ -1,5 +1,6 @@
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/ControlServer/NodeRegistry/NodeRegistry.hpp"
+#include "src/Shared/NetAddress.hpp"
 #include "src/ControlServer/ChatSession/ChatSession.hpp"
 #include "src/ControlServer/ChatSession/ChatCommand.hpp"
 #include "src/ControlServer/Database/Database.hpp"
@@ -6095,7 +6096,18 @@ std::string TcpSession::PlayHostFor(const InstanceInfo& inst) const
 {
 	if (inst.node_id != 0) {
 		const std::string addr = NodeRegistry::AddressOf(inst.node_id);
-		if (!addr.empty()) return addr;
+		if (!addr.empty() && NetAddress::IsIPv4Literal(addr)) return addr;
+		if (!addr.empty()) {
+			// WriteIP splits on '.' and std::stoi's each token, so a hostname here
+			// would throw and take the master down. Falling back keeps the packet
+			// well formed; the player then fails to connect, which is visible,
+			// instead of the control server dying, which is not.
+			Logger::Log("tcp",
+				"[TcpSession] instance=%lld is on node %d whose address '%s' is not a "
+				"resolved IPv4 -- sending the local address; players will not reach "
+				"that instance\n",
+				(long long)inst.instance_id, inst.node_id, addr.c_str());
+		}
 		Logger::Log("tcp",
 			"[TcpSession] instance=%lld lives on node %d, which advertises no address "
 			"-- falling back to the master's address, the client will not reach it\n",

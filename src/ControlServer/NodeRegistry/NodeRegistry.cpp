@@ -4,6 +4,14 @@
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/NodeData/ContentSnapshot.hpp"
 #include "src/ControlServer/NodeData/AgentArtifact.hpp"
+#include "src/Shared/NetAddress.hpp"
+
+#ifdef _WIN32
+#include <ws2tcpip.h>
+#else
+#include <netdb.h>
+#include <sys/socket.h>
+#endif
 #include "src/ControlServer/NodeData/PlayerBundle.hpp"
 #include "src/ControlServer/NodeLink/NodeMessages.hpp"
 #include "src/Shared/Base64.hpp"
@@ -162,6 +170,9 @@ void NodeRegistry::Reload(const ControlServerConfig& cfg) {
             rt.connected_at_ms = old->second.connected_at_ms;
             rt.last_error      = old->second.last_error;
             rt.link_gen        = old->second.link_gen;
+            rt.address_observed       = old->second.address_observed;
+            rt.address_resolved       = old->second.address_resolved;
+            rt.address_resolved_at_ms = old->second.address_resolved_at_ms;
 
             const bool changed =
                 old->second.site != rt.site || old->second.capacity != rt.capacity ||
@@ -306,6 +317,21 @@ int NodeRegistry::Attach(std::shared_ptr<NodeLink::Link> link) {
     rt.last_error.clear();
     rt.instances.clear();
 
+    // Where this link came from. Used only when no address is configured, so an
+    // ordinary node with a rotating residential IP needs no config and no DynDNS:
+    // each reconnect records the new address and placements follow it.
+    {
+        const std::string observed = PeerIPv4(link->PeerLabel());
+        const bool changed = !observed.empty() && observed != rt.address_observed;
+        if (!observed.empty()) rt.address_observed = observed;
+        if (changed) {
+            Logger::Log("node", "[NodeRegistry] %s connected from %s%s\n",
+                Describe(node_id).c_str(), observed.c_str(),
+                rt.address.empty() ? " (no address configured -- using it)"
+                                   : " (a configured address takes precedence)");
+        }
+    }
+
     if (previous && previous->IsOpen()) {
         Logger::Log("node", "[NodeRegistry] %s reconnected; dropping the previous link\n",
             Describe(node_id).c_str());
@@ -403,7 +429,17 @@ bool NodeRegistry::IsUp(int node_id) {
 std::string NodeRegistry::AddressOf(int node_id) {
     auto it = g_nodes.find(node_id);
     if (it == g_nodes.end()) return std::string();
-    return it->second.address;
+    const NodeRuntime& rt = it->second;
+
+    // Precedence: an explicitly configured address wins (resolved if it is a
+    // hostname), because that is the operator saying "this is where players reach
+    // it" -- which is what a VPN'd or multi-homed node needs. Otherwise fall back
+    // to the address its own link came from, which is right for the ordinary case
+    // of a residential IP that rotates: no config edit, no DynDNS.
+    if (!rt.address_resolved.empty()) return rt.address_resolved;
+    if (NetAddress::IsIPv4Literal(rt.address)) return rt.address;
+    if (!rt.address_observed.empty()) return rt.address_observed;
+    return rt.address;   // unresolved hostname; callers must check it is a literal
 }
 
 std::string NodeRegistry::NameOf(int node_id) {
@@ -471,6 +507,48 @@ bool NodeRegistry::SendControl(int node_id, const std::string& json) {
 
 namespace {
 
+// How often a configured hostname is re-resolved. DynDNS default TTLs are 60s, so
+// polling faster only adds DNS traffic.
+constexpr std::int64_t kAddressRefreshMs = 60 * 1000;
+
+// "<1.2.3.4>:<port>" -> "1.2.3.4". "" when the peer is not IPv4 (the packet field
+// is four bytes, so an IPv6 peer simply cannot be advertised to clients this way).
+std::string PeerIPv4(const std::string& peer_label) {
+    const auto colon = peer_label.rfind(':');
+    if (colon == std::string::npos) return std::string();
+    const std::string host = peer_label.substr(0, colon);
+    return NetAddress::IsIPv4Literal(host) ? host : std::string();
+}
+
+// Resolve a hostname to its first IPv4 address. "" on failure.
+//
+// Blocking, deliberately: it runs from the registry tick with a 60s per-node TTL,
+// so a placement never carries the cost. The alternative -- resolving on the
+// GO_PLAY path -- would block the io thread on DNS once per player.
+std::string ResolveIPv4(const std::string& host) {
+    struct addrinfo hints {};
+    hints.ai_family   = AF_INET;      // the packet field is 4 bytes
+    hints.ai_socktype = SOCK_DGRAM;   // instances are UDP
+
+    struct addrinfo* res = nullptr;
+    if (getaddrinfo(host.c_str(), nullptr, &hints, &res) != 0 || res == nullptr) {
+        return std::string();
+    }
+    std::string out;
+    for (struct addrinfo* it = res; it != nullptr; it = it->ai_next) {
+        if (it->ai_family != AF_INET || it->ai_addr == nullptr) continue;
+        const auto* sin = reinterpret_cast<const struct sockaddr_in*>(it->ai_addr);
+        const std::uint32_t be = sin->sin_addr.s_addr;
+        out = std::to_string(be & 0xFF) + "." +
+              std::to_string((be >> 8) & 0xFF) + "." +
+              std::to_string((be >> 16) & 0xFF) + "." +
+              std::to_string((be >> 24) & 0xFF);
+        break;
+    }
+    freeaddrinfo(res);
+    return out;
+}
+
 // Re-announce the artifacts on offer to every node that could act on it. Sent on
 // change only: a node ignores a message for bytes it already has, but there is no
 // reason to generate traffic every tick.
@@ -499,6 +577,35 @@ void NodeRegistry::Tick() {
     // A DLL dropped in while the master runs has to reach nodes without a
     // restart -- a restart is exactly what a DLL-only deploy is trying to avoid.
     if (AgentArtifact::Refresh()) BroadcastArtifactOffers();
+
+    // Re-resolve configured hostnames (a DynDNS name for a node that cannot be
+    // inferred from its link -- e.g. it reaches the master over a VPN). A literal
+    // address needs none of this; an unset one falls back to address_observed.
+    const std::int64_t now = NowMs();
+    for (auto& kv : g_nodes) {
+        NodeRuntime& rt = kv.second;
+        if (rt.address.empty() || NetAddress::IsIPv4Literal(rt.address)) continue;
+        if (now - rt.address_resolved_at_ms < kAddressRefreshMs) continue;
+        rt.address_resolved_at_ms = now;
+
+        const std::string resolved = ResolveIPv4(rt.address);
+        if (resolved.empty()) {
+            // Keep whatever we resolved last time: a DNS hiccup must not stop
+            // placements. Log once per refresh so a permanently bad name shows up.
+            Logger::Log("node",
+                "[NodeRegistry] %s: cannot resolve '%s'%s\n", Describe(kv.first).c_str(),
+                rt.address.c_str(),
+                rt.address_resolved.empty() ? " -- no address to advertise"
+                                            : " -- keeping the previous resolution");
+            continue;
+        }
+        if (resolved != rt.address_resolved) {
+            Logger::Log("node", "[NodeRegistry] %s: '%s' resolves to %s%s\n",
+                Describe(kv.first).c_str(), rt.address.c_str(), resolved.c_str(),
+                rt.address_resolved.empty() ? "" : " (was " + rt.address_resolved + ")");
+            rt.address_resolved = resolved;
+        }
+    }
 
 
     const int64_t now = NowMs();

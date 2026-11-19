@@ -38,7 +38,18 @@ struct NodeRuntime {
     int         id = 0;
     std::string name;
     int         site = 0;
-    std::string address;    // public address its instances are reachable at
+    std::string address;    // public address its instances are reachable at (IP or hostname)
+    // Resolved from `address` when that is a hostname. A rotating residential IP
+    // with a DynDNS name would otherwise have to be edited in config every time it
+    // moves; the master resolves the name and refreshes it from the tick.
+    std::string address_resolved;
+    std::int64_t address_resolved_at_ms = 0;
+    // Source address of the node's authenticated link. Recorded so a node whose
+    // public IP rotates does not need config edits or DynDNS: the address players
+    // are sent to follows the link. Not an identity -- the handshake is, which
+    // binds node_id to the pre-shared key -- so this only decides where to *point*
+    // clients, never whether to trust the peer.
+    std::string address_observed;
     int         capacity = 0;  // 0 = unlimited
     bool        home_map = false;
     bool        enabled = true;
@@ -113,7 +124,10 @@ public:
 
     static bool IsConfigured(int node_id);
     static bool IsUp(int node_id);
-    static std::string AddressOf(int node_id);   // "" if unknown
+    // The address to put in a client packet: the resolved IPv4 when the node's
+    // configured address is a hostname, otherwise the configured value. "" if the
+    // node is unknown.
+    static std::string AddressOf(int node_id);
     static std::string NameOf(int node_id);
     // nodes[].capacity, 0 = unlimited.
     static int CapacityOf(int node_id);
