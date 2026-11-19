@@ -285,6 +285,16 @@ bool NodeRegistry::LookupKey(const std::string& node_name, NodeCrypto::Key& out)
     return false;
 }
 
+namespace {
+
+// Defined next to the tick; declared here because Attach records the peer address
+// of the link it just installed. All unnamed namespaces in a TU are one namespace,
+// so these refer to the definitions below.
+std::string PeerIPv4(const std::string& peer_label);
+std::string ResolveIPv4(const std::string& host);
+
+}  // namespace
+
 int NodeRegistry::Attach(std::shared_ptr<NodeLink::Link> link) {
     if (!link) return -1;
 
@@ -581,12 +591,12 @@ void NodeRegistry::Tick() {
     // Re-resolve configured hostnames (a DynDNS name for a node that cannot be
     // inferred from its link -- e.g. it reaches the master over a VPN). A literal
     // address needs none of this; an unset one falls back to address_observed.
-    const std::int64_t now = NowMs();
+    const std::int64_t now_ms = NowMs();
     for (auto& kv : g_nodes) {
         NodeRuntime& rt = kv.second;
         if (rt.address.empty() || NetAddress::IsIPv4Literal(rt.address)) continue;
-        if (now - rt.address_resolved_at_ms < kAddressRefreshMs) continue;
-        rt.address_resolved_at_ms = now;
+        if (now_ms - rt.address_resolved_at_ms < kAddressRefreshMs) continue;
+        rt.address_resolved_at_ms = now_ms;
 
         const std::string resolved = ResolveIPv4(rt.address);
         if (resolved.empty()) {
