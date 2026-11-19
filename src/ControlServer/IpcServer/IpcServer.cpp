@@ -1,7 +1,11 @@
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
+#include "src/ControlServer/IpcServer/SocketFramePipe.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
-#include "src/ControlServer/InstanceSpawner/InstanceSpawner.hpp"
+#include "src/ControlServer/NodeControl/NodeControl.hpp"
+#include "src/ControlServer/NodeData/PlayerBundle.hpp"
+#include "src/ControlServer/NodeLink/NodeMessages.hpp"
+#include "src/ControlServer/NodeRegistry/NodeRegistry.hpp"
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
 #include "src/Shared/IpcProtocol.hpp"
 #include "src/Shared/IpcFraming.hpp"
@@ -26,26 +30,6 @@
 
 namespace {
 
-bool IsPrivateOrLocalAddress(const asio::ip::address& address) {
-    if (address.is_loopback()) return true;
-    if (address.is_v4()) {
-        const auto bytes = address.to_v4().to_bytes();
-        const uint8_t a = bytes[0];
-        const uint8_t b = bytes[1];
-        if (a == 10) return true;
-        if (a == 172 && b >= 16 && b <= 31) return true;
-        if (a == 192 && b == 168) return true;
-        if (a == 169 && b == 254) return true;
-        return false;
-    }
-    if (address.is_v6()) {
-        const auto bytes = address.to_v6().to_bytes();
-        if ((bytes[0] & 0xfe) == 0xfc) return true;  // fc00::/7
-        if (bytes[0] == 0xfe && (bytes[1] & 0xc0) == 0x80) return true;  // fe80::/10
-    }
-    return false;
-}
-
 bool StopNonHomeInstanceIfEmpty(int64_t instance_id, const char* reason) {
     if (instance_id == 0) {
         return false;
@@ -64,7 +48,7 @@ bool StopNonHomeInstanceIfEmpty(int64_t instance_id, const char* reason) {
     Logger::Log("ipc",
         "[IpcServer] Stopping empty non-home instance=%lld reason=%s\n",
         (long long)instance_id, reason ? reason : "unspecified");
-    InstanceSpawner::StopInstanceProcess(*inst, reason ? reason : "empty non-home instance");
+    NodeControl::Stop(*inst, reason ? reason : "empty non-home instance");
     InstanceRegistry::MarkStopped(instance_id);
     SpectatorOverlayState::ClearInstance(instance_id);
     MissionProgressState::ClearInstance(instance_id);
@@ -118,8 +102,10 @@ void QueueDeviceStatsRow(const Database::MatchDeviceStatsRow& row) {
 
 class IpcSession : public std::enable_shared_from_this<IpcSession> {
 public:
-    explicit IpcSession(asio::ip::tcp::socket socket)
-        : socket_(std::move(socket)), write_in_progress_(false),
+    // The pipe is whatever moves bytes for this instance: a loopback socket
+    // for a locally spawned process, a node-link stream in phase 1.
+    explicit IpcSession(std::shared_ptr<FramePipe> pipe)
+        : pipe_(std::move(pipe)), write_in_progress_(false),
           instance_id_(0), validated_(false) {}
 
     void start() {
@@ -131,10 +117,8 @@ private:
 
     void do_read_header() {
         auto self = shared_from_this();
-        asio::async_read(
-            socket_,
-            asio::buffer(header_buf_, 4),
-            asio::transfer_exactly(4),
+        pipe_->ReadSome(
+            header_buf_, 4,
             [this, self](const asio::error_code& ec, std::size_t /*bytes*/) {
                 if (ec) {
                     // EOF on header read is the normal close for short-lived
@@ -164,10 +148,8 @@ private:
     void do_read_body(uint32_t len) {
         body_buf_.resize(len);
         auto self = shared_from_this();
-        asio::async_read(
-            socket_,
-            asio::buffer(body_buf_),
-            asio::transfer_exactly(len),
+        pipe_->ReadSome(
+            body_buf_.data(), len,
             [this, self](const asio::error_code& ec, std::size_t /*bytes*/) {
                 if (ec) {
                     // EOF mid-body is rare but harmless if a client tore the
@@ -240,6 +222,17 @@ private:
             const uint64_t reported_seed =
                 (uint64_t)j.value("match_seed", (unsigned long long)0);
             const int reported_scheme = j.value("seed_scheme", 0);
+            // Which DLL build the instance is running. Nodes get their DLL
+            // replaced without restarting the control server, so this is the only
+            // place a per-instance DLL version is visible.
+            const std::string dll_version = j.value("dll_version", std::string());
+            const std::string dll_commit  = j.value("dll_commit", std::string());
+            if (!dll_version.empty()) {
+                Logger::Log("ipc", "[IpcServer] instance %lld runs DLL %s (%s)\n",
+                    (long long)inst_id, dll_version.c_str(),
+                    dll_commit.empty() ? "?" : dll_commit.c_str());
+            }
+
             if (reported_seed != 0 && inst_id != 0) {
                 const uint64_t stored = InstanceRegistry::GetMatchSeed(inst_id);
                 if (stored != reported_seed) {
@@ -256,7 +249,7 @@ private:
             // Reject if instance_id is 0 (unassigned).
             if (inst_id == 0) {
                 Logger::Log("ipc", "[IpcServer] INSTANCE_HELLO rejected: instance_id=0\n");
-                socket_.close();
+                pipe_->Close();
                 return;
             }
 
@@ -307,6 +300,12 @@ private:
             Logger::Log("ipc", "[IpcServer] INSTANCE_READY: instance_id=%lld max_players=%d\n",
                 (long long)inst_id, max_players);
             InstanceRegistry::MarkReady(inst_id, max_players);
+
+            // Players who asked to travel before this instance finished loading
+            // are parked; release them now.
+            if (auto ready = InstanceRegistry::GetInstanceById(inst_id)) {
+                if (ready->is_home_map) TcpSession::OnHomeMapReady();
+            }
 
             // Check if this instance was spawned for a pending match
             auto pending = MatchmakingService::ConsumePendingMatch(inst_id);
@@ -779,7 +778,7 @@ private:
             return;
         }
 
-        auto timer = std::make_shared<asio::steady_timer>(socket_.get_executor());
+        auto timer = std::make_shared<asio::steady_timer>(pipe_->GetExecutor());
         timer->expires_after(std::chrono::seconds(30));
         Logger::Log("ipc",
             "[IpcServer] MISSION_ENDED: force-exit timer armed parent=%lld delay=30s\n",
@@ -813,9 +812,7 @@ private:
         ack["subtype"] = j.value("subtype", "");
         ack["success"] = false;
 
-        asio::error_code ep_ec;
-        auto remote = socket_.remote_endpoint(ep_ec);
-        if (ep_ec || !IsPrivateOrLocalAddress(remote.address())) {
+        if (!pipe_->IsLocalPeer()) {
             Logger::Log("ipc", "[IpcServer] ADMIN_ACTION rejected: non-local/private source\n");
             ack["message"] = "admin actions are only accepted from local/private networks";
             send(ack.dump());
@@ -832,7 +829,7 @@ private:
         std::string token = j.value("token", "");
         if (token != IpcServer::admin_token_) {
             Logger::Log("ipc", "[IpcServer] ADMIN_ACTION rejected: bad token from %s\n",
-                ep_ec ? "unknown" : remote.address().to_string().c_str());
+                pipe_->PeerLabel().c_str());
             ack["message"] = "invalid admin token";
             send(ack.dump());
             return;
@@ -869,15 +866,14 @@ private:
             return;
         }
 
-        // Keep a shared reference to the frame buffer alive across the async op.
-        auto frame = std::make_shared<std::string>(std::move(write_queue_.front()));
+        // The pipe takes ownership of the frame buffer for the duration of the
+        // write, so nothing here has to keep it alive.
+        std::string frame = std::move(write_queue_.front());
         write_queue_.pop_front();
 
         auto self = shared_from_this();
-        asio::async_write(
-            socket_,
-            asio::buffer(*frame),
-            [this, self, frame](const asio::error_code& ec, std::size_t /*bytes*/) {
+        pipe_->WriteSome(std::move(frame),
+            [this, self](const asio::error_code& ec, std::size_t /*bytes*/) {
                 if (ec) {
                     Logger::Log("ipc", "[IpcServer] Write error: %s\n",
                         ec.message().c_str());
@@ -886,13 +882,12 @@ private:
                 }
                 // Chain next write.
                 do_write();
-            }
-        );
+            });
     }
 
     // ── Members ─────────────────────────────────────────────────────────────
 
-    asio::ip::tcp::socket    socket_;
+    std::shared_ptr<FramePipe> pipe_;
     uint8_t                  header_buf_[4];
     std::vector<uint8_t>     body_buf_;
     std::deque<std::string>  write_queue_;
@@ -960,13 +955,24 @@ void IpcServer::SetAdminActionHandler(AdminActionHandler cb) {
 // IpcServer -- accepts game instance connections on the IPC port
 // ---------------------------------------------------------------------------
 
-IpcServer::IpcServer(asio::io_context& io, uint16_t port)
+IpcServer::IpcServer(asio::io_context& io, uint16_t port, const std::string& bind_addr)
     : io_(io) {
     // Used by QueueDeviceStatsRow to post its coalesced flush.
     g_ipcIo = &io;
     asio::error_code ec;
     acceptor_ = std::make_unique<asio::ip::tcp::acceptor>(io.get_executor());
-    asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), port);
+
+    // Loopback by default: the IPC protocol has no authentication, so a
+    // publicly reachable port would let anyone impersonate a game instance.
+    // A bad/unparseable bind address aborts the listener instead of silently
+    // falling back to 0.0.0.0.
+    asio::ip::address bind_address = asio::ip::make_address(bind_addr, ec);
+    if (ec) {
+        Logger::Log("ipc", "[IpcServer] Invalid ipc_bind '%s': %s\n",
+            bind_addr.c_str(), ec.message().c_str());
+        return;
+    }
+    asio::ip::tcp::endpoint endpoint(bind_address, port);
     acceptor_->open(endpoint.protocol(), ec);
     if (ec) {
         Logger::Log("ipc", "[IpcServer] Open failed on port %d: %s\n", port, ec.message().c_str());
@@ -995,7 +1001,17 @@ IpcServer::IpcServer(asio::io_context& io, uint16_t port)
         return;
     }
     listening_ = true;
-    Logger::Log("ipc", "[IpcServer] Listening on port %d\n", port);
+    Logger::Log("ipc", "[IpcServer] Listening on %s:%d\n", bind_addr.c_str(), port);
+    if (bind_address.is_loopback()) {
+        // The most common way to get this wrong: the port serves instance traffic
+        // and admin actions, and admin tooling in a bridge-network container
+        // reaches the host at the docker gateway, not loopback.
+        Logger::Log("ipc",
+            "[IpcServer] note: loopback-only bind. Admin tools in a docker bridge "
+            "container reach the host at the bridge gateway and will get "
+            "\"Connection refused\"; set ipc_bind to 0.0.0.0 or run them with "
+            "network_mode: host.\n");
+    }
     do_accept();
 }
 
@@ -1007,7 +1023,8 @@ void IpcServer::do_accept() {
             // admin poll (5s cadence from /api/players/online) and floods the
             // log. Genuine game instances log themselves via INSTANCE_HELLO;
             // admin actions log only on validation failure.
-            auto session = std::make_shared<IpcSession>(std::move(sock));
+            auto session = std::make_shared<IpcSession>(
+                std::make_shared<SocketFramePipe>(std::move(sock)));
             // Sessions are not tracked in g_sessions until INSTANCE_HELLO validates them.
             session->start();
         }
@@ -1015,7 +1032,64 @@ void IpcServer::do_accept() {
     });
 }
 
+void IpcServer::AdoptPipe(std::shared_ptr<FramePipe> pipe) {
+    if (!pipe) return;
+    auto session = std::make_shared<IpcSession>(std::move(pipe));
+    // Sessions are not tracked in g_sessions until INSTANCE_HELLO validates them,
+    // same as an accepted socket.
+    session->start();
+}
+
+namespace {
+
+// If this is a PLAYER_REGISTER for an instance on another node, ship that player's
+// rows to the node first. The bundle travels the same link ahead of the register,
+// so by the time the instance is told about the player their character, skills,
+// devices and inventory are already in its local database -- which is what the DLL
+// queries synchronously the moment it spawns the pawn.
+void SeedRemoteNodeWithPlayer(int64_t instance_id, const std::string& json_msg) {
+    // Master -> instance traffic is low volume (registers, player actions, admin);
+    // a parse per message is negligible and keeps this at one choke point.
+    if (json_msg.find(IpcProtocol::MSG_PLAYER_REGISTER) == std::string::npos) return;
+
+    auto j = nlohmann::json::parse(json_msg, nullptr, false, true);
+    if (j.is_discarded() || j.value("type", "") != IpcProtocol::MSG_PLAYER_REGISTER) return;
+
+    const auto user_id = j.value("user_id", (int64_t)0);
+    const auto character_id = j.value("character_id", (int64_t)0);
+    if (user_id <= 0) return;
+
+    auto inst = InstanceRegistry::GetInstanceById(instance_id);
+    if (!inst || inst->node_id == 0) return;   // local instance: nothing to ship
+
+    std::string bundle, err;
+    if (!PlayerBundle::Build(user_id, character_id, PlayerBundle::Direction::Down, bundle, err)) {
+        Logger::Log("bundle", "[IpcServer] cannot build a player bundle for user=%lld: %s\n",
+            (long long)user_id, err.c_str());
+        return;
+    }
+
+    nlohmann::json msg = nlohmann::json::parse(bundle, nullptr, false, true);
+    if (msg.is_discarded()) return;
+    msg["type"]        = NodeMsg::kPlayerBundle;
+    msg["instance_id"] = instance_id;
+    msg["direction"]   = "down";
+
+    if (!NodeRegistry::SendControl(inst->node_id, msg.dump())) {
+        Logger::Log("bundle",
+            "[IpcServer] cannot send the player bundle to node %d; instance=%lld will "
+            "spawn %lld without local rows\n",
+            inst->node_id, (long long)instance_id, (long long)character_id);
+        return;
+    }
+    Logger::Log("bundle", "[IpcServer] seeded node %d with user=%lld character=%lld for instance=%lld\n",
+        inst->node_id, (long long)user_id, (long long)character_id, (long long)instance_id);
+}
+
+}  // namespace
+
 bool IpcServer::SendToInstance(int64_t instance_id, const std::string& json_msg) {
+    SeedRemoteNodeWithPlayer(instance_id, json_msg);
     std::lock_guard<std::mutex> lock(IpcSession::sessions_mutex_);
     auto it = IpcSession::g_sessions.find(instance_id);
     if (it == IpcSession::g_sessions.end()) {

@@ -18,6 +18,11 @@ public:
     static void Init();
     static void SetDbPath(const std::string& path);
 
+    // Where the schema baseline lives. Migrations are compiled into the binary,
+    // so this is the only bootstrap path that remains. Set before Init(); the
+    // default suits running from the repository root.
+    static void SetBaseDb(const std::string& base_db);
+
     // Returns "" (not found), "active", or "complete"
     static std::string GetQuestStatus(int64_t character_id, int quest_id);
     static void AcceptQuest(int64_t character_id, int quest_id);

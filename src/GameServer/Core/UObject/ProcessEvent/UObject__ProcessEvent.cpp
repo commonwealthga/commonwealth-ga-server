@@ -1926,7 +1926,9 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 				"  m_bInDestroyedState=%d\n"
 				"  beacon.r_DRI=0x%p instigatorInfo=0x%p tfInfo=0x%p bOwnedByTf=%d\n"
 				"  receiver.PRI=0x%p receiver.PRI.r_TaskForce=0x%p\n"
-				"  hp=%d driCur=%d driMax=%d pct=%.4f dmgDuringDeploy=%.1f state=%s\n",
+				"  hp=%d driCur=%d driMax=%d pct=%.4f dmgDuringDeploy=%.1f state=%s\n"
+				"  m_bIsDeployed=%d Role=%d RemoteRole=%d bDeleteMe=%d\n"
+				"  receiver hp=%d bDeleteMe=%d Owner=%p\n",
 				beacon, pReceiver,
 				beacon->m_nPickupDeviceId, (int)beacon->s_bWasPickedUp, (int)beacon->m_bPickupOnlyOnce,
 				canBePickedUp ? "TRUE" : "FALSE",
@@ -1938,12 +1940,28 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 				dri ? dri->r_nHealthCurrent : -1, dri ? dri->r_nHealthMaximum : -1,
 				dri ? dri->r_fDeployMaxHealthPCT : -99.0f,
 				beacon->m_fDamagedDuringDeploy,
-				beacon->GetStateName().GetName() ? beacon->GetStateName().GetName() : "<null>");
+				beacon->GetStateName().GetName() ? beacon->GetStateName().GetName() : "<null>",
+				(int)beacon->m_bIsDeployed, (int)beacon->Role, (int)beacon->RemoteRole,
+				(int)beacon->bDeleteMe,
+				pReceiver ? (int)pReceiver->Health : -1,   // APawn::Health (float); r_nHealth is a deployable field
+				pReceiver ? (int)pReceiver->bDeleteMe : -1,
+				pReceiver ? (void*)pReceiver : nullptr);
 		}
 		CallOriginal(Object, edx, Function, Params, Result);
 		if (Params) {
 			bool ret = (*(uint32_t*)((char*)Params + 4) & 1u) != 0;
 			Logger::Log("beacon", "PickUpDeployable: EXIT returned %s\n", ret ? "true" : "false");
+			// A false with no state change means the UC body bailed on a gate early;
+			// a false with s_bWasPickedUp set would mean it did the work and still
+			// reported failure -- different bug, different fix.
+			if (beacon) {
+				Logger::Log("beacon",
+					"PickUpDeployable[post]: s_bWasPickedUp=%d state=%s m_bIsDeployed=%d "
+					"m_bInDestroyedState=%d\n",
+					(int)beacon->s_bWasPickedUp,
+					beacon->GetStateName().GetName() ? beacon->GetStateName().GetName() : "<null>",
+					(int)beacon->m_bIsDeployed, (int)beacon->m_bInDestroyedState);
+			}
 		}
 		// The percent the UC body just saved (SetHealthPercent(GetSaveHealthPercent()))
 		// is the deploy-max PCT the NEXT redeploy will consume. Picked up while in
@@ -2008,6 +2026,26 @@ void __fastcall UObject__ProcessEvent::Call(UObject* Object, void* edx, UFunctio
 		// Manual dispatch of UC PickUpDeployable. ProcessEvent re-enters our
 		// dispatcher → BeaconPickUpDeployable case logs entry/exit. UC body
 		// handles inventory add + DestroyIt + UnRegister.
+		// The gates above mirror four of PickUpDeployable's five. The remaining two
+		// fail silently -- the UC body just returns false -- so dump their inputs
+		// here or a false return is unattributable.
+		//   (a) IsEnemy(pReceiver): compares the beacon's taskforce against the
+		//       pawn's, both replicated state.
+		//   (b) TgInventoryManager(pReceiver.InvManager): a null or non-Tg
+		//       InvManager makes the UC body fall through to `return false`.
+		const std::string& invClass = Pawn->InvManager
+			? ObjectClassCache::GetClassName((UObject*)Pawn->InvManager)
+			: std::string("<null>");
+		Logger::Log("beacon",
+			"  fallback gates: InvManager=0x%p class=%s isTgInvManager=%d\n"
+			"    beacon.tfInfo=0x%p receiver.tf=0x%p sameTf=%d\n",
+			(void*)Pawn->InvManager, invClass.c_str(),
+			(int)(Pawn->InvManager &&
+			      ObjectClassCache::ClassNameContains(Pawn->InvManager, "InventoryManager")),
+			(void*)(beacon->r_DRI ? beacon->r_DRI->r_TaskforceInfo : nullptr),
+			(void*)pri->r_TaskForce,
+			(int)(beacon->r_DRI && beacon->r_DRI->r_TaskforceInfo == pri->r_TaskForce));
+
 		Logger::Log("beacon",
 			"ServerPickupPutdown: fallback firing for beacon=0x%p dist=%.0fuu (UC TouchingActors missed it)\n",
 			beacon, sqrtf(xyDistSq));

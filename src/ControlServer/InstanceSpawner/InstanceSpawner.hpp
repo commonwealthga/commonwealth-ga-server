@@ -1,6 +1,7 @@
 #pragma once
 
 #include "src/ControlServer/Config/ControlServerConfig.hpp"
+#include "src/ControlServer/NodeControl/NodeControl.hpp"
 #include "src/Config/DifficultyScalar.hpp"
 #include <string>
 #include <cstdint>
@@ -9,29 +10,21 @@
 struct InstanceInfo;
 
 // InstanceSpawner.hpp -- Spawns UE3 game server processes via fork/exec with Wine.
-
-enum class eDifficulty { Default, Id, Scalar };
+// This is the LOCAL implementation behind NodeControl; call NodeControl::Spawn
+// rather than this unless you specifically mean "on this machine".
 
 class InstanceSpawner {
 public:
     // Spawn a UE3 game instance via fork/exec with Wine.
     // Returns child PID on success, -1 on failure.
-    // difficulty_value_id: pass the queue's value to override the DLL's
+    // req.difficulty_value_id: pass the queue's value to override the DLL's
     // map-name-based default; 0 = no override (DLL falls back to its
     // hardcoded heuristic).
-    // match_seed: ga_instances.match_seed for this instance, passed as
+    // req.match_seed: ga_instances.match_seed for this instance, passed as
     // -seed=<u64>. The DLL uses it to make the whole spawn/objective/variant
     // rollout replayable (src/Shared/MatchSeed.hpp). 0 = none — the DLL then
     // generates its own and reports it back over IPC.
-    static pid_t Spawn(const ControlServerConfig& cfg,
-                       const std::string& map_name,
-                       const std::string& game_mode,
-                       uint16_t udp_port,
-                       int64_t instance_id,
-                       eDifficulty difficulty_type = eDifficulty::Default,
-                       uint32_t difficulty_value_id = 0,
-                       DifficultyScalar difficulty_scalar = DifficultyScalar(),
-                       uint64_t match_seed = 0);
+    static pid_t Spawn(const ControlServerConfig& cfg, const SpawnRequest& req);
 
     // Terminate the process group for an already-spawned game instance.
     // Sends SIGTERM immediately, then SIGKILL after grace_seconds if the

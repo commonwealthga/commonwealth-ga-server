@@ -64,6 +64,12 @@ public:
     // Deliver a MATCH_INVITATION to this session (called from matchmaking callback).
     static void DeliverMatchInvitation(const std::string& session_guid, int64_t instance_id, const std::string& game_mode, int task_force);
 
+    // The site a player's session was placed on (0 if unknown or not logged in).
+    // Placement uses this to decide which region a match belongs in.
+    static int SiteOfSession(const std::string& session_guid);
+    // The preferred sites of a roster, most common first. Empty when none are known.
+    static std::vector<int> PreferredSitesOf(const std::vector<std::string>& session_guids);
+
     // Deliver a PLAYER_ACTION IPC to the game-DLL instance the player is currently assigned to.
     // Returns true if dispatched, false if the session is unknown or the player is not assigned to an instance.
     static bool DeliverPlayerAction(const std::string& session_guid, const nlohmann::json& payload);
@@ -266,11 +272,29 @@ public:
     // and the GSC_CHANGE_INSTANCE return-to-home handler.
     static void EnsureHomeMapWarm(const char* reason);
 
+    // Called when a home-map instance reaches READY. A client that asked to go
+    // play before the instance finished loading has its request parked in
+    // pending_go_play_; this re-drives it instead of leaving the player on a
+    // blank loading screen until they reconnect.
+    static void OnHomeMapReady();
+
+    // Re-copy the site list from config. Called after a live config reload so the
+    // login reply and region resolution pick up an added/disabled site without a
+    // restart.
+    static void ReloadSiteConfig(const ControlServerConfig& cfg);
+
 private:
 
     // Set when a READY home map instance is found for this player.
     int64_t assigned_instance_id_ = 0;
     int home_task_force_ = 1;
+    // Site this session was placed on (retail's SYS_SITE_ID). Resolved at login
+    // from the client's requested site against the configured site list; every
+    // reply that names a site uses this rather than a constant.
+    int site_id_ = 0;
+    // Set when the client asked for go-play and no READY home instance existed.
+    // Cleared when the transfer is actually sent.
+    bool pending_go_play_ = false;
 
     // True from a successful spectate-join PLAYER_REGISTER ACK (see
     // initiate_player_register_for_spectate) until -unspectate or disconnect.
@@ -880,6 +904,10 @@ void send_friends_list();
     // Variant that targets an arbitrary mission instance (used by the
     // continue-in-queue successor flow). task_force selects the team
     // assignment baked into the GSC_GO_PLAY payload.
+    // Address the client should connect to for this instance: the owning node's
+    // advertised address for a remote instance, the session's NAT-aware master
+    // address for a local one.
+    std::string PlayHostFor(const struct InstanceInfo& inst) const;
     void send_go_play_to_instance(const struct InstanceInfo& target, int task_force);
 
     void send_instance_ready_response();

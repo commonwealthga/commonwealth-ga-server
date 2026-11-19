@@ -236,15 +236,17 @@ bool InstanceSpawner::EnsureSlotPrefixes(const ControlServerConfig& cfg) {
 #endif
 }
 
-pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
-                              const std::string& map_name,
-                              const std::string& game_mode,
-                              uint16_t udp_port,
-                              int64_t instance_id,
-                              eDifficulty difficulty_type,
-                              uint32_t difficulty_value_id,
-                              DifficultyScalar difficulty_scalar,
-                              uint64_t match_seed) {
+pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg, const SpawnRequest& req) {
+    // Unpacked once here so the rest of this function is untouched. NodeControl
+    // is the entry point; this only ever runs for the local machine.
+    const std::string&     map_name            = req.map_name;
+    const std::string&     game_mode           = req.game_mode;
+    const uint16_t         udp_port            = req.udp_port;
+    const int64_t          instance_id         = req.instance_id;
+    const eDifficulty      difficulty_type     = req.difficulty_type;
+    const uint32_t         difficulty_value_id = req.difficulty_value_id;
+    const DifficultyScalar difficulty_scalar   = req.difficulty_scalar;
+    const uint64_t         match_seed          = req.match_seed;
 
     // skal: difficulty args lambda
     const auto build_difficulty_args=[&]() -> std::string {
@@ -568,6 +570,28 @@ pid_t InstanceSpawner::Spawn(const ControlServerConfig& cfg,
         }
         if (!difficulty_arg.empty()) {
             inner_argv.push_back(difficulty_arg.c_str());
+        }
+
+        // ---- Drop every inherited descriptor before exec.
+        //
+        // asio creates sockets with plain ::socket() -- no SOCK_CLOEXEC, no
+        // FD_CLOEXEC -- so a forked child inherits the control server's listening
+        // sockets, its accepted instance connections, and its SQLite handle. All
+        // three are wrong:
+        //   * the listening socket stays bound while the child lives, so the next
+        //     start of this process fails with EADDRINUSE even though "nothing is
+        //     running";
+        //   * an inherited duplicate of another instance's IPC connection means the
+        //     peer never observes the close, so that session is never reaped;
+        //   * an inherited SQLite fd carries lock state between unrelated processes.
+        // stdio (0/1/2) stays: it is either the terminal or the /dev/null redirect
+        // set up above, and the exec'd program needs it.
+        {
+            const long max_fd = sysconf(_SC_OPEN_MAX);
+            const long limit = (max_fd > 0 && max_fd < 65536) ? max_fd : 65536;
+            for (long fd = 3; fd < limit; ++fd) {
+                ::close(static_cast<int>(fd));
+            }
         }
 
         // ---- Bare-metal exec path: same as before.

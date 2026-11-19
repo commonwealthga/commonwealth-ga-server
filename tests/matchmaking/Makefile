@@ -15,7 +15,8 @@ CORE_SRC := \
     $(REPO_ROOT)/src/ControlServer/MatchmakingService/MmrSwap.cpp \
     $(REPO_ROOT)/src/ControlServer/MatchmakingService/Rules/CoopMatchRule.cpp \
     $(REPO_ROOT)/src/ControlServer/MatchmakingService/Rules/DoubleAgentRule.cpp \
-    $(REPO_ROOT)/src/ControlServer/MatchmakingService/Rules/VersusSidesRule.cpp
+    $(REPO_ROOT)/src/ControlServer/MatchmakingService/Rules/VersusSidesRule.cpp \
+    late_backfill_stub.cpp
 
 TEST_SRC := \
     main.cpp \
@@ -25,7 +26,8 @@ TEST_SRC := \
     test_coop_rule.cpp \
     test_double_agent_rule.cpp \
     test_defender_rotation.cpp \
-    test_versus_sides_rule.cpp
+    test_versus_sides_rule.cpp \
+    test_late_backfill.cpp
 
 BIN := mm_tests
 

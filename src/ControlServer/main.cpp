@@ -1,14 +1,27 @@
 #include "src/ControlServer/Logger.hpp"
+#include <chrono>
 #include "src/ControlServer/Config/ControlServerConfig.hpp"
+#include <map>
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/MapGameInfo/MapGameInfo.hpp"
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/InstanceRegistry/InstanceRegistry.hpp"
 #include "src/ControlServer/InstanceSpawner/InstanceSpawner.hpp"
+#include "src/ControlServer/NodeControl/NodeControl.hpp"
 #include "src/ControlServer/OpenWorldTravel/OpenWorldTravel.hpp"
 #include "src/ControlServer/TcpListener/TcpListener.hpp"
 #include "src/ControlServer/ChatListener/ChatListener.hpp"
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
+#include "src/ControlServer/NodeLink/NodeLinkServer.hpp"
+#include "src/ControlServer/NodeLink/NodeMessages.hpp"
+#include "src/ControlServer/MasterLease/MasterLease.hpp"
+#include "src/ControlServer/NodeData/ContentSnapshot.hpp"
+#include "src/ControlServer/NodeData/AgentArtifact.hpp"
+#include "src/ControlServer/NodeAgent/NodeAgent.hpp"
+#include "src/ControlServer/NodeRegistry/NodeRegistry.hpp"
+#include "src/ControlServer/Placement/Placement.hpp"
+#include "src/ControlServer/NodeStore/NodeStore.hpp"
+#include "src/ControlServer/NodeStore/NodeKeyVault.hpp"
 #include "src/ControlServer/SpectatorOverlay/OverlayHttpServer.hpp"
 #include "src/ControlServer/PlayerSettingsApi/PlayerSettingsHttpServer.hpp"
 #include "src/ControlServer/SpectatorOverlay/SpectatorOverlayState.hpp"
@@ -23,6 +36,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <string>
+#include <memory>
 #include <csignal>
 #include <functional>
 #include <algorithm>
@@ -301,6 +315,7 @@ static bool UpdatePoolEntry(uint32_t map_pool_id, const std::string& map_name,
 
 static bool SpawnAdminInstance(const ControlServerConfig& cfg, const std::string& map_name,
                                const std::string& game_mode, int max_players,
+                               int node_id, int64_t wanted_instance_id,
                                std::string& message) {
     if (map_name.empty() || game_mode.empty()) {
         message = "missing map_name or game_mode";
@@ -311,30 +326,82 @@ static bool SpawnAdminInstance(const ControlServerConfig& cfg, const std::string
         return false;
     }
 
-    auto port = InstanceRegistry::AllocatePort(cfg.udp_port_range.lo, cfg.udp_port_range.hi);
+    // Log the request as received, not as intended: if node_id shows 0 here the
+    // caller never sent it, which is a different problem from it being ignored.
+    Logger::Log("main",
+        "Admin action: create-instance map=%s mode=%s max_players=%d node_id=%d instance_id=%lld\n",
+        map_name.c_str(), game_mode.c_str(), max_players, node_id,
+        (long long)wanted_instance_id);
+
+    if (node_id != 0) {
+        // Covers "not configured", "disabled", "not connected" and "at capacity"
+        // in one place, with a message that says which.
+        std::string why_not;
+        if (!NodeRegistry::CanAcceptWork(node_id, why_not)) {
+            message = why_not;
+            return false;
+        }
+    }
+
+    auto port = NodeControl::AllocatePort(cfg, node_id);
     if (!port) {
         message = "no UDP ports available";
         return false;
     }
 
-    int64_t instance_id = InstanceRegistry::InsertStarting(
-        map_name, game_mode, *port, 0, /*is_home_map=*/false);
+    // An explicit instance id is operator convenience (aligning with logs, or
+    // re-creating a row that was wiped). Refuse to clobber a live instance, but
+    // allow reusing the id of a stopped one.
+    int64_t instance_id = 0;
+    if (wanted_instance_id > 0) {
+        if (auto existing = InstanceRegistry::GetInstanceById(wanted_instance_id)) {
+            if (existing->state != "STOPPED") {
+                message = "instance " + std::to_string(wanted_instance_id) +
+                          " already exists in state " + existing->state;
+                return false;
+            }
+        }
+        instance_id = InstanceRegistry::InsertStartingWithId(
+            wanted_instance_id, map_name, game_mode, *port, 0, /*is_home_map=*/false,
+            /*queue_id=*/0, /*predecessor_instance_id=*/0,
+            /*access_mode=*/"OPEN", /*owner_party_ids=*/"", /*node_id=*/node_id,
+            /*match_seed=*/0, /*victory_bonus_lives=*/0);
+        if (instance_id == 0) {
+            message = "could not create instance with the requested id";
+            return false;
+        }
+    } else {
+        instance_id = InstanceRegistry::InsertStarting(
+            map_name, game_mode, *port, 0, /*is_home_map=*/false,
+            /*queue_id=*/0, /*predecessor_instance_id=*/0,
+            /*access_mode=*/"OPEN", /*owner_party_ids=*/"", /*node_id=*/node_id);
+    }
     InstanceRegistry::SetMaxPlayers(instance_id, max_players);
 
-    pid_t pid = InstanceSpawner::Spawn(cfg, map_name, game_mode, *port, instance_id,
-        eDifficulty::Default, 0, DifficultyScalar(),
-        InstanceRegistry::GetMatchSeed(instance_id));
-    if (pid < 0) {
+    SpawnRequest req;
+    req.map_name    = map_name;
+    req.game_mode   = game_mode;
+    req.udp_port    = *port;
+    req.instance_id = instance_id;
+    req.match_seed  = InstanceRegistry::GetMatchSeed(instance_id);
+    req.node_id     = node_id;
+    const SpawnOutcome spawned = NodeControl::Spawn(cfg, req);
+    if (!spawned.dispatched) {
         InstanceRegistry::MarkStopped(instance_id);
-        message = "InstanceSpawner::Spawn failed";
+        message = "instance spawn failed: " + spawned.error;
         return false;
     }
+    if (spawned.pid > 0) InstanceRegistry::UpdatePid(instance_id, spawned.pid);
+    const pid_t pid = spawned.pid;
+    const std::string placement = node_id == 0
+        ? std::string("local")
+        : ("node '" + NodeRegistry::NameOf(node_id) + "' id=" + std::to_string(node_id));
 
-    InstanceRegistry::UpdatePid(instance_id, pid);
-    Logger::Log("main", "Admin action: created instance %lld pid=%d port=%d map=%s mode=%s max_players=%d\n",
+    Logger::Log("main",
+        "Admin action: created instance %lld pid=%d port=%d map=%s mode=%s max_players=%d on %s\n",
         (long long)instance_id, (int)pid, (int)*port, map_name.c_str(), game_mode.c_str(),
-        max_players);
-    message = "instance created: " + std::to_string(instance_id);
+        max_players, placement.c_str());
+    message = "instance created: " + std::to_string(instance_id) + " on " + placement;
     return true;
 }
 
@@ -386,6 +453,13 @@ int main(int argc, char* argv[]) {
     ControlServerConfig cfg = ControlServerConfig::Load(config_path);
     cfg.wine_debug = wine_debug;
 
+    // The node role is a different program shape (see NodeAgent.hpp) and takes
+    // over here, before the master's startup: in particular the node must NOT
+    // ignore SIGCHLD, because it reaps its own children to learn exit codes.
+    if (cfg.IsNode()) {
+        return NodeAgent::Run(cfg);
+    }
+
 #if defined(__linux__)
     // Exclude the control server's own PID from game_cpu_range. Spawned
     // instances are pinned into that range via sched_setaffinity, but
@@ -420,9 +494,83 @@ int main(int argc, char* argv[]) {
 
     Logger::Log("main", "Control server v0.0.9 starting...\n");
 
+    Logger::Log("main", "Role: %s\n", cfg.role.c_str());
+
+    // Node keys are sealed at rest, so the vault has to be armed before anything
+    // reads ga_nodes.
+    NodeKeyVault::Configure(cfg.node_key_secret);
+    if (!NodeKeyVault::Configured()) {
+        Logger::Log("main",
+            "node_key_secret is not set -- node key storage is disabled and no node "
+            "can authenticate\n");
+    }
+
     // Initialize database
     Database::SetDbPath(cfg.db_path);
+    Database::SetBaseDb(cfg.base_db);
     Database::Init();
+
+    // One path for "the sites/nodes config changed", used at startup and after a
+    // live edit: re-read from the database, refresh every in-memory copy, then let
+    // the registry reconcile. Anything that reloads config calls this, so a
+    // dashboard edit and a restart cannot produce different states.
+    auto apply_config_from_db = [&cfg](bool initial) -> bool {
+        std::string store_err;
+        if (!NodeStore::Load(cfg, store_err)) {
+            Logger::Log("main", "Failed to load sites/nodes from the database: %s\n",
+                store_err.c_str());
+            return false;
+        }
+
+        std::string why;
+        const int master_site = cfg.ResolveSite(cfg.master_site, &why);
+        if (initial) {
+            if (cfg.master_site == 0) {
+                Logger::Log("main", "master_site not set -- using site %d (%s)\n",
+                    master_site, why.c_str());
+            } else {
+                Logger::Log("main", "master_site=%d (%s)\n", master_site, why.c_str());
+            }
+        }
+        std::map<int, int> node_sites;
+        for (const auto& node : cfg.nodes) {
+            const int s = node.site > 0 ? node.site : master_site;
+            node_sites[node.id] = s;
+            if (initial) {
+                Logger::Log("main", "node %d '%s': site %d%s\n", node.id, node.name.c_str(), s,
+                    node.site > 0 ? "" : " (no site declared -- master's)");
+            }
+        }
+        InstanceRegistry::SetSiteSources(master_site, node_sites);
+        TcpSession::ReloadSiteConfig(cfg);
+        if (!initial) NodeRegistry::Reload(cfg);
+        return true;
+    };
+
+    // Sites and nodes are database rows; loaded before anything reads cfg
+    // (TcpSession::Init's site list, the master-site resolution, NodeRegistry).
+    if (!apply_config_from_db(/*initial=*/true)) return 1;
+
+    // One live master per database. Two of them would both answer logins and both
+    // hold a link for the same node id -- a failure mode nothing else prevents.
+    if (!MasterLease::Acquire()) {
+        Logger::Log("main", "Refusing to start: another master holds this database\n");
+        return 1;
+    }
+
+    // Export the immutable game data nodes need to run matches. Non-fatal: a
+    // master with no nodes still works, it just cannot hand content out.
+    // Skipped outright when no node is configured -- there is nobody to hand it
+    // to, and the build is pure startup cost.
+    if (cfg.nodes.empty()) {
+        Logger::Log("main", "no nodes configured -- skipping the content snapshot\n");
+    } else {
+        ContentSnapshot::Ensure(cfg.db_path, cfg.content_dir);
+    }
+
+    // Hash the artifacts nodes may need to converge on: this binary, and the proxy
+    // DLL if node_dll points at one. Done once, before any node can attach.
+    AgentArtifact::Init(cfg);
 
     // Preload the map_game_info registry from the shared DB. Safe to call
     // even if the table doesn't exist yet (control server may start before
@@ -456,7 +604,7 @@ int main(int argc, char* argv[]) {
     // Provision per-slot WINEPREFIXes if enabled. Idempotent — only clones
     // missing prefixes. Must run before any Spawn() so the first match
     // doesn't pay clone latency.
-    if (!InstanceSpawner::EnsureSlotPrefixes(cfg)) {
+    if (!NodeControl::EnsureSlotPrefixes(cfg)) {
         Logger::Log("main", "EnsureSlotPrefixes failed — aborting startup\n");
         return 1;
     }
@@ -592,12 +740,22 @@ int main(int argc, char* argv[]) {
                 return;
             }
 
-            // Spawn new instance
-            auto port = InstanceRegistry::AllocatePort(
-                cfg.udp_port_range.lo, cfg.udp_port_range.hi);
+            // Where does this match run? The players' own regions pick the first
+            // site and config's fallback_order decides what to try next; the trace
+            // is logged so a placement can be explained after the fact.
+            std::string placement_trace;
+            const auto placement = Placement::Choose(
+                cfg, TcpSession::PreferredSitesOf(result.session_guids), &placement_trace);
+            Logger::Log("matchmaking",
+                "[Matchmaking] queue %u placement -> node %d (site %d)\n%s",
+                queue_id, placement.node_id, placement.site, placement_trace.c_str());
+
+            // Spawn new instance, on the node the placement chose.
+            auto port = NodeControl::AllocatePort(cfg, placement.node_id);
             if (!port) {
                 Logger::Log("matchmaking",
-                    "[Matchmaking] No UDP ports available for match spawn\n");
+                    "[Matchmaking] No UDP ports available for match spawn on node %d\n",
+                    placement.node_id);
                 return;
             }
 
@@ -614,7 +772,7 @@ int main(int argc, char* argv[]) {
             int64_t instance_id = InstanceRegistry::InsertStarting(
                 result.map_name, result.game_mode, *port, 0, /*is_home_map=*/false,
                 /*queue_id=*/queue_id, /*predecessor_instance_id=*/0,
-                access_str, owner_csv);
+                access_str, owner_csv, /*node_id=*/placement.node_id);
 
             // Register pending match BEFORE Spawn so the unwind path on a
             // spawn-failure (and the symmetric IPC-disconnect-before-READY
@@ -666,20 +824,30 @@ int main(int argc, char* argv[]) {
                 Logger::Log("main","[main] spawn instance, will use default difficulty\n");
             }
 
-            pid_t pid = InstanceSpawner::Spawn(
-                cfg, result.map_name, result.game_mode, *port, instance_id, difficulty_type, difficulty_id, difficulty_scalar,
-                InstanceRegistry::GetMatchSeed(instance_id));
+            SpawnRequest req;
+            req.map_name            = result.map_name;
+            req.game_mode           = result.game_mode;
+            req.udp_port            = *port;
+            req.instance_id         = instance_id;
+            req.difficulty_type     = difficulty_type;
+            req.difficulty_value_id = difficulty_id;
+            req.difficulty_scalar   = difficulty_scalar;
+            req.match_seed          = InstanceRegistry::GetMatchSeed(instance_id);
+            req.node_id             = placement.node_id;
+            const SpawnOutcome spawned = NodeControl::Spawn(cfg, req);
 
-            if (pid < 0) {
+            if (!spawned.dispatched) {
                 Logger::Log("matchmaking",
-                    "[Matchmaking] Failed to spawn instance for queue %u\n", queue_id);
+                    "[Matchmaking] Failed to spawn instance for queue %u: %s\n",
+                    queue_id, spawned.error.c_str());
                 MatchmakingService::DiscardPendingMatchForDeadInstance(
-                    instance_id, "InstanceSpawner::Spawn returned -1");
+                    instance_id, ("instance spawn failed: " + spawned.error).c_str());
                 InstanceRegistry::MarkStopped(instance_id);
                 return;
             }
 
-            InstanceRegistry::UpdatePid(instance_id, pid);
+            if (spawned.pid > 0) InstanceRegistry::UpdatePid(instance_id, spawned.pid);
+            const pid_t pid = spawned.pid;
 
             Logger::Log("matchmaking",
                 "[Matchmaking] Spawned instance %lld (pid=%d port=%d) for queue %u\n",
@@ -733,7 +901,7 @@ int main(int argc, char* argv[]) {
                 parent->queue_id, (long long)parent_instance_id);
             return;
         }
-        auto port = InstanceRegistry::AllocatePort(cfg.udp_port_range.lo, cfg.udp_port_range.hi);
+        auto port = NodeControl::AllocatePort(cfg);
         if (!port) {
             Logger::Log("main", "[SuccessorSpawner] No UDP ports available for successor of %lld\n",
                 (long long)parent_instance_id);
@@ -750,16 +918,24 @@ int main(int argc, char* argv[]) {
         }
         // skal: afaik this is never used for pve mission, therefore the difficulty is always stock one
         //Logger::Log("skal","[main] spawn instance, default difficulty from being 'successor' map)\n");
-        pid_t pid = InstanceSpawner::Spawn(
-            cfg, picked->map_name, picked->game_mode, *port, instance_id, eDifficulty::Id, queue_difficulty,
-            DifficultyScalar(), InstanceRegistry::GetMatchSeed(instance_id));
-        if (pid < 0) {
-            Logger::Log("main", "[SuccessorSpawner] Failed to spawn successor for parent=%lld\n",
-                (long long)parent_instance_id);
+        SpawnRequest req;
+        req.map_name            = picked->map_name;
+        req.game_mode           = picked->game_mode;
+        req.udp_port            = *port;
+        req.instance_id         = instance_id;
+        req.difficulty_type     = eDifficulty::Id;
+        req.difficulty_value_id = queue_difficulty;
+        req.match_seed          = InstanceRegistry::GetMatchSeed(instance_id);
+        const SpawnOutcome spawned = NodeControl::Spawn(cfg, req);
+        if (!spawned.dispatched) {
+            Logger::Log("main",
+                "[SuccessorSpawner] Failed to spawn successor for parent=%lld: %s\n",
+                (long long)parent_instance_id, spawned.error.c_str());
             InstanceRegistry::MarkStopped(instance_id);
             return;
         }
-        InstanceRegistry::UpdatePid(instance_id, pid);
+        if (spawned.pid > 0) InstanceRegistry::UpdatePid(instance_id, spawned.pid);
+        const pid_t pid = spawned.pid;
         Logger::Log("main", "[SuccessorSpawner] Spawned successor %lld (pid=%d port=%d map=%s mode=%s) for parent=%lld queue=%u — will land in DRAFTING on INSTANCE_READY\n",
             (long long)instance_id, (int)pid, (int)*port,
             picked->map_name.c_str(), picked->game_mode.c_str(),
@@ -773,7 +949,7 @@ int main(int argc, char* argv[]) {
     OpenWorldTravel::SetSpawner([&cfg](const std::string& map_name,
                                        const std::string& game_mode,
                                        uint32_t difficulty_value_id) -> int64_t {
-        auto port = InstanceRegistry::AllocatePort(cfg.udp_port_range.lo, cfg.udp_port_range.hi);
+        auto port = NodeControl::AllocatePort(cfg);
         if (!port) {
             Logger::Log("travel", "[OpenWorldSpawner] No UDP ports available for '%s'\n",
                 map_name.c_str());
@@ -783,15 +959,23 @@ int main(int argc, char* argv[]) {
         int64_t instance_id = InstanceRegistry::InsertStarting(
             map_name, game_mode, *port, 0, /*is_home_map=*/false);
         Logger::Log("main","[main] spawn instance, will use default difficulty (from being open world map)\n");
-        pid_t pid = InstanceSpawner::Spawn(cfg, map_name, game_mode, *port, instance_id, eDifficulty::Id, difficulty_value_id,
-            DifficultyScalar(), InstanceRegistry::GetMatchSeed(instance_id));
-        if (pid < 0) {
-            Logger::Log("travel", "[OpenWorldSpawner] Spawn failed for '%s'\n", map_name.c_str());
+        SpawnRequest req;
+        req.map_name            = map_name;
+        req.game_mode           = game_mode;
+        req.udp_port            = *port;
+        req.instance_id         = instance_id;
+        req.difficulty_type     = eDifficulty::Id;
+        req.difficulty_value_id = difficulty_value_id;
+        req.match_seed          = InstanceRegistry::GetMatchSeed(instance_id);
+        const SpawnOutcome spawned = NodeControl::Spawn(cfg, req);
+        if (!spawned.dispatched) {
+            Logger::Log("travel", "[OpenWorldSpawner] Spawn failed for '%s': %s\n",
+                map_name.c_str(), spawned.error.c_str());
             InstanceRegistry::MarkStopped(instance_id);
             return 0;
         }
-
-        InstanceRegistry::UpdatePid(instance_id, pid);
+        if (spawned.pid > 0) InstanceRegistry::UpdatePid(instance_id, spawned.pid);
+        const pid_t pid = spawned.pid;
         Logger::Log("travel",
             "[OpenWorldSpawner] Spawned '%s' instance_id=%lld pid=%d port=%d difficulty=%u\n",
             map_name.c_str(), (long long)instance_id, (int)pid, (int)*port, difficulty_value_id);
@@ -800,33 +984,77 @@ int main(int argc, char* argv[]) {
 
     // Home map spawns on demand when the first player selects a character.
     TcpSession::SetHomeMapSpawner([&cfg]() {
+        // Retry guard. A spawn that fails before the ga_instances row exists
+        // leaves the registry saying "no home map", so nothing would stop the
+        // next character select from spawning again -- and every attempt leaks a
+        // whole game process. One real failure produced 41 processes, all with
+        // -instanceid=0, all rejected at HELLO, each one retrying forever.
+        static std::chrono::steady_clock::time_point last_attempt{};
+        static int  consecutive_failures = 0;
+        static bool gave_up = false;
+        const auto attempted_at = std::chrono::steady_clock::now();
+
+        if (gave_up) return;
+        if (consecutive_failures > 0 &&
+            attempted_at - last_attempt < std::chrono::seconds(15)) {
+            return;   // still backing off
+        }
+        if (consecutive_failures >= 5) {
+            gave_up = true;
+            Logger::Log("main",
+                "Home map spawn failed %d times -- giving up until restart. "
+                "Any player selecting a character will have no home map.\n",
+                consecutive_failures);
+            return;
+        }
+        last_attempt = attempted_at;
+
         // Double-check: is there already a non-STOPPED home instance?
-        auto existing = InstanceRegistry::GetHomeInstance();
+        // Only this master's own site counts: a node's hub in another region must
+        // not stop the local spawner from serving local players.
+        auto existing = InstanceRegistry::GetHomeInstance(cfg.ResolveSite(cfg.master_site, nullptr));
         if (existing) {
             Logger::Log("main", "Home map already exists (instance_id=%lld state=%s) — skipping spawn\n",
                 (long long)existing->instance_id, existing->state.c_str());
+            consecutive_failures = 0;
             return;
         }
 
-        auto port = InstanceRegistry::AllocatePort(cfg.udp_port_range.lo, cfg.udp_port_range.hi);
+        auto port = NodeControl::AllocatePort(cfg);
         if (!port) {
             Logger::Log("main", "No UDP ports available for home map spawn\n");
+            ++consecutive_failures;
             return;
         }
 
-        int64_t instance_id = InstanceRegistry::InsertStarting(
+        const int64_t instance_id = InstanceRegistry::InsertStarting(
             cfg.home_map_name, cfg.home_map_game_mode, *port, 0, /*is_home_map=*/true);
-
-        pid_t pid = InstanceSpawner::Spawn(cfg, cfg.home_map_name, cfg.home_map_game_mode, *port, instance_id,
-            eDifficulty::Default, 0, DifficultyScalar(),
-            InstanceRegistry::GetMatchSeed(instance_id));
-        if (pid < 0) {
-            Logger::Log("main", "Failed to spawn home map instance\n");
-            InstanceRegistry::MarkStopped(instance_id);
+        if (instance_id <= 0) {
+            // Whatever went wrong is logged by InsertStarting; what matters here
+            // is not spawning a process that could never register.
+            ++consecutive_failures;
+            Logger::Log("main",
+                "Home map spawn aborted: no ga_instances row (see the error above)\n");
             return;
         }
 
-        InstanceRegistry::UpdatePid(instance_id, pid);
+        SpawnRequest req;
+        req.map_name    = cfg.home_map_name;
+        req.game_mode   = cfg.home_map_game_mode;
+        req.udp_port    = *port;
+        req.instance_id = instance_id;
+        req.match_seed  = InstanceRegistry::GetMatchSeed(instance_id);
+        const SpawnOutcome spawned = NodeControl::Spawn(cfg, req);
+        if (!spawned.dispatched) {
+            Logger::Log("main", "Failed to spawn home map instance: %s\n",
+                spawned.error.c_str());
+            InstanceRegistry::MarkStopped(instance_id);
+            ++consecutive_failures;
+            return;
+        }
+        consecutive_failures = 0;
+        if (spawned.pid > 0) InstanceRegistry::UpdatePid(instance_id, spawned.pid);
+        const pid_t pid = spawned.pid;
 
         Logger::Log("main", "Home map instance spawned on demand: instance_id=%lld pid=%d port=%d\n",
             (long long)instance_id, (int)pid, (int)*port);
@@ -858,7 +1086,7 @@ int main(int argc, char* argv[]) {
 
     Logger::Log("main", "Binding IPC listener on port %d\n", (int)cfg.ipc_port);
     // Bind IPC server (game instance connections)
-    IpcServer ipc_server(io, cfg.ipc_port);
+    IpcServer ipc_server(io, cfg.ipc_port, cfg.ipc_bind);
     if (!ipc_server.IsListening()) {
         Logger::Log("main", "IPC listener failed; aborting startup\n");
         return 1;
@@ -875,8 +1103,78 @@ int main(int argc, char* argv[]) {
         io, cfg.settings_api_bind, cfg.settings_api_port, cfg.admin_token);
 
     Logger::Log("main", "All listeners bound\n");
+
+    // ---------------------------------------------------------------------
+    // Multi-node: who the master may place instances on, and how it hears
+    // about them. The master is node 0, i.e. the local spawner, so a
+    // single-machine deployment runs with an empty nodes[] and behaves
+    // exactly as it did before this existed.
+    // ---------------------------------------------------------------------
+    NodeRegistry::Init(cfg);
+    NodeRegistry::SetHooks({
+        [](int node_id) {
+            Logger::Log("node", "[main] node '%s' (id=%d) is available\n",
+                NodeRegistry::NameOf(node_id).c_str(), node_id);
+        },
+        [](int node_id, const std::string& reason) {
+            Logger::Log("node", "[main] node '%s' (id=%d) went away: %s\n",
+                NodeRegistry::NameOf(node_id).c_str(), node_id, reason.c_str());
+            // A node dying ends every match it was hosting, exactly as a local
+            // spawn failure would. The per-instance unwinding already ran when
+            // the tunnel streams closed (IpcSession::on_disconnect); this just
+            // makes the pending-match cleanup explicit for anything that was
+            // still waiting on a spawn that will now never complete.
+            for (const auto& inst : InstanceRegistry::GetAllRunningInstances()) {
+                if (inst.node_id != node_id) continue;
+                MatchmakingService::DiscardPendingMatchForDeadInstance(
+                    inst.instance_id, "node disconnected");
+            }
+        },
+        [](int node_id, int64_t instance_id, std::uint16_t udp_port, int pid) {
+            Logger::Log("node", "[main] node '%s' (id=%d) reports instance=%lld port=%u pid=%d\n",
+                NodeRegistry::NameOf(node_id).c_str(), node_id,
+                (long long)instance_id, (unsigned)udp_port, pid);
+        },
+        [](int node_id, int64_t instance_id, const std::string& reason) {
+            Logger::Log("node", "[main] node '%s' (id=%d) failed to start instance=%lld: %s\n",
+                NodeRegistry::NameOf(node_id).c_str(), node_id,
+                (long long)instance_id, reason.c_str());
+            MatchmakingService::DiscardPendingMatchForDeadInstance(
+                instance_id, "remote spawn failed");
+        },
+        [](int node_id, int64_t instance_id, int exit_code) {
+            Logger::Log("node", "[main] node '%s' (id=%d) instance=%lld exited (code=%d)\n",
+                NodeRegistry::NameOf(node_id).c_str(), node_id,
+                (long long)instance_id, exit_code);
+        },
+    });
+
+    std::shared_ptr<NodeLink::Server> node_link;
+    if (!cfg.nodes.empty()) {
+        node_link = std::make_shared<NodeLink::Server>(io, cfg.node_port, cfg.node_bind);
+        const bool started = node_link->Start(
+            [](const std::string& node_name, NodeCrypto::Key& out) {
+                return NodeRegistry::LookupKey(node_name, out);
+            },
+            [](std::shared_ptr<NodeLink::Link> link) {
+                NodeRegistry::Attach(std::move(link));
+            },
+            [](const std::string& peer, const std::string& reason) {
+                Logger::Log("node", "[main] node handshake from %s refused: %s\n",
+                    peer.c_str(), reason.c_str());
+            });
+        if (!started) {
+            Logger::Log("main", "Node link listener failed; aborting startup\n");
+            return 1;
+        }
+    } else {
+        Logger::Log("main",
+            "No nodes configured (nodes[] empty) — running single-machine; the node "
+            "link listener stays down\n");
+    }
+
     IpcServer::SetAdminToken(cfg.admin_token);
-    IpcServer::SetAdminActionHandler([&cfg](const std::string& subtype,
+    IpcServer::SetAdminActionHandler([&cfg, &apply_config_from_db](const std::string& subtype,
                                             const nlohmann::json& payload,
                                             std::string& message) -> bool {
         if (subtype == "stop-instance") {
@@ -898,7 +1196,7 @@ int main(int argc, char* argv[]) {
 
             Logger::Log("main", "Admin action: stopping instance %lld (pid=%d, map=%s)\n",
                 (long long)inst->instance_id, inst->pid, inst->map_name.c_str());
-            InstanceSpawner::StopInstanceProcess(*inst, "admin stop-instance");
+            NodeControl::Stop(*inst, "admin stop-instance");
             InstanceRegistry::MarkStopped(inst->instance_id);
             message = "instance stop requested";
             return true;
@@ -984,10 +1282,18 @@ int main(int argc, char* argv[]) {
         }
 
         if (subtype == "create-instance") {
+            // node_id is optional and defaults to 0 (this machine). Until
+            // placement exists (phase 3) this is the only way to ask for an
+            // instance on a specific node.
+            // node_id / instance_id are optional. node_id defaults to 0 (this
+            // machine) and is how an instance is placed on a specific node until
+            // placement exists; instance_id defaults to 0 ("assign one").
             return SpawnAdminInstance(cfg,
                 payload.value("map_name", std::string()),
                 payload.value("game_mode", std::string()),
                 payload.value("max_players", 0),
+                payload.value("node_id", 0),
+                static_cast<int64_t>(payload.value("instance_id", (long long)0)),
                 message);
         }
 
@@ -1249,6 +1555,162 @@ int main(int argc, char* argv[]) {
             return true;
         }
 
+        // --- Sites and nodes (rows in ga_sites / ga_nodes) --------------------
+        // Every mutation bumps config_rev and then reloads, so the dashboard sees
+        // its change take effect immediately and the poll below is only a safety
+        // net for edits made outside the dashboard (sqlite3, scripts).
+        if (subtype == "list-nodes") {
+            // Config rows from the database, merged with the live registry so the
+            // dashboard can show health, load and last error next to each node.
+            // Snapshot() returns by value, so hold it: pointers into the returned
+            // vector would dangle the moment the range-for ends.
+            const auto snapshot = NodeRegistry::Snapshot();
+            std::map<int, NodeRuntime> live;
+            for (const auto& rt : snapshot) live[rt.id] = rt;
+
+            // Site id -> label, so the dashboard can show "Europe" rather than "2".
+            std::map<int, std::string> site_labels;
+            std::map<int, int> site_msgs;
+            for (const auto& site : cfg.sites) {
+                site_labels[site.id] = site.label;
+                site_msgs[site.id]   = site.name_msg_id;
+            }
+
+            nlohmann::json arr = nlohmann::json::array();
+            for (const auto& node : cfg.nodes) {
+                nlohmann::json row = {
+                    {"id",       node.id},
+                    {"name",     node.name},
+                    {"site",     node.site},
+                    {"site_label", site_labels.count(node.site) ? site_labels[node.site]
+                                                                : std::string()},
+                    {"site_msg_id", site_msgs.count(node.site) ? site_msgs[node.site] : 0},
+                    {"address",  node.address},
+                    {"capacity", node.capacity},
+                    {"home_map", node.home_map},
+                    {"enabled",  node.enabled},
+                    {"has_key",  !node.key.empty()},
+                    {"connected", false},
+                    {"health",   "configured"},
+                    {"instances", 0},
+                    {"last_error", ""},
+                };
+                auto it = live.find(node.id);
+                if (it != live.end()) {
+                    const NodeRuntime& rt = it->second;
+                    const bool up = NodeRegistry::IsUp(node.id);
+                    row["connected"]  = up;
+                    row["health"]     = up ? "up" : "down";
+                    row["instances"]  = (int)rt.instances.size();
+                    row["last_error"] = rt.last_error;
+                    row["agent_version"] = rt.agent_version;
+                    row["agent_hash"]    = rt.agent_hash;
+                    const auto& mine = AgentArtifact::Agent();
+                    row["agent_current"] = mine.ok && !rt.agent_hash.empty() &&
+                                           rt.agent_hash == mine.hash;
+                    row["dll_name"]   = rt.dll_name;
+                    row["content_hash"] = rt.content_hash;
+                }
+                arr.push_back(std::move(row));
+            }
+            message = arr.dump();
+            return true;
+        }
+
+        if (subtype == "list-sites") {
+            nlohmann::json arr = nlohmann::json::array();
+            for (const auto& site : cfg.sites) {
+                arr.push_back({{"id", site.id},
+                               {"name_msg_id", site.name_msg_id},
+                               {"label", site.label},
+                               {"enabled", site.enabled}});
+            }
+            message = arr.dump();
+            return true;
+        }
+
+        if (subtype == "save-node") {
+            NodeStore::NodeRecord rec;
+            rec.id       = payload.value("id", 0);
+            rec.name     = payload.value("name", "");
+            rec.site     = payload.value("site", 0);
+            rec.address  = payload.value("address", "");
+            rec.capacity = payload.value("capacity", 0);
+            rec.home_map = payload.value("home_map", false);
+            rec.enabled  = payload.value("enabled", true);
+            rec.key      = payload.value("key", "");   // "" = leave the stored key alone
+            std::string err;
+            if (!NodeStore::SaveNode(rec, err)) {
+                message = err;
+                return false;
+            }
+            if (!apply_config_from_db(/*initial=*/false)) {
+                message = "saved, but reload failed -- see the master log";
+                return false;
+            }
+            message = "node " + std::to_string(rec.id) + " saved";
+            return true;
+        }
+
+        if (subtype == "delete-node") {
+            const int id = payload.value("id", 0);
+            std::string err;
+            if (!NodeStore::DeleteNode(id, err)) {
+                message = err;
+                return false;
+            }
+            if (!apply_config_from_db(/*initial=*/false)) {
+                message = "deleted, but reload failed -- see the master log";
+                return false;
+            }
+            message = "node " + std::to_string(id) + " deleted";
+            return true;
+        }
+
+        if (subtype == "save-site") {
+            NodeStore::SiteRecord rec;
+            rec.id          = payload.value("id", 0);
+            rec.name_msg_id = payload.value("name_msg_id", 0);
+            rec.label       = payload.value("label", "");
+            rec.enabled     = payload.value("enabled", true);
+            rec.sort_order  = payload.value("sort_order", 0);
+            std::string err;
+            if (!NodeStore::SaveSite(rec, err)) {
+                message = err;
+                return false;
+            }
+            if (!apply_config_from_db(/*initial=*/false)) {
+                message = "saved, but reload failed -- see the master log";
+                return false;
+            }
+            message = "site " + std::to_string(rec.id) + " saved";
+            return true;
+        }
+
+        if (subtype == "delete-site") {
+            const int id = payload.value("id", 0);
+            std::string err;
+            if (!NodeStore::DeleteSite(id, err)) {
+                message = err;
+                return false;
+            }
+            if (!apply_config_from_db(/*initial=*/false)) {
+                message = "deleted, but reload failed -- see the master log";
+                return false;
+            }
+            message = "site " + std::to_string(id) + " deleted";
+            return true;
+        }
+
+        if (subtype == "reload-config") {
+            if (!apply_config_from_db(/*initial=*/false)) {
+                message = "reload failed -- see the master log";
+                return false;
+            }
+            message = "sites/nodes reloaded from the database";
+            return true;
+        }
+
         if (subtype == "mmr-reseed") {
             // Wipes BOTH engines' history and replays every recorded match.
             // Dashboard-only (deliberately no chat command — abuse surface).
@@ -1270,6 +1732,51 @@ int main(int argc, char* argv[]) {
         return false;
     });
 
+    // Master lease heartbeat. Keeps the lease alive and warns if it was taken.
+    auto lease_timer = std::make_shared<asio::steady_timer>(io);
+    std::function<void()> schedule_lease_beat;
+    schedule_lease_beat = [&lease_timer, &schedule_lease_beat]() {
+        lease_timer->expires_after(std::chrono::seconds(MasterLease::kHeartbeatSeconds));
+        lease_timer->async_wait([&schedule_lease_beat](std::error_code ec) {
+            if (ec) return;  // timer cancelled (shutdown)
+            MasterLease::Heartbeat();
+            schedule_lease_beat();
+        });
+    };
+    schedule_lease_beat();
+
+    // Node health. Must run well inside NodeMsg::kStaleAfterMs so a node that
+    // stops heartbeating is noticed before it is asked to do anything.
+    auto node_tick_timer = std::make_shared<asio::steady_timer>(io);
+    std::function<void()> schedule_node_tick;
+    schedule_node_tick = [&io, &node_tick_timer, &schedule_node_tick, &apply_config_from_db]() {
+        node_tick_timer->expires_after(std::chrono::seconds(5));
+        node_tick_timer->async_wait([&io, &node_tick_timer, &schedule_node_tick,
+                                     &apply_config_from_db](std::error_code ec) {
+            if (ec) return;  // timer cancelled (shutdown)
+            NodeRegistry::Tick();
+
+            // Safety net: dashboard mutations reload synchronously, this catches
+            // edits made any other way (sqlite3, a script, another tool). One
+            // indexed read every 5 s.
+            static int64_t last_rev = -1;
+            const int64_t rev = NodeStore::Revision();
+            if (rev >= 0 && rev != last_rev) {
+                const bool first = last_rev < 0;
+                last_rev = rev;
+                if (!first) {
+                    Logger::Log("main",
+                        "[main] config_rev is now %lld -- reloading sites/nodes\n",
+                        (long long)rev);
+                    apply_config_from_db(/*initial=*/false);
+                }
+            }
+
+            schedule_node_tick();
+        });
+    };
+    schedule_node_tick();
+
     // Periodic idle instance cleanup (every 60 seconds, kills instances empty for 5+ minutes)
     auto idle_timer = std::make_shared<asio::steady_timer>(io);
     std::function<void()> schedule_idle_check;
@@ -1282,7 +1789,7 @@ int main(int argc, char* argv[]) {
             for (const auto& inst : idle) {
                 Logger::Log("main", "Idle cleanup: killing instance %lld (pid=%d, map=%s) — empty for 5+ minutes\n",
                     (long long)inst.instance_id, inst.pid, inst.map_name.c_str());
-                InstanceSpawner::StopInstanceProcess(inst, "idle cleanup");
+                NodeControl::Stop(inst, "idle cleanup");
                 InstanceRegistry::MarkStopped(inst.instance_id);
             }
 
@@ -1337,10 +1844,25 @@ int main(int argc, char* argv[]) {
         auto running = InstanceRegistry::GetAllRunningInstances();
         Logger::Log("main", "  %zu running instance(s) to terminate\n", running.size());
         for (const auto& inst : running) {
-            InstanceSpawner::StopInstanceProcess(inst, "control-server shutdown", 2);
+            // Remote instances get an INSTANCE_STOP over the link. Decided
+            // policy (design S12): a master restart ends the matches, so this
+            // deliberately matches what a local instance gets.
+            NodeControl::Stop(inst, "control-server shutdown", 2);
             InstanceRegistry::MarkStopped(inst.instance_id);
         }
     }
+
+    // Close every node link only after the stops above have been queued, so a
+    // node can actually act on them.
+    if (node_link) {
+        for (const auto& node : NodeRegistry::Snapshot()) {
+            if (node.health == NodeHealth::Configured) continue;
+            NodeRegistry::Detach(node.id, "control-server shutdown");
+        }
+        node_link->Stop();
+    }
+
+    MasterLease::Release();
 
     Logger::Log("main", "Control server shutdown complete.\n");
     g_io = nullptr;

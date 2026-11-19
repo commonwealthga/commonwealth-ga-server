@@ -638,11 +638,35 @@ cleanclient:
 
 # ── Control Server ──────────────────────────────────────────────────────────
 CS_SRC_DIR=src/ControlServer
+
+# Migrations are compiled in. This regenerates Database/EmbeddedMigrations.gen.cpp
+# from migrations/*.sql before anything is built. The script writes only when the
+# contents actually change, so an unchanged tree does not force a rebuild.
+$(shell python3 scripts/embed_migrations.py --dir migrations --out $(CS_SRC_DIR)/Database/EmbeddedMigrations.gen.cpp \
+         || echo "embed_migrations FAILED: python3 is required to build the control server" >&2)
+
+# Build identity from git (tag-commits-hash[-dirty]). No hand-maintained version
+# number; a tree without .git reports "unknown" and still builds. Writes only when
+# the commit changes, so it does not force a rebuild every invocation.
+#
+# Runs at parse time, so it applies to DLL-only builds too (the DLL reports its
+# build in INSTANCE_HELLO). Built before you tag? Stamp the release number:
+#     GA_BUILD_VERSION=0.1.59 make out/version.dll
+$(shell python3 scripts/gen_version.py --out src/Shared/BuildVersion.gen.hpp \
+         || echo "gen_version failed: build identity will be stale" >&2)
+
 CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/main.cpp \
 	$(CS_SRC_DIR)/Constants/DeviceIds.cpp \
 	$(CS_SRC_DIR)/Config/ControlServerConfig.cpp \
 	$(CS_SRC_DIR)/Database/Database.cpp \
+	$(CS_SRC_DIR)/Database/EmbeddedMigrations.gen.cpp \
+	$(CS_SRC_DIR)/Database/Migrations.cpp \
+	$(CS_SRC_DIR)/Placement/Placement.cpp \
+	$(CS_SRC_DIR)/NodeStore/NodeStore.cpp \
+	$(CS_SRC_DIR)/NodeStore/NodeKeyVault.cpp \
+	$(CS_SRC_DIR)/NodeData/FileHash.cpp \
+	$(CS_SRC_DIR)/NodeData/AgentArtifact.cpp \
 	$(CS_SRC_DIR)/MapGameInfo/MapGameInfo.cpp \
 	$(CS_SRC_DIR)/Loadouts/ClassLoadouts.cpp \
 	$(CS_SRC_DIR)/Loadouts/CosmeticLoadouts.cpp \
@@ -652,6 +676,7 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/ChatSession/ChatSession.cpp \
 	$(CS_SRC_DIR)/ChatSession/ChatCommand.cpp \
 	$(CS_SRC_DIR)/IpcServer/IpcServer.cpp \
+	$(CS_SRC_DIR)/IpcServer/SocketFramePipe.cpp \
 	$(CS_SRC_DIR)/SpectatorOverlay/SpectatorOverlayState.cpp \
 	$(CS_SRC_DIR)/SpectatorOverlay/MissionProgressState.cpp \
 	$(CS_SRC_DIR)/SpectatorOverlay/OverlayHttpServer.cpp \
@@ -660,6 +685,20 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/SpectatorOverlay/SkillTreeCatalog.cpp \
 	$(CS_SRC_DIR)/InstanceRegistry/InstanceRegistry.cpp \
 	$(CS_SRC_DIR)/InstanceSpawner/InstanceSpawner.cpp \
+	$(CS_SRC_DIR)/NodeControl/NodeControl.cpp \
+	$(CS_SRC_DIR)/NodeLink/NodeCrypto.cpp \
+	$(CS_SRC_DIR)/MasterLease/MasterLease.cpp \
+	$(CS_SRC_DIR)/NodeData/ContentSnapshot.cpp \
+	$(CS_SRC_DIR)/NodeData/NodeDataStore.cpp \
+	$(CS_SRC_DIR)/NodeData/PlayerBundle.cpp \
+	$(CS_SRC_DIR)/NodeRegistry/NodeRegistry.cpp \
+	$(CS_SRC_DIR)/NodeAgent/NodeAgent.cpp \
+	$(CS_SRC_DIR)/NodeLink/NodeLink.cpp \
+	$(CS_SRC_DIR)/NodeLink/NodeHandshake.cpp \
+	$(CS_SRC_DIR)/NodeLink/NodeLinkServer.cpp \
+	$(CS_SRC_DIR)/NodeLink/NodeLinkClient.cpp \
+	$(CS_SRC_DIR)/NodeLink/NodeStreamFramePipe.cpp \
+	$(CS_SRC_DIR)/NodeAgent/InstanceRelay.cpp \
 	$(CS_SRC_DIR)/OpenWorldTravel/OpenWorldTravel.cpp \
 	$(CS_SRC_DIR)/QuestStore/QuestStore.cpp \
 	$(CS_SRC_DIR)/TeamService/TeamService.cpp \
@@ -681,17 +720,22 @@ CS_CPP_SOURCES= \
 
 CS_SOURCES=$(CS_CPP_SOURCES)
 
-CS_CXXFLAGS=-std=c++17 -pthread -I. -I./lib/asio-1.34.2/include -I./lib/sqlite3 -DASIO_STANDALONE -O2 -Wall
+CS_CXXFLAGS=-std=c++17 -pthread -I. -I./lib/asio-1.34.2/include -I./lib/sqlite3 -I./lib/monocypher -DASIO_STANDALONE -O2 -Wall
 # MinGW builds crash in Asio socket service construction with -O1/-O2.
 CS_CXXFLAGS_WIN=$(filter-out -O2,$(CS_CXXFLAGS)) -O0 -D_WIN32_WINNT=0x0601
 CS_CFLAGS_SQLITE=-O2 -I./lib/sqlite3
+# Monocypher is portable C99. Warning-clean under -Wall; no optimisation
+# tricks needed, so the plain sqlite flag set is fine.
+CS_CFLAGS_MONOCYPHER=-O2 -I./lib/monocypher
 CS_LDFLAGS_LINUX=-lpthread -ldl
-CS_LDFLAGS_WIN=-liphlpapi -lws2_32 -lmswsock -static
+CS_LDFLAGS_WIN=-liphlpapi -lws2_32 -lmswsock -lbcrypt -static
 
 CS_OUT_LINUX=out/control-server
 CS_OUT_WIN=out/control-server.exe
 CS_SQLITE_OBJ_LINUX=out/sqlite3_cs_linux.o
 CS_SQLITE_OBJ_WIN=out/sqlite3_cs_win.o
+CS_MONOCYPHER_OBJ_LINUX=out/monocypher_cs_linux.o
+CS_MONOCYPHER_OBJ_WIN=out/monocypher_cs_win.o
 
 # Per-cpp .o files so -jN actually parallelizes the control-server build.
 # The previous single-g++-invocation form compiled sources serially regardless
@@ -715,14 +759,20 @@ $(CS_SQLITE_OBJ_LINUX): lib/sqlite3/sqlite3.c
 $(CS_SQLITE_OBJ_WIN): lib/sqlite3/sqlite3.c
 	x86_64-w64-mingw32-gcc $(CS_CFLAGS_SQLITE) -c lib/sqlite3/sqlite3.c -o $(CS_SQLITE_OBJ_WIN)
 
+$(CS_MONOCYPHER_OBJ_LINUX): lib/monocypher/monocypher.c
+	gcc -std=c99 $(CS_CFLAGS_MONOCYPHER) -c lib/monocypher/monocypher.c -o $(CS_MONOCYPHER_OBJ_LINUX)
+
+$(CS_MONOCYPHER_OBJ_WIN): lib/monocypher/monocypher.c
+	x86_64-w64-mingw32-gcc -std=c99 $(CS_CFLAGS_MONOCYPHER) -c lib/monocypher/monocypher.c -o $(CS_MONOCYPHER_OBJ_WIN)
+
 control-server-linux: $(CS_OUT_LINUX)
 control-server-win: $(CS_OUT_WIN)
 
-$(CS_OUT_LINUX): $(CS_OBJS_LINUX) $(CS_SQLITE_OBJ_LINUX)
-	g++ $(CS_CXXFLAGS) -o $@ $(CS_OBJS_LINUX) $(CS_SQLITE_OBJ_LINUX) $(CS_LDFLAGS_LINUX)
+$(CS_OUT_LINUX): $(CS_OBJS_LINUX) $(CS_SQLITE_OBJ_LINUX) $(CS_MONOCYPHER_OBJ_LINUX)
+	g++ $(CS_CXXFLAGS) -o $@ $(CS_OBJS_LINUX) $(CS_SQLITE_OBJ_LINUX) $(CS_MONOCYPHER_OBJ_LINUX) $(CS_LDFLAGS_LINUX)
 
-$(CS_OUT_WIN): $(CS_OBJS_WIN) $(CS_SQLITE_OBJ_WIN)
-	x86_64-w64-mingw32-g++ $(CS_CXXFLAGS_WIN) -o $@ $(CS_OBJS_WIN) $(CS_SQLITE_OBJ_WIN) $(CS_LDFLAGS_WIN)
+$(CS_OUT_WIN): $(CS_OBJS_WIN) $(CS_SQLITE_OBJ_WIN) $(CS_MONOCYPHER_OBJ_WIN)
+	x86_64-w64-mingw32-g++ $(CS_CXXFLAGS_WIN) -o $@ $(CS_OBJS_WIN) $(CS_SQLITE_OBJ_WIN) $(CS_MONOCYPHER_OBJ_WIN) $(CS_LDFLAGS_WIN)
 
 control-server: control-server-linux control-server-win
 
@@ -732,4 +782,5 @@ CS_DEPS := $(CS_OBJS_LINUX:.o=.d) $(CS_OBJS_WIN:.o=.d)
 cleancs:
 	rm -rf $(CS_OBJ_DIR_LINUX) $(CS_OBJ_DIR_WIN)
 	rm -f $(CS_OUT_LINUX) $(CS_OUT_WIN) $(CS_SQLITE_OBJ_LINUX) $(CS_SQLITE_OBJ_WIN)
+	rm -f $(CS_MONOCYPHER_OBJ_LINUX) $(CS_MONOCYPHER_OBJ_WIN)
 

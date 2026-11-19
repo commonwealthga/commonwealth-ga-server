@@ -1,4 +1,5 @@
 #include "src/ControlServer/TcpSession/TcpSession.hpp"
+#include "src/ControlServer/NodeRegistry/NodeRegistry.hpp"
 #include "src/ControlServer/ChatSession/ChatSession.hpp"
 #include "src/ControlServer/ChatSession/ChatCommand.hpp"
 #include "src/ControlServer/Database/Database.hpp"
@@ -18,9 +19,11 @@
 #include <map>
 #include <array>
 #include <cctype>
+#include <algorithm>
 #include <cstdlib>
 #include <ctime>
 #include <mutex>
+#include <utility>
 #if defined(_WIN32)
 #include <winsock2.h>
 #include <iphlpapi.h>
@@ -420,6 +423,51 @@ bool SendProfileUiRefresh(int64_t instance_id, const std::string& session_guid, 
 
 }  // namespace
 
+// Sites are copied out of the config at Init so the reply builders and the login
+// handler share one decision. Keeping the ControlServerConfig type itself (rather
+// than re-implementing site resolution here) means placement and the login reply
+// can never disagree about which site a client is on.
+static ControlServerConfig g_site_config;
+
+// Which site this session was assigned. Written during login, read by every reply
+// that has to name a site.
+// ga_user_preferences key for the player's region choice. Values are the retail
+// SYS_SITE_ID ids, stored as decimal text like every other preference.
+static constexpr const char* kSitePreferenceKey = "sys_site_id";
+
+
+int TcpSession::SiteOfSession(const std::string& session_guid) {
+	if (session_guid.empty()) return 0;
+	std::lock_guard<std::mutex> lock(sessions_mutex_);
+	auto it = g_sessions_.find(session_guid);
+	if (it == g_sessions_.end()) return 0;
+	auto session = it->second.lock();
+	return session ? session->site_id_ : 0;
+}
+
+std::vector<int> TcpSession::PreferredSitesOf(const std::vector<std::string>& session_guids) {
+	// Weighted by how many players want each site, so a 4-player party in one
+	// region outvotes a single player elsewhere. Ties keep the order of first
+	// appearance, which makes the decision reproducible.
+	std::vector<std::pair<int, int>> counts;   // site, votes (in first-seen order)
+	for (const auto& guid : session_guids) {
+		const int site = SiteOfSession(guid);
+		if (site <= 0) continue;
+		bool seen = false;
+		for (auto& entry : counts) {
+			if (entry.first == site) { ++entry.second; seen = true; break; }
+		}
+		if (!seen) counts.push_back({site, 1});
+	}
+	std::stable_sort(counts.begin(), counts.end(),
+	                 [](const std::pair<int, int>& a, const std::pair<int, int>& b) {
+	                     return a.second > b.second;
+	                 });
+	std::vector<int> out;
+	for (const auto& entry : counts) out.push_back(entry.first);
+	return out;
+}
+
 void TcpSession::SetHomeMapSpawner(std::function<void()> cb) {
     on_need_home_map_ = std::move(cb);
 }
@@ -433,7 +481,16 @@ void TcpSession::EnsureHomeMapWarm(const char* reason) {
     on_need_home_map_();
 }
 
+void TcpSession::ReloadSiteConfig(const ControlServerConfig& cfg) {
+	g_site_config.sites          = cfg.sites;
+	g_site_config.fallback_order = cfg.fallback_order;
+	Logger::Log("tcp", "[TcpSession] site config reloaded: %zu site(s)\n",
+		g_site_config.Sites().size());
+}
+
 bool TcpSession::Init (asio::io_context& io_context, const ControlServerConfig& cfg) {
+	g_site_config.sites          = cfg.sites;
+	g_site_config.fallback_order = cfg.fallback_order;
 	if (!SetNetworkConfig(io_context, cfg.host, cfg.chat_port, cfg.nat_networks, cfg.nat_ip)) return false;
 	SetLoginPolicy(cfg.allow_duplicate_account_logins,
 															cfg.require_password_verification);
@@ -1383,7 +1440,7 @@ void TcpSession::initiate_player_register_and_go_play() {
         return;
     }
 
-    auto home_instance = InstanceRegistry::GetReadyHomeInstance();
+    auto home_instance = InstanceRegistry::GetReadyHomeInstance(site_id_);
     if (!home_instance) {
         Logger::Log("tcp", "[TcpSession] No READY home map instance -- cannot send PLAYER_REGISTER for %s\n",
             session_guid_.c_str());
@@ -1455,7 +1512,7 @@ void TcpSession::initiate_player_register_and_go_play() {
                 Logger::Log("tcp", "[TcpSession] PLAYER_REGISTER ACK success for %s pawn_id=%d\n",
                     session_guid_.c_str(), pawn_id);
                 // Track player in home map instance
-                auto home = InstanceRegistry::GetReadyHomeInstance();
+                auto home = InstanceRegistry::GetReadyHomeInstance(site_id_);
                 if (home && home->instance_id == home_instance_id) {
                     InstanceRegistry::InsertInstancePlayer(
                         home->instance_id, session_guid_, selected_character_id_, task_force,
@@ -1782,7 +1839,7 @@ void TcpSession::wait_for_home_map_then_register(int remaining_seconds) {
     }
 
     // Check for READY home instance first
-    auto ready = InstanceRegistry::GetReadyHomeInstance();
+    auto ready = InstanceRegistry::GetReadyHomeInstance(site_id_);
     if (ready) {
         assigned_instance_id_ = ready->instance_id;
         Logger::Log("tcp", "[TcpSession] Home map ready: instance_id=%lld for %s\n",
@@ -1792,7 +1849,7 @@ void TcpSession::wait_for_home_map_then_register(int remaining_seconds) {
     }
 
     // Check if a home instance is STARTING (someone else triggered it)
-    auto home = InstanceRegistry::GetHomeInstance();
+    auto home = InstanceRegistry::GetHomeInstance(site_id_);
     if (!home && on_need_home_map_) {
         // No home instance at all — spawn one
         Logger::Log("tcp", "[TcpSession] No home map instance — spawning on demand for %s\n",
@@ -1947,6 +2004,15 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			}
 
 			PacketView pkt(data + 6, length - 6);
+
+			// The client's region choice. Read here, but resolved against the
+			// account's stored preference once the user is known (below).
+			int requested_site_id = 0;
+			{
+				auto site_field = pkt.Read4B(GA_T::SYS_SITE_ID);
+				requested_site_id = site_field ? static_cast<int>(*site_field) : 0;
+			}
+
 			auto read_login_name = [&pkt](uint16_t type) -> std::string {
 				auto field = pkt.ReadString(type);
 				return field ? TrimAsciiWhitespace(*field) : std::string();
@@ -2145,6 +2211,24 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			RegisterSession(session_guid_, shared_from_this());
 			user_id_ = resolved_user_id;
 			session_row_id_   = Database::InsertSession(user_id_, player_name, remote_ip_str, "ok");
+
+			// Region: explicit choice at this login wins, then the account's stored
+			// preference, then the config default. What we actually serve is written
+			// back, so the stored value is always something we can place on.
+			{
+				const std::string stored = Database::GetUserPreference(user_id_, kSitePreferenceKey);
+				const int stored_site = stored.empty() ? 0 : std::atoi(stored.c_str());
+				const int preferred = requested_site_id > 0 ? requested_site_id : stored_site;
+				std::string why;
+				site_id_ = g_site_config.ResolveSite(preferred, &why);
+				Logger::Log("tcp",
+					"[TcpSession] login region: requested=%d stored=%d -> serving site %d (%s)\n",
+					requested_site_id, stored_site, site_id_, why.c_str());
+				if (stored_site != site_id_) {
+					Database::SetUserPreference(user_id_, kSitePreferenceKey,
+						std::to_string(site_id_));
+				}
+			}
 			session_login_at_ = (int64_t)std::time(nullptr);
 
 			// Strip any inventory rows / equip references for items the
@@ -2177,10 +2261,42 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 			send_character_list_response();
 			// send_character_list_queue_response();
 			break;
-		case GA_U::PLAYER_UPDATE_CLIENT:
+		case GA_U::PLAYER_UPDATE_CLIENT: {
 			Logger::Log("tcp", "[%s] Received: PLAYER_UPDATE_CLIENT [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
+
+			// The client sends this when the player picks a different region in the
+			// UI. The body is optional as far as we know -- we never parsed it before
+			// -- so treat a missing field as "no change" and log what actually
+			// arrived, which is also the evidence for how the client uses these ids.
+			{
+				PacketView pkt(data + 6, length - 6);
+				auto site_field = pkt.Read4B(GA_T::SYS_SITE_ID);
+				if (site_field) {
+					const int requested = static_cast<int>(*site_field);
+					std::string why;
+					const int serving = g_site_config.ResolveSite(requested, &why);
+					Logger::Log("tcp",
+						"[TcpSession] PLAYER_UPDATE_CLIENT region: requested=%d -> %d (%s); "
+						"current session site=%d, placed=%d\n",
+						requested, serving, why.c_str(), site_id_,
+						(int)(assigned_instance_id_ != 0));
+					if (user_id_ > 0 && serving > 0) {
+						Database::SetUserPreference(user_id_, kSitePreferenceKey,
+							std::to_string(serving));
+					}
+					// Only adopt it immediately while the player is still unplaced; a
+					// player already inside an instance keeps their hub until they
+					// leave. The stored preference covers the next login either way.
+					if (serving > 0 && assigned_instance_id_ == 0) site_id_ = serving;
+				} else {
+					Logger::Log("tcp",
+						"[TcpSession] PLAYER_UPDATE_CLIENT carried no SYS_SITE_ID\n");
+				}
+			}
+
 			send_player_update_client_response();
 			break;
+		}
 		case GA_U::GET_LOOT_TABLE_ITEMS_BY_ID_FILTERED:
 			Logger::Log("tcp", "[%s] Received: GET_LOOT_TABLE_ITEMS_BY_ID_FILTERED [0x%04X], item count: %d\n", Logger::GetTime(), packet_type, item_count);
 			send_get_loot_table_items_by_id_filtered_response();
@@ -5700,7 +5816,11 @@ void TcpSession::send_player_update_client_response()
 	append(response, packet_type & 0xFF, packet_type >> 8);
 	append(response, item_count & 0xFF, item_count >> 8);
 
-	Write4B(response, GA_T::SYS_SITE_ID, 0x2);
+	// The site this session was placed on, not a constant: the client uses it to
+	// pick which hub/region labels it shows. Falls back to the first enabled site
+	// so an unresolved session can never send 0.
+	const int reply_site = site_id_ > 0 ? site_id_ : g_site_config.ResolveSite(0, nullptr);
+	Write4B(response, GA_T::SYS_SITE_ID, static_cast<uint32_t>(reply_site));
 	Write4B(response, GA_T::SYS_AVA_TEAMS_OK, 0x1);
 
 	send_response(response);
@@ -5870,7 +5990,7 @@ void TcpSession::send_match_launch_response()
 
 void TcpSession::send_go_play_tutorial_response()
 {
-	auto instance = InstanceRegistry::GetReadyHomeInstance();
+	auto instance = InstanceRegistry::GetReadyHomeInstance(site_id_);
 	if (!instance) {
 		Logger::Log("tcp", "[TcpSession] No READY home map instance for go_play_tutorial\n");
 		return;
@@ -5885,7 +6005,7 @@ void TcpSession::send_go_play_tutorial_response()
 	append(response, item_count & 0xFF, item_count >> 8);
 
 	WriteString(response, GA_T::PLAYER_NAME, player_name);
-	WriteIP(response, GA_T::HOST_NET_ADDR, /*instance->ip_address*/host_, instance->udp_port);
+	WriteIP(response, GA_T::HOST_NET_ADDR, PlayHostFor(*instance), instance->udp_port);
 	WriteNBytes(response, GA_T::SESSION_GUID, GuidHexToBytes(session_guid_));
 	WriteString(response, GA_T::MAP_FILENAME, "Inception_ALL");
 	WriteString(response, GA_T::PARAMETERS, "?Game=TgGame.TgGame_Mission");
@@ -5918,12 +6038,70 @@ void TcpSession::send_marshal_channel_response()
 
 void TcpSession::send_go_play_response()
 {
-	auto instance = InstanceRegistry::GetReadyHomeInstance();
+	auto instance = InstanceRegistry::GetReadyHomeInstance(site_id_);
 	if (!instance) {
-		Logger::Log("tcp", "[TcpSession] No READY home map instance for go_play\n");
+		// Spawning the home map happens on demand at login, so the very first
+		// player always races the instance load: the client asks for go-play while
+		// the instance is still STARTING. Dropping the request here is what left
+		// that player staring at a blank loading screen. Park it and let
+		// OnHomeMapReady() re-drive it.
+		pending_go_play_ = true;
+		Logger::Log("tcp",
+			"[TcpSession] No READY home map instance for go_play -- request parked "
+			"until it loads\n");
 		return;
 	}
+	pending_go_play_ = false;
 	send_go_play_to_instance(*instance, home_task_force_);
+}
+
+void TcpSession::OnHomeMapReady()
+{
+	std::vector<std::shared_ptr<TcpSession>> parked;
+	{
+		std::lock_guard<std::mutex> lock(sessions_mutex_);
+		for (auto it = g_sessions_.begin(); it != g_sessions_.end();) {
+			auto session = it->second.lock();
+			if (!session) {
+				it = g_sessions_.erase(it);
+				continue;
+			}
+			if (session->pending_go_play_) parked.push_back(session);
+			++it;
+		}
+	}
+
+	for (const auto& session : parked) {
+		// Per session: a parked player must land in a hub of their own site, not in
+		// whichever instance happened to become READY first.
+		auto instance = InstanceRegistry::GetReadyHomeInstance(session->site_id_);
+		if (!instance) continue;
+		Logger::Log("tcp",
+			"[TcpSession] home map is READY -- sending the parked go_play (%s, site %d)\n",
+			session->player_name.c_str(), session->site_id_);
+		session->pending_go_play_ = false;
+		session->send_go_play_to_instance(*instance, session->home_task_force_);
+	}
+}
+
+// Where this client should connect for an instance.
+//
+// A local instance (node 0) is reachable at the master, and host_ already holds
+// the per-session NAT-aware address for that. A remote node's instance is only
+// reachable at that node's advertised address -- writing host_ for it would point
+// the client at the master, which is exactly the bug that makes a second region
+// unusable.
+std::string TcpSession::PlayHostFor(const InstanceInfo& inst) const
+{
+	if (inst.node_id != 0) {
+		const std::string addr = NodeRegistry::AddressOf(inst.node_id);
+		if (!addr.empty()) return addr;
+		Logger::Log("tcp",
+			"[TcpSession] instance=%lld lives on node %d, which advertises no address "
+			"-- falling back to the master's address, the client will not reach it\n",
+			(long long)inst.instance_id, inst.node_id);
+	}
+	return host_;
 }
 
 void TcpSession::send_go_play_to_instance(const InstanceInfo& target, int task_force)
@@ -5953,7 +6131,7 @@ void TcpSession::send_go_play_to_instance(const InstanceInfo& target, int task_f
 	}
 
 	WriteString(response, GA_T::PLAYER_NAME, player_name);
-	WriteIP(response, GA_T::HOST_NET_ADDR, /*target.ip_address*/host_, target.udp_port);
+	WriteIP(response, GA_T::HOST_NET_ADDR, PlayHostFor(target), target.udp_port);
 	WriteNBytes(response, GA_T::SESSION_GUID, GuidHexToBytes(session_guid_));
 	WriteString(response, GA_T::MAP_FILENAME, target.map_name);
 	WriteString(response, GA_T::PARAMETERS, "?Game=" + target.game_mode);
@@ -6211,12 +6389,24 @@ void TcpSession::send_login_response_for(const std::string& response_player_name
 	WriteNBytes(response, GA_T::DISPLAY_EULA_FLAG, {0x01, 0x00, 0x6E});
 	WriteString(response, GA_T::PLAYER_NAME, response_player_name.c_str());
 
-	append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
-	append(response, 0x01, 0x00);        // count elements
+	// The site list. The client renders one row per entry in its region selector
+	// and echoes the chosen id back as SYS_SITE_ID on the next login.
+	{
+		std::vector<SiteEntryConfig> enabled;
+		for (const auto& site : g_site_config.Sites()) {
+			if (site.enabled && site.id > 0) enabled.push_back(site);
+		}
+		if (enabled.empty()) enabled.push_back(SiteEntryConfig{2, 41483, "Europe", true});
 
-	append(response, 0x02, 0x00);  // inner item count
-	Write4B(response, GA_T::SYS_SITE_ID, 0x00000002);
-	Write4B(response, GA_T::NAME_MSG_ID, 0x0000A20B);
+		append(response, GA_T::DATA_SET & 0xFF, GA_T::DATA_SET >> 8);
+		append(response, static_cast<uint8_t>(enabled.size() & 0xFF),
+		              static_cast<uint8_t>((enabled.size() >> 8) & 0xFF));   // item count
+		for (const auto& site : enabled) {
+			append(response, 0x02, 0x00);   // 2 fields per item
+			Write4B(response, GA_T::SYS_SITE_ID, static_cast<uint32_t>(site.id));
+			Write4B(response, GA_T::NAME_MSG_ID, static_cast<uint32_t>(site.name_msg_id));
+		}
+	}
 
 	append(response, GA_T::DATA_SET_MAP_CONFIGS & 0xFF, GA_T::DATA_SET_MAP_CONFIGS >> 8);
 	append(response, 0x01, 0x00);    // 1 item
