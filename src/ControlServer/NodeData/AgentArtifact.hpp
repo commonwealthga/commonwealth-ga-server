@@ -30,6 +30,19 @@ struct Info {
 // Hash both artifacts once. Safe to call before the link exists; re-callable.
 void Init(const ControlServerConfig& cfg);
 
+// Re-checks the proxy DLL on disk and re-hashes it if it changed.
+//
+// The whole point of a DLL-only deploy is that it needs no control-server
+// restart (a restart kicks every player to the login screen), so the offered DLL
+// cannot be frozen at startup. Called from the registry tick: a stat() when
+// nothing changed, a 9 MB hash when the file was touched -- cheap enough to poll
+// and it keeps "drop a new version.dll in and nodes pick it up" true.
+//
+// The agent artifact deliberately does NOT do this: it is the binary this process
+// is running, and offering bytes we are not executing would be a lie.
+// Returns true when the offered DLL changed, so the caller can re-announce it.
+bool Refresh();
+
 const Info& Agent();
 const Info& Dll();
 

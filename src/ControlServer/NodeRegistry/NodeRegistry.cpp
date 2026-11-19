@@ -469,7 +469,38 @@ bool NodeRegistry::SendControl(int node_id, const std::string& json) {
     return link->SendFrame(NodeLink::kFrameControl, 0, json);
 }
 
+namespace {
+
+// Re-announce the artifacts on offer to every node that could act on it. Sent on
+// change only: a node ignores a message for bytes it already has, but there is no
+// reason to generate traffic every tick.
+void BroadcastArtifactOffers() {
+    const auto& agent = AgentArtifact::Agent();
+    const auto& dll   = AgentArtifact::Dll();
+
+    nlohmann::json j;
+    j["type"]             = NodeMsg::kArtifactOffer;
+    j["agent_offer_hash"] = agent.ok ? agent.hash : std::string();
+    j["agent_offer_size"] = agent.ok ? agent.size : 0;
+    j["dll_offer_hash"]   = dll.ok ? dll.hash : std::string();
+    j["dll_offer_size"]   = dll.ok ? dll.size : 0;
+
+    const std::string payload = j.dump();
+    for (const auto& rt : NodeRegistry::Snapshot()) {
+        if (!rt.enabled) continue;
+        if (!NodeRegistry::IsUp(rt.id)) continue;
+        NodeRegistry::SendControl(rt.id, payload);
+    }
+}
+
+}  // namespace
+
 void NodeRegistry::Tick() {
+    // A DLL dropped in while the master runs has to reach nodes without a
+    // restart -- a restart is exactly what a DLL-only deploy is trying to avoid.
+    if (AgentArtifact::Refresh()) BroadcastArtifactOffers();
+
+
     const int64_t now = NowMs();
     for (auto& kv : g_nodes) {
         NodeRuntime& rt = kv.second;

@@ -62,6 +62,12 @@ constexpr const char* kInstanceStop = "INSTANCE_STOP";
 //   NODE_WELCOME adds: { agent_offer_hash, agent_offer_size,
 //                        dll_offer_hash, dll_offer_size }
 // An empty offer hash means "not offered" (no artifact, or auto-update off).
+// Master -> node: the artifacts on offer changed (a new proxy DLL was dropped in
+// while the master kept running). Same field names as the NODE_WELCOME block, so
+// the node handles both with one path. An empty hash means "nothing on offer".
+//   { type, agent_offer_hash, agent_offer_size, dll_offer_hash, dll_offer_size }
+constexpr const char* kArtifactOffer = "NODE_ARTIFACT_OFFER";
+
 constexpr const char* kFetchContent = "NODE_FETCH_CONTENT";
 //   { type, kind ("content"|"agent"|"dll"), hash, offset, len }
 constexpr const char* kContentChunk = "NODE_CONTENT_CHUNK";

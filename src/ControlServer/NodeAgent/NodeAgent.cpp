@@ -422,6 +422,7 @@ private:
                 own_node_id_, (int)device_stats_, (int)effectiveness_);
             maybe_fetch_content(j.value("content_hash", std::string()),
                                 j.value("content_size", (std::int64_t)0));
+            RememberOffer(j);
             MaybeStartUpdate(j);
             ReportOrphanedInstances();
             return;
@@ -438,6 +439,13 @@ private:
         }
         if (type == NodeMsg::kPlayerBundle) {
             handle_player_bundle(j, payload);
+            return;
+        }
+
+        if (type == NodeMsg::kArtifactOffer) {
+            // Same shape as the NODE_WELCOME block; the master sends this when a
+            // new DLL appears without restarting.
+            MaybeStartUpdate(j);
             return;
         }
 
@@ -674,6 +682,15 @@ private:
     void Tick() {
         ReapChildren();
         if (update_ready_ && pids_.empty()) ApplyAgentUpdate();
+        // Retry a stalled transfer against the last thing the master offered.
+        // Starting an update is a no-op when we already have those bytes, so this
+        // costs nothing in the steady state, and it recovers from a chunk that
+        // raced a master-side artifact change.
+        if (++offer_retry_ticks_ >= kOfferRetryTicks && update_kind_.empty() &&
+            !update_ready_ && !last_offer_.is_null()) {
+            offer_retry_ticks_ = 0;
+            MaybeStartUpdate(last_offer_);
+        }
         if (content_apply_pending_ && pids_.empty()) apply_content_if_idle();
         MaybePushPlayers();
         SendStatus();
@@ -893,7 +910,16 @@ private:
     //   5. update_mode=stage stops after writing and verifying. That is what to
     //      use for the first contact with a remote node.
 
+    void RememberOffer(const nlohmann::json& j) {
+        last_offer_ = j;
+        offer_retry_ticks_ = 0;
+    }
+
     void MaybeStartUpdate(const nlohmann::json& j) {
+        // Kept so the tick can retry: a transfer can fail for a reason that fixes
+        // itself (a chunk raced a master-side file change), and re-offers only
+        // arrive when something changes.
+        last_offer_ = j;
         const std::string mode = cfg_.node.update_mode;
         if (mode == "off") return;
         if (!update_kind_.empty() || update_ready_) return;   // already have one
@@ -901,14 +927,16 @@ private:
 
         // DLL first: smaller blast radius, and it never needs a restart.
         const std::string dll_offer = j.value("dll_offer_hash", std::string());
-        if (!dll_offer.empty() && !dll_path_.empty() && dll_offer != dll_hash_) {
+        if (!dll_offer.empty() && !dll_path_.empty() && dll_offer != dll_hash_ &&
+            dll_offer != staged_hash_) {
             BeginUpdate("dll", dll_offer, j.value("dll_offer_size", (std::int64_t)0),
                         dll_path_);
             return;
         }
 
         const std::string agent_offer = j.value("agent_offer_hash", std::string());
-        if (!agent_offer.empty() && agent_offer != own_agent_hash_) {
+        if (!agent_offer.empty() && agent_offer != own_agent_hash_ &&
+            agent_offer != staged_hash_) {
             if (own_agent_path_.empty()) {
                 Logger::Log("node",
                     "master offers agent %s but this process cannot resolve its own "
@@ -1059,6 +1087,8 @@ private:
                 "update_mode=stage -- '%s' will not be swapped in; verify it, then "
                 "switch the node to update_mode=apply (the transfer repeats on the "
                 "next handshake)\n", update_kind_.c_str());
+            // Remember it so the retry loop does not fetch the same bytes again.
+            staged_hash_ = update_hash_;
             ClearUpdate();
             return;
         }
@@ -1469,6 +1499,12 @@ private:
     std::string update_target_;
     std::string update_staged_;   // <target>.new, written and verified
     bool        update_ready_ = false;   // staged, waiting for idle before the swap
+    // Hash already written to <target>.new. Only relevant for update_mode=stage,
+    // where "done" must mean "staged once", not "staged every minute".
+    std::string staged_hash_;
+    nlohmann::json last_offer_ = nullptr;      // most recent offer from the master
+    int         offer_retry_ticks_ = 0;
+    static constexpr int kOfferRetryTicks = 12;   // 12 x 5s = 60s
 
     int push_backstop_ticks_ = 0;
     static constexpr int kPushBackstopTicks = 12;   // 12 x 5s = 60s
