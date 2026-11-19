@@ -8,6 +8,24 @@
 #include <set>
 
 std::mutex InstanceRegistry::mutex_;
+
+// Site sources, set once at startup by main() from the config. Both are plain
+// integers so this needs no locking beyond the registry's own mutex.
+static int g_master_site = 0;
+static std::map<int, int> g_node_sites;
+
+void InstanceRegistry::SetSiteSources(int master_site, const std::map<int, int>& node_sites) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    g_master_site = master_site;
+    g_node_sites  = node_sites;
+}
+
+int InstanceRegistry::SiteOfInstance(const InstanceInfo& inst) {
+    if (inst.node_id == 0) return g_master_site;          // local spawner
+    auto it = g_node_sites.find(inst.node_id);
+    if (it != g_node_sites.end() && it->second > 0) return it->second;
+    return g_master_site;                                  // node with no site declared
+}
 //std::string InstanceRegistry::s_host_ = "127.0.0.1";
 
 namespace {
@@ -779,12 +797,15 @@ void InstanceRegistry::SetMaxPlayers(int64_t instance_id, int max_players) {
         (long long)instance_id, max_players);
 }
 
-std::optional<InstanceInfo> InstanceRegistry::GetReadyHomeInstance() {
+std::optional<InstanceInfo> InstanceRegistry::GetReadyHomeInstance(int site) {
     std::lock_guard<std::mutex> lock(mutex_);
     sqlite3* db = Database::GetConnection();
     if (!db) return std::nullopt;
 
     sqlite3_stmt* stmt = nullptr;
+    // No LIMIT: an instance's site is derived from its node, not stored, so the
+    // filter happens below. There is at most one READY home instance per node, so
+    // this returns a handful of rows at most.
     int rc = sqlite3_prepare_v2(db,
         "SELECT id, map_name, state, pid, udp_port, ip_address, player_count, "
         "       started_at, COALESCE(sealed_at, 0), "
@@ -793,7 +814,7 @@ std::optional<InstanceInfo> InstanceRegistry::GetReadyHomeInstance() {
         "       COALESCE(queue_id, 0), COALESCE(predecessor_instance_id, 0), COALESCE(end_mission_at, 0), COALESCE(node_id, 0) "
         "FROM ga_instances "
         "WHERE is_home_map=1 AND state='READY' "
-        "LIMIT 1",
+        "ORDER BY instance_id",
         -1, &stmt, nullptr);
     if (rc != SQLITE_OK || !stmt) {
         Logger::Log("db", "[InstanceRegistry] GetReadyHomeInstance prepare failed: %s\n",
@@ -801,13 +822,38 @@ std::optional<InstanceInfo> InstanceRegistry::GetReadyHomeInstance() {
         return std::nullopt;
     }
 
-    std::optional<InstanceInfo> result;
-    if (sqlite3_step(stmt) == SQLITE_ROW) {
+    std::optional<InstanceInfo> in_site;
+    std::optional<InstanceInfo> on_master;
+    std::optional<InstanceInfo> any;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
         InstanceInfo info = ReadInstanceRow(stmt);
-        result = std::move(info);
+        const int inst_site = SiteOfInstance(info);
+        if (!any) any = info;
+        if (inst_site == g_master_site && !on_master) on_master = info;
+        if (site != 0 && inst_site == site && !in_site) in_site = info;
+        if (site == 0 && !in_site) in_site = info;   // "any site": first row wins
     }
     sqlite3_finalize(stmt);
-    return result;
+
+    // Preferred site, then the master's own hub, then anything ready. Logged when
+    // we do not get the first choice -- with two regions this is the difference
+    // between "you are in Europe" and "we put you somewhere else".
+    if (in_site) return in_site;
+    if (on_master) {
+        if (site != 0) {
+            Logger::Log("tcp",
+                "[InstanceRegistry] no READY home instance in site %d -- using the "
+                "master's site %d\n", site, g_master_site);
+        }
+        return on_master;
+    }
+    if (any && site != 0) {
+        Logger::Log("tcp",
+            "[InstanceRegistry] no READY home instance in site %d or %d -- using "
+            "instance %lld (site %d)\n",
+            site, g_master_site, (long long)any->instance_id, SiteOfInstance(*any));
+    }
+    return any;
 }
 
 std::optional<InstanceInfo> InstanceRegistry::GetInstanceById(int64_t instance_id) {
@@ -1380,7 +1426,7 @@ std::vector<InstanceInfo> InstanceRegistry::GetAllRunningInstances() {
     return results;
 }
 
-std::optional<InstanceInfo> InstanceRegistry::GetHomeInstance() {
+std::optional<InstanceInfo> InstanceRegistry::GetHomeInstance(int site) {
     std::lock_guard<std::mutex> lock(mutex_);
     sqlite3* db = Database::GetConnection();
     if (!db) return std::nullopt;
@@ -1394,17 +1440,22 @@ std::optional<InstanceInfo> InstanceRegistry::GetHomeInstance() {
         "       COALESCE(queue_id, 0), COALESCE(predecessor_instance_id, 0), COALESCE(end_mission_at, 0), COALESCE(node_id, 0) "
         "FROM ga_instances "
         "WHERE is_home_map = 1 AND state != 'STOPPED' "
-        "LIMIT 1",
+        "ORDER BY instance_id",
         -1, &stmt, nullptr);
     if (rc != SQLITE_OK || !stmt) return std::nullopt;
 
-    std::optional<InstanceInfo> result;
-    if (sqlite3_step(stmt) == SQLITE_ROW) {
+    // Same derivation as GetReadyHomeInstance: site 0 means any, and an exact
+    // match is preferred over the master's site.
+    std::optional<InstanceInfo> in_site;
+    std::optional<InstanceInfo> any;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
         InstanceInfo info = ReadInstanceRow(stmt);
-        result = std::move(info);
+        if (!any) any = info;
+        if (site == 0) { in_site = info; break; }
+        if (SiteOfInstance(info) == site) { in_site = info; break; }
     }
     sqlite3_finalize(stmt);
-    return result;
+    return in_site ? in_site : any;
 }
 
 std::vector<InstanceInfo> InstanceRegistry::GetIdleInstances(int timeout_seconds) {

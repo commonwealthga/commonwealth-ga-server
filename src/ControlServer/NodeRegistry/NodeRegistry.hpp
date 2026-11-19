@@ -52,6 +52,9 @@ struct NodeRuntime {
     // "version.dll"; both are builds of the same server) and its hash.
     std::string dll_name;
     std::string dll_hash;
+    // Byte identity of the node agent it is running (BLAKE2b-256), reported in
+    // NODE_STATUS. Version strings collide across builds; this does not.
+    std::string agent_hash;
     int64_t     last_status_ms = 0;
     int64_t     connected_at_ms = 0;
     std::string last_error;
@@ -82,6 +85,16 @@ public:
     };
 
     static void Init(const ControlServerConfig& cfg);
+
+    // Re-applies a changed config without restarting the master.
+    //
+    // Runtime state (link, health, instance list, content hash, last error) is
+    // carried across for nodes that still exist; a node that was removed or
+    // disabled has its live link closed, which is what makes the change take
+    // effect. Keys and names take effect on the *next* handshake -- an existing
+    // link already agreed its session keys, so rotating a PSK never drops a
+    // running match.
+    static void Reload(const ControlServerConfig& cfg);
     static void SetHooks(Hooks hooks);
 
     // Handshake plumbing -----------------------------------------------------

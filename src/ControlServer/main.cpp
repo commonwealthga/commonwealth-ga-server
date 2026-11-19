@@ -1,6 +1,7 @@
 #include "src/ControlServer/Logger.hpp"
 #include <chrono>
 #include "src/ControlServer/Config/ControlServerConfig.hpp"
+#include <map>
 #include "src/ControlServer/Database/Database.hpp"
 #include "src/ControlServer/MapGameInfo/MapGameInfo.hpp"
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
@@ -15,8 +16,12 @@
 #include "src/ControlServer/NodeLink/NodeMessages.hpp"
 #include "src/ControlServer/MasterLease/MasterLease.hpp"
 #include "src/ControlServer/NodeData/ContentSnapshot.hpp"
+#include "src/ControlServer/NodeData/AgentArtifact.hpp"
 #include "src/ControlServer/NodeAgent/NodeAgent.hpp"
 #include "src/ControlServer/NodeRegistry/NodeRegistry.hpp"
+#include "src/ControlServer/Placement/Placement.hpp"
+#include "src/ControlServer/NodeStore/NodeStore.hpp"
+#include "src/ControlServer/NodeStore/NodeKeyVault.hpp"
 #include "src/ControlServer/SpectatorOverlay/OverlayHttpServer.hpp"
 #include "src/ControlServer/PlayerSettingsApi/PlayerSettingsHttpServer.hpp"
 #include "src/ControlServer/SpectatorOverlay/SpectatorOverlayState.hpp"
@@ -491,10 +496,60 @@ int main(int argc, char* argv[]) {
 
     Logger::Log("main", "Role: %s\n", cfg.role.c_str());
 
+    // Node keys are sealed at rest, so the vault has to be armed before anything
+    // reads ga_nodes.
+    NodeKeyVault::Configure(cfg.node_key_secret);
+    if (!NodeKeyVault::Configured()) {
+        Logger::Log("main",
+            "node_key_secret is not set -- node key storage is disabled and no node "
+            "can authenticate\n");
+    }
+
     // Initialize database
     Database::SetDbPath(cfg.db_path);
     Database::SetBaseDb(cfg.base_db);
     Database::Init();
+
+    // One path for "the sites/nodes config changed", used at startup and after a
+    // live edit: re-read from the database, refresh every in-memory copy, then let
+    // the registry reconcile. Anything that reloads config calls this, so a
+    // dashboard edit and a restart cannot produce different states.
+    auto apply_config_from_db = [&cfg](bool initial) -> bool {
+        std::string store_err;
+        if (!NodeStore::Load(cfg, store_err)) {
+            Logger::Log("main", "Failed to load sites/nodes from the database: %s\n",
+                store_err.c_str());
+            return false;
+        }
+
+        std::string why;
+        const int master_site = cfg.ResolveSite(cfg.master_site, &why);
+        if (initial) {
+            if (cfg.master_site == 0) {
+                Logger::Log("main", "master_site not set -- using site %d (%s)\n",
+                    master_site, why.c_str());
+            } else {
+                Logger::Log("main", "master_site=%d (%s)\n", master_site, why.c_str());
+            }
+        }
+        std::map<int, int> node_sites;
+        for (const auto& node : cfg.nodes) {
+            const int s = node.site > 0 ? node.site : master_site;
+            node_sites[node.id] = s;
+            if (initial) {
+                Logger::Log("main", "node %d '%s': site %d%s\n", node.id, node.name.c_str(), s,
+                    node.site > 0 ? "" : " (no site declared -- master's)");
+            }
+        }
+        InstanceRegistry::SetSiteSources(master_site, node_sites);
+        TcpSession::ReloadSiteConfig(cfg);
+        if (!initial) NodeRegistry::Reload(cfg);
+        return true;
+    };
+
+    // Sites and nodes are database rows; loaded before anything reads cfg
+    // (TcpSession::Init's site list, the master-site resolution, NodeRegistry).
+    if (!apply_config_from_db(/*initial=*/true)) return 1;
 
     // One live master per database. Two of them would both answer logins and both
     // hold a link for the same node id -- a failure mode nothing else prevents.
@@ -512,6 +567,10 @@ int main(int argc, char* argv[]) {
     } else {
         ContentSnapshot::Ensure(cfg.db_path, cfg.content_dir);
     }
+
+    // Hash the artifacts nodes may need to converge on: this binary, and the proxy
+    // DLL if node_dll points at one. Done once, before any node can attach.
+    AgentArtifact::Init(cfg);
 
     // Preload the map_game_info registry from the shared DB. Safe to call
     // even if the table doesn't exist yet (control server may start before
@@ -681,11 +740,22 @@ int main(int argc, char* argv[]) {
                 return;
             }
 
-            // Spawn new instance
-            auto port = NodeControl::AllocatePort(cfg);
+            // Where does this match run? The players' own regions pick the first
+            // site and config's fallback_order decides what to try next; the trace
+            // is logged so a placement can be explained after the fact.
+            std::string placement_trace;
+            const auto placement = Placement::Choose(
+                cfg, TcpSession::PreferredSitesOf(result.session_guids), &placement_trace);
+            Logger::Log("matchmaking",
+                "[Matchmaking] queue %u placement -> node %d (site %d)\n%s",
+                queue_id, placement.node_id, placement.site, placement_trace.c_str());
+
+            // Spawn new instance, on the node the placement chose.
+            auto port = NodeControl::AllocatePort(cfg, placement.node_id);
             if (!port) {
                 Logger::Log("matchmaking",
-                    "[Matchmaking] No UDP ports available for match spawn\n");
+                    "[Matchmaking] No UDP ports available for match spawn on node %d\n",
+                    placement.node_id);
                 return;
             }
 
@@ -702,7 +772,7 @@ int main(int argc, char* argv[]) {
             int64_t instance_id = InstanceRegistry::InsertStarting(
                 result.map_name, result.game_mode, *port, 0, /*is_home_map=*/false,
                 /*queue_id=*/queue_id, /*predecessor_instance_id=*/0,
-                access_str, owner_csv);
+                access_str, owner_csv, /*node_id=*/placement.node_id);
 
             // Register pending match BEFORE Spawn so the unwind path on a
             // spawn-failure (and the symmetric IPC-disconnect-before-READY
@@ -763,6 +833,7 @@ int main(int argc, char* argv[]) {
             req.difficulty_value_id = difficulty_id;
             req.difficulty_scalar   = difficulty_scalar;
             req.match_seed          = InstanceRegistry::GetMatchSeed(instance_id);
+            req.node_id             = placement.node_id;
             const SpawnOutcome spawned = NodeControl::Spawn(cfg, req);
 
             if (!spawned.dispatched) {
@@ -939,7 +1010,9 @@ int main(int argc, char* argv[]) {
         last_attempt = attempted_at;
 
         // Double-check: is there already a non-STOPPED home instance?
-        auto existing = InstanceRegistry::GetHomeInstance();
+        // Only this master's own site counts: a node's hub in another region must
+        // not stop the local spawner from serving local players.
+        auto existing = InstanceRegistry::GetHomeInstance(cfg.ResolveSite(cfg.master_site, nullptr));
         if (existing) {
             Logger::Log("main", "Home map already exists (instance_id=%lld state=%s) — skipping spawn\n",
                 (long long)existing->instance_id, existing->state.c_str());
@@ -1101,7 +1174,7 @@ int main(int argc, char* argv[]) {
     }
 
     IpcServer::SetAdminToken(cfg.admin_token);
-    IpcServer::SetAdminActionHandler([&cfg](const std::string& subtype,
+    IpcServer::SetAdminActionHandler([&cfg, &apply_config_from_db](const std::string& subtype,
                                             const nlohmann::json& payload,
                                             std::string& message) -> bool {
         if (subtype == "stop-instance") {
@@ -1482,6 +1555,162 @@ int main(int argc, char* argv[]) {
             return true;
         }
 
+        // --- Sites and nodes (rows in ga_sites / ga_nodes) --------------------
+        // Every mutation bumps config_rev and then reloads, so the dashboard sees
+        // its change take effect immediately and the poll below is only a safety
+        // net for edits made outside the dashboard (sqlite3, scripts).
+        if (subtype == "list-nodes") {
+            // Config rows from the database, merged with the live registry so the
+            // dashboard can show health, load and last error next to each node.
+            // Snapshot() returns by value, so hold it: pointers into the returned
+            // vector would dangle the moment the range-for ends.
+            const auto snapshot = NodeRegistry::Snapshot();
+            std::map<int, NodeRuntime> live;
+            for (const auto& rt : snapshot) live[rt.id] = rt;
+
+            // Site id -> label, so the dashboard can show "Europe" rather than "2".
+            std::map<int, std::string> site_labels;
+            std::map<int, int> site_msgs;
+            for (const auto& site : cfg.sites) {
+                site_labels[site.id] = site.label;
+                site_msgs[site.id]   = site.name_msg_id;
+            }
+
+            nlohmann::json arr = nlohmann::json::array();
+            for (const auto& node : cfg.nodes) {
+                nlohmann::json row = {
+                    {"id",       node.id},
+                    {"name",     node.name},
+                    {"site",     node.site},
+                    {"site_label", site_labels.count(node.site) ? site_labels[node.site]
+                                                                : std::string()},
+                    {"site_msg_id", site_msgs.count(node.site) ? site_msgs[node.site] : 0},
+                    {"address",  node.address},
+                    {"capacity", node.capacity},
+                    {"home_map", node.home_map},
+                    {"enabled",  node.enabled},
+                    {"has_key",  !node.key.empty()},
+                    {"connected", false},
+                    {"health",   "configured"},
+                    {"instances", 0},
+                    {"last_error", ""},
+                };
+                auto it = live.find(node.id);
+                if (it != live.end()) {
+                    const NodeRuntime& rt = it->second;
+                    const bool up = NodeRegistry::IsUp(node.id);
+                    row["connected"]  = up;
+                    row["health"]     = up ? "up" : "down";
+                    row["instances"]  = (int)rt.instances.size();
+                    row["last_error"] = rt.last_error;
+                    row["agent_version"] = rt.agent_version;
+                    row["agent_hash"]    = rt.agent_hash;
+                    const auto& mine = AgentArtifact::Agent();
+                    row["agent_current"] = mine.ok && !rt.agent_hash.empty() &&
+                                           rt.agent_hash == mine.hash;
+                    row["dll_name"]   = rt.dll_name;
+                    row["content_hash"] = rt.content_hash;
+                }
+                arr.push_back(std::move(row));
+            }
+            message = arr.dump();
+            return true;
+        }
+
+        if (subtype == "list-sites") {
+            nlohmann::json arr = nlohmann::json::array();
+            for (const auto& site : cfg.sites) {
+                arr.push_back({{"id", site.id},
+                               {"name_msg_id", site.name_msg_id},
+                               {"label", site.label},
+                               {"enabled", site.enabled}});
+            }
+            message = arr.dump();
+            return true;
+        }
+
+        if (subtype == "save-node") {
+            NodeStore::NodeRecord rec;
+            rec.id       = payload.value("id", 0);
+            rec.name     = payload.value("name", "");
+            rec.site     = payload.value("site", 0);
+            rec.address  = payload.value("address", "");
+            rec.capacity = payload.value("capacity", 0);
+            rec.home_map = payload.value("home_map", false);
+            rec.enabled  = payload.value("enabled", true);
+            rec.key      = payload.value("key", "");   // "" = leave the stored key alone
+            std::string err;
+            if (!NodeStore::SaveNode(rec, err)) {
+                message = err;
+                return false;
+            }
+            if (!apply_config_from_db(/*initial=*/false)) {
+                message = "saved, but reload failed -- see the master log";
+                return false;
+            }
+            message = "node " + std::to_string(rec.id) + " saved";
+            return true;
+        }
+
+        if (subtype == "delete-node") {
+            const int id = payload.value("id", 0);
+            std::string err;
+            if (!NodeStore::DeleteNode(id, err)) {
+                message = err;
+                return false;
+            }
+            if (!apply_config_from_db(/*initial=*/false)) {
+                message = "deleted, but reload failed -- see the master log";
+                return false;
+            }
+            message = "node " + std::to_string(id) + " deleted";
+            return true;
+        }
+
+        if (subtype == "save-site") {
+            NodeStore::SiteRecord rec;
+            rec.id          = payload.value("id", 0);
+            rec.name_msg_id = payload.value("name_msg_id", 0);
+            rec.label       = payload.value("label", "");
+            rec.enabled     = payload.value("enabled", true);
+            rec.sort_order  = payload.value("sort_order", 0);
+            std::string err;
+            if (!NodeStore::SaveSite(rec, err)) {
+                message = err;
+                return false;
+            }
+            if (!apply_config_from_db(/*initial=*/false)) {
+                message = "saved, but reload failed -- see the master log";
+                return false;
+            }
+            message = "site " + std::to_string(rec.id) + " saved";
+            return true;
+        }
+
+        if (subtype == "delete-site") {
+            const int id = payload.value("id", 0);
+            std::string err;
+            if (!NodeStore::DeleteSite(id, err)) {
+                message = err;
+                return false;
+            }
+            if (!apply_config_from_db(/*initial=*/false)) {
+                message = "deleted, but reload failed -- see the master log";
+                return false;
+            }
+            message = "site " + std::to_string(id) + " deleted";
+            return true;
+        }
+
+        if (subtype == "reload-config") {
+            if (!apply_config_from_db(/*initial=*/false)) {
+                message = "reload failed -- see the master log";
+                return false;
+            }
+            message = "sites/nodes reloaded from the database";
+            return true;
+        }
+
         if (subtype == "mmr-reseed") {
             // Wipes BOTH engines' history and replays every recorded match.
             // Dashboard-only (deliberately no chat command — abuse surface).
@@ -1520,12 +1749,29 @@ int main(int argc, char* argv[]) {
     // stops heartbeating is noticed before it is asked to do anything.
     auto node_tick_timer = std::make_shared<asio::steady_timer>(io);
     std::function<void()> schedule_node_tick;
-    schedule_node_tick = [&io, &node_tick_timer, &schedule_node_tick]() {
+    schedule_node_tick = [&io, &node_tick_timer, &schedule_node_tick, &apply_config_from_db]() {
         node_tick_timer->expires_after(std::chrono::seconds(5));
-        node_tick_timer->async_wait([&io, &node_tick_timer, &schedule_node_tick](
-                                        std::error_code ec) {
+        node_tick_timer->async_wait([&io, &node_tick_timer, &schedule_node_tick,
+                                     &apply_config_from_db](std::error_code ec) {
             if (ec) return;  // timer cancelled (shutdown)
             NodeRegistry::Tick();
+
+            // Safety net: dashboard mutations reload synchronously, this catches
+            // edits made any other way (sqlite3, a script, another tool). One
+            // indexed read every 5 s.
+            static int64_t last_rev = -1;
+            const int64_t rev = NodeStore::Revision();
+            if (rev >= 0 && rev != last_rev) {
+                const bool first = last_rev < 0;
+                last_rev = rev;
+                if (!first) {
+                    Logger::Log("main",
+                        "[main] config_rev is now %lld -- reloading sites/nodes\n",
+                        (long long)rev);
+                    apply_config_from_db(/*initial=*/false);
+                }
+            }
+
             schedule_node_tick();
         });
     };

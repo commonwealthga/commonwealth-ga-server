@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
 #include <cstdint>
@@ -25,6 +26,15 @@ struct CpuRange {
 // placement). `name` is the wire identity bound into the handshake transcript and
 // used in logs; it defaults to the decimal id. The key is the node's 32-byte
 // pre-shared key as 64 hex characters.
+// A region the master serves. Retail's client shows these in its site list and
+// sends the chosen one back in the credential request (SYS_SITE_ID).
+struct SiteEntryConfig {
+    int         id          = 0;
+    int         name_msg_id = 0;   // asm_data_set_msg_translations id for the client label
+    std::string label;             // for logs only; the client shows name_msg_id
+    bool        enabled     = true;
+};
+
 struct NodeEntryConfig {
     int         id = 0;
     std::string name;
@@ -41,6 +51,16 @@ struct NodeSelfConfig {
     std::string id;           // wire identity; must match a master nodes[].name
     std::string key;          // 64 hex chars, the same key the master holds
     std::string master_addr;  // "host:port" of the master's node listener
+
+    // How this node treats a build the master offers. Local control, so an
+    // operator can refuse updates even if the master insists -- a node you cannot
+    // physically reach should not be at the mercy of a master misconfiguration.
+    //   "apply" (default) download, verify, write, and for the agent exit so a
+    //                     supervisor restarts it on the new build
+    //   "stage"           download, verify, write <path>.new, log -- never swap.
+    //                     Proves the transfer on a remote machine first.
+    //   "off"             ignore offers entirely
+    std::string update_mode = "apply";
 };
 
 struct ControlServerConfig {
@@ -133,6 +153,53 @@ struct ControlServerConfig {
     //   on startup and after every content change, and refuses to spawn until that
     //   has succeeded. This is the mode for a node with its own db_path.
     bool        apply_content      = false;
+
+    // Secret that seals node pre-shared keys at rest in ga_nodes. Lives here and
+    // only here: a copy of server.db must not be enough to impersonate a node.
+    // Generate with `openssl rand -hex 32`. Losing it means re-provisioning every
+    // node key; changing it invalidates the stored ones.
+    std::string node_key_secret;
+
+    // Path to the proxy DLL build the master offers to nodes. "" = do not offer
+    // one (nodes keep whatever they have). It is a separate Windows-side artifact,
+    // so the master can only distribute a copy the operator points it at.
+    std::string node_dll;
+    // Whether nodes are told to converge to this master's builds. Off = detection
+    // only: the master logs a mismatch and offers nothing.
+    bool        node_auto_update = true;
+
+    // Sites (regions) this master serves, in preference order. Empty means the
+    // historical single-site behaviour: id 2, "Europe", msg 41483.
+    //
+    // NOTE: sites and nodes are DATABASE rows (ga_sites / ga_nodes). These fields
+    // are the in-memory model the rest of the code uses; they are filled by
+    // NodeStore::Load from the database, and the values here are only an import
+    // source for a database whose tables are still empty.
+    //
+    // Sites are a PLACEMENT HINT, not a queue scope -- queues stay global
+    // (ga_queues.sys_site_id = 0). Splitting the queue list per site would strand
+    // players at our population.
+    std::vector<SiteEntryConfig> sites;
+
+    // The site the master's OWN instances belong to (node id 0). Nodes declare
+    // theirs in nodes[].site; without this the local spawner's site would be
+    // undefined and "which region is this instance in?" would have no answer.
+    // 0 = unset -> the first enabled site.
+    int master_site = 0;
+
+    // site id -> ordered site ids to try when the preferred one cannot place.
+    // Missing/empty entry falls back to [itself] + every other enabled site in
+    // config order. Kept as data so "NA east never lands in Asia" is a config
+    // decision, not code.
+    std::map<int, std::vector<int>> fallback_order;
+
+    // Resolved accessors: these apply the defaults above, so callers never have
+    // to special-case an empty config.
+    const std::vector<SiteEntryConfig>& Sites() const;
+    // The site a client gets when it asks for `requested` (0 = no preference):
+    // the requested site if configured and enabled, else the first enabled one.
+    int ResolveSite(int requested, std::string* why = nullptr) const;
+    std::vector<int> FallbackLadder(int preferred) const;
 
     // Node role only: who this node is and where its master lives. Ignored by the
     // master, which learns the same values from nodes[].

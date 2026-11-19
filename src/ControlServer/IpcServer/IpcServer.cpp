@@ -222,6 +222,17 @@ private:
             const uint64_t reported_seed =
                 (uint64_t)j.value("match_seed", (unsigned long long)0);
             const int reported_scheme = j.value("seed_scheme", 0);
+            // Which DLL build the instance is running. Nodes get their DLL
+            // replaced without restarting the control server, so this is the only
+            // place a per-instance DLL version is visible.
+            const std::string dll_version = j.value("dll_version", std::string());
+            const std::string dll_commit  = j.value("dll_commit", std::string());
+            if (!dll_version.empty()) {
+                Logger::Log("ipc", "[IpcServer] instance %lld runs DLL %s (%s)\n",
+                    (long long)inst_id, dll_version.c_str(),
+                    dll_commit.empty() ? "?" : dll_commit.c_str());
+            }
+
             if (reported_seed != 0 && inst_id != 0) {
                 const uint64_t stored = InstanceRegistry::GetMatchSeed(inst_id);
                 if (stored != reported_seed) {

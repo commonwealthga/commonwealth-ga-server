@@ -16,5 +16,5 @@ namespace Schema {
 // Bump this in the same commit as any migration that adds migrations/NNNN-*.sql:
 // it is what the game DLL compares a database against before trusting it, and
 // what the control server warns about when bootstrap could not run.
-constexpr int kVersion = 174;
+constexpr int kVersion = 175;
 }

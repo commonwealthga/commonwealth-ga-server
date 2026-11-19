@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <map>
 #include <optional>
 #include <cstdint>
 #include <mutex>
@@ -139,7 +140,17 @@ public:
     static void SetMaxPlayers(int64_t instance_id, int max_players);
 
     // Find first READY instance with is_home_map=1.
-    static std::optional<InstanceInfo> GetReadyHomeInstance();
+    // Sites this registry can place into. Derived rather than stored per row: a
+    // local instance (node id 0) belongs to the master's site, a remote one to the
+    // site its node declares. Set once at startup; changing config later re-homes
+    // nothing that is already running, which is the behaviour we want for a
+    // placement decision that was already logged.
+    static void SetSiteSources(int master_site, const std::map<int, int>& node_sites);
+    static int  SiteOfInstance(const InstanceInfo& inst);
+
+    // site 0 = "any site" (the historical behaviour); a specific site prefers an
+    // instance in that site, then the master's site, then anything ready.
+    static std::optional<InstanceInfo> GetReadyHomeInstance(int site = 0);
 
     // Look up any instance by instance_id (any state).
     static std::optional<InstanceInfo> GetInstanceById(int64_t instance_id);
@@ -220,7 +231,7 @@ public:
     struct ActiveProfileCounts { uint32_t assault, medic, recon, robotics; };
     static ActiveProfileCounts GetActiveProfileCountsForQueue(uint32_t queue_id);
     static std::vector<InstanceInfo> GetReadyMissionInstances();
-    static std::optional<InstanceInfo> GetHomeInstance();
+    static std::optional<InstanceInfo> GetHomeInstance(int site = 0);
     static std::vector<InstanceInfo> GetIdleInstances(int timeout_seconds);
     // All instances not in STOPPED state with a valid pid. Used by the
     // control-server shutdown path to SIGTERM-then-SIGKILL each game

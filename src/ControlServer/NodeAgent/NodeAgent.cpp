@@ -11,6 +11,7 @@
 #include "src/ControlServer/NodeLink/NodeLinkClient.hpp"
 #include "src/ControlServer/NodeLink/NodeMessages.hpp"
 #include "src/Shared/Base64.hpp"
+#include "src/ControlServer/NodeData/FileHash.hpp"
 #include "lib/nlohmann/json.hpp"
 #include "monocypher.h"
 
@@ -21,6 +22,12 @@
 #include <csignal>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 #include <ctime>
 #include <thread>
 #include <map>
@@ -253,6 +260,23 @@ private:
 
         dll_hash_.clear();
         dll_name_ = FindProxyDll(cfg_.game_binary, dll_hash_);
+        if (!dll_name_.empty()) {
+            const auto slash = cfg_.game_binary.find_last_of("/\\");
+            dll_path_ = (slash == std::string::npos)
+                ? dll_name_
+                : cfg_.game_binary.substr(0, slash + 1) + dll_name_;
+        }
+
+        // Our own byte identity: what this agent is running *from*. /proc/self/exe
+        // keeps pointing at the file we were started from even after a rename, so
+        // "do I already have this build" is answered about the right bytes.
+        own_agent_path_ = FileHash::SelfPath();
+        own_agent_hash_ = FileHash::OfFile(own_agent_path_);
+        Logger::Log("node",
+            "agent binary '%s' hash=%s; update_mode=%s\n",
+            own_agent_path_.empty() ? "?" : own_agent_path_.c_str(),
+            own_agent_hash_.empty() ? "unknown" : own_agent_hash_.c_str(),
+            cfg_.node.update_mode.c_str());
         if (dll_name_.empty()) {
             Logger::Log("node",
                 "WARNING: neither dinput8.dll nor version.dll is next to %s -- instances "
@@ -398,6 +422,7 @@ private:
                 own_node_id_, (int)device_stats_, (int)effectiveness_);
             maybe_fetch_content(j.value("content_hash", std::string()),
                                 j.value("content_size", (std::int64_t)0));
+            MaybeStartUpdate(j);
             ReportOrphanedInstances();
             return;
         }
@@ -417,7 +442,11 @@ private:
         }
 
         if (type == NodeMsg::kContentChunk) {
-            handle_content_chunk(j);
+            if (j.value("kind", std::string("content")) != "content") {
+                handle_update_chunk(j);
+            } else {
+                handle_content_chunk(j);
+            }
             return;
         }
 
@@ -561,6 +590,10 @@ private:
         j["content_hash"] = content_hash_.empty() ? held_hash_ : content_hash_;
         j["dll_name"]      = dll_name_;
         j["dll_hash"]      = dll_hash_;
+        // The agent's *byte* identity, not just a version string: two builds of
+        // one tag are different code, and the master compares bytes when deciding
+        // whether a node has converged.
+        j["agent_hash"]    = own_agent_hash_;
         auto list = nlohmann::json::array();
         for (const auto& kv : pids_) list.push_back(kv.first);
         j["instances"] = std::move(list);
@@ -640,6 +673,7 @@ private:
 
     void Tick() {
         ReapChildren();
+        if (update_ready_ && pids_.empty()) ApplyAgentUpdate();
         if (content_apply_pending_ && pids_.empty()) apply_content_if_idle();
         MaybePushPlayers();
         SendStatus();
@@ -838,6 +872,284 @@ private:
         held_hash_ = hash;
         Logger::Log("node", "content snapshot %s (%s)\n", hash.c_str(), path.c_str());
         apply_content_if_idle();
+    }
+
+    // ── Build updates ───────────────────────────────────────────────────────
+    //
+    // The master offers the bytes it is running (agent) and, if configured, the
+    // proxy DLL. This side converges to them in either direction -- an upgrade and
+    // a rollback look identical, which is the point: undoing a bad build must work
+    // the same way as shipping a good one.
+    //
+    // Safety, in order of how much it matters on a machine we cannot reach:
+    //   1. Never swap a file whose hash does not match what the master announced.
+    //   2. Never write in place: always <target>.new, then rename. A running
+    //      instance keeps its mapped image either way.
+    //   3. The agent only swaps when idle, and only exits after the rename
+    //      succeeded, so a failure leaves the current binary in place and the node
+    //      running.
+    //   4. A previous copy is kept as <target>.previous so a broken build can be
+    //      undone by hand without a reinstall.
+    //   5. update_mode=stage stops after writing and verifying. That is what to
+    //      use for the first contact with a remote node.
+
+    void MaybeStartUpdate(const nlohmann::json& j) {
+        const std::string mode = cfg_.node.update_mode;
+        if (mode == "off") return;
+        if (!update_kind_.empty() || update_ready_) return;   // already have one
+        if (link_ == nullptr || !link_->IsConnected()) return;
+
+        // DLL first: smaller blast radius, and it never needs a restart.
+        const std::string dll_offer = j.value("dll_offer_hash", std::string());
+        if (!dll_offer.empty() && !dll_path_.empty() && dll_offer != dll_hash_) {
+            BeginUpdate("dll", dll_offer, j.value("dll_offer_size", (std::int64_t)0),
+                        dll_path_);
+            return;
+        }
+
+        const std::string agent_offer = j.value("agent_offer_hash", std::string());
+        if (!agent_offer.empty() && agent_offer != own_agent_hash_) {
+            if (own_agent_path_.empty()) {
+                Logger::Log("node",
+                    "master offers agent %s but this process cannot resolve its own "
+                    "path -- not updating\n", agent_offer.c_str());
+                return;
+            }
+            BeginUpdate("agent", agent_offer, j.value("agent_offer_size", (std::int64_t)0),
+                        own_agent_path_);
+        }
+    }
+
+    void BeginUpdate(const std::string& kind, const std::string& hash,
+                     std::int64_t size, const std::string& target) {
+        if (size <= 0 || size > kMaxArtifactBytes) {
+            Logger::Log("node", "refusing a %s update of %lld bytes\n",
+                kind.c_str(), (long long)size);
+            return;
+        }
+        update_kind_   = kind;
+        update_hash_   = hash;
+        update_size_   = size;
+        update_target_ = target;
+        update_buf_.clear();
+        update_staged_.clear();
+        update_ready_ = false;
+        Logger::Log("node",
+            "%s differs (have %s, master offers %s, %lld KB) -- fetching\n",
+            kind.c_str(),
+            kind == "dll" ? (dll_hash_.empty() ? "none" : dll_hash_.c_str())
+                          : (own_agent_hash_.empty() ? "unknown" : own_agent_hash_.c_str()),
+            hash.c_str(), (long long)(size / 1024));
+        RequestUpdateChunk();
+    }
+
+    void RequestUpdateChunk() {
+        if (update_kind_.empty()) return;
+        const std::int64_t have = static_cast<std::int64_t>(update_buf_.size());
+        std::int64_t want = update_size_ - have;
+        if (want > NodeMsg::kMaxContentChunk) want = NodeMsg::kMaxContentChunk;
+        if (want <= 0) {
+            FinishUpdate();
+            return;
+        }
+        nlohmann::json j;
+        j["type"]   = NodeMsg::kFetchContent;
+        j["kind"]   = update_kind_;
+        j["hash"]   = update_hash_;
+        j["offset"] = have;
+        j["len"]    = want;
+        SendControl(j.dump());
+    }
+
+    // Drops all transfer state without touching any file.
+    void ClearUpdate() {
+        update_kind_.clear();
+        update_hash_.clear();
+        update_buf_.clear();
+        update_target_.clear();
+        update_staged_.clear();
+        update_size_  = 0;
+        update_ready_ = false;
+    }
+
+    // Failure path: log why, then drop the state. Nothing was ever swapped, so the
+    // node keeps running exactly as it was.
+    void ResetUpdate(const char* why) {
+        Logger::Log("node", "%s update abandoned: %s\n",
+            update_kind_.empty() ? "artifact" : update_kind_.c_str(), why);
+        ClearUpdate();
+    }
+
+    void handle_update_chunk(const nlohmann::json& j) {
+        if (update_kind_.empty()) return;            // late chunk: ignore
+        const std::string kind   = j.value("kind", std::string());
+        const std::string hash   = j.value("hash", std::string());
+        const auto offset        = j.value("offset", (std::int64_t)-1);
+        const std::string error  = j.value("error", std::string());
+
+        if (!error.empty() || kind != update_kind_ || hash != update_hash_ ||
+            offset != static_cast<std::int64_t>(update_buf_.size())) {
+            ResetUpdate(!error.empty() ? error.c_str()
+                                       : "chunk out of sequence or hash changed");
+            return;
+        }
+
+        const std::string data = j.value("data", std::string());
+        if (!data.empty()) {
+            // Base64::Decode fills a std::string, not a vector.
+            std::string bytes;
+            if (!Base64::Decode(data, bytes)) {
+                ResetUpdate("chunk payload is not valid base64");
+                return;
+            }
+            update_buf_.append(bytes);
+        }
+
+        if (static_cast<std::int64_t>(update_buf_.size()) > update_size_) {
+            ResetUpdate("more bytes arrived than announced");
+            return;
+        }
+        if (j.value("eof", false)) {
+            FinishUpdate();
+            return;
+        }
+        RequestUpdateChunk();
+    }
+
+    void FinishUpdate() {
+        // 1. The bytes must be exactly what was announced. A truncated or mangled
+        //    transfer is discarded, never written.
+        if (static_cast<std::int64_t>(update_buf_.size()) != update_size_) {
+            ResetUpdate("size mismatch after transfer");
+            return;
+        }
+        const std::string got = FileHash::OfBytes(update_buf_.data(), update_buf_.size());
+        if (got != update_hash_) {
+            ResetUpdate("hash mismatch after transfer");
+            return;
+        }
+
+        // 2. Write <target>.new in the same directory, so the later rename is a
+        //    same-filesystem atomic replace.
+        const std::string staged = update_target_ + ".new";
+        std::FILE* f = std::fopen(staged.c_str(), "wb");
+        if (!f) {
+            ResetUpdate("cannot open the staging file next to the target");
+            return;
+        }
+        const std::size_t wrote = std::fwrite(update_buf_.data(), 1, update_buf_.size(), f);
+        std::fflush(f);
+#ifdef _WIN32
+        _commit(_fileno(f));
+#else
+        fsync(fileno(f));
+#endif
+        std::fclose(f);
+        if (wrote != update_buf_.size()) {
+            std::remove(staged.c_str());
+            ResetUpdate("short write to the staging file");
+            return;
+        }
+        update_staged_ = staged;
+        Logger::Log("node", "%s staged at '%s' (%lld bytes, hash verified)\n",
+            update_kind_.c_str(), staged.c_str(), (long long)update_buf_.size());
+
+        if (cfg_.node.update_mode == "stage") {
+            Logger::Log("node",
+                "update_mode=stage -- '%s' will not be swapped in; verify it, then "
+                "switch the node to update_mode=apply (the transfer repeats on the "
+                "next handshake)\n", update_kind_.c_str());
+            ClearUpdate();
+            return;
+        }
+
+        if (update_kind_ == "dll") {
+            ApplyDllUpdate();
+            return;
+        }
+        // The agent is the process being replaced: wait for idle.
+        update_ready_ = true;
+        update_buf_.clear();
+        Logger::Log("node",
+            "agent update ready (%lld KB); it will be applied when no instance is "
+            "running, then this process exits for its supervisor to restart it\n",
+            (long long)(update_size_ / 1024));
+        if (pids_.empty()) ApplyAgentUpdate();
+    }
+
+    void ApplyDllUpdate() {
+        const std::string target = update_target_;
+        const std::string staged = update_staged_;
+        // rename() is an atomic same-directory replace: running instances keep the
+        // image they mapped, the next instance loads the new file.
+        if (std::rename(staged.c_str(), target.c_str()) != 0) {
+            std::remove(staged.c_str());
+            ResetUpdate("rename into place failed");
+            return;
+        }
+        Logger::Log("node",
+            "proxy DLL updated in place: '%s' now %s (was %s); running instances keep "
+            "the image they started with, the next spawn uses the new one\n",
+            target.c_str(), update_hash_.c_str(),
+            dll_hash_.empty() ? "none" : dll_hash_.c_str());
+        dll_hash_ = update_hash_;
+        ClearUpdate();
+    }
+
+    void ApplyAgentUpdate() {
+        if (!update_ready_ || !pids_.empty()) return;
+        const std::string target = update_target_;
+        const std::string staged = update_staged_;
+
+        // Keep the binary we are replacing, so a build that will not start can be
+        // restored by hand on a machine we cannot reach.
+        const std::string previous = target + ".previous";
+        if (!CopyFileOnto(target, previous)) {
+            Logger::Log("node",
+                "cannot preserve '%s' as '%s' -- refusing to replace it\n",
+                target.c_str(), previous.c_str());
+            ResetUpdate("could not write the previous-build copy");
+            return;
+        }
+
+        if (std::rename(staged.c_str(), target.c_str()) != 0) {
+            Logger::Log("node",
+                "rename of staged agent onto '%s' failed -- still running the old "
+                "binary\n", target.c_str());
+            ResetUpdate("rename into place failed");
+            return;
+        }
+
+        Logger::Log("node",
+            "agent binary replaced: '%s' %s -> %s; previous build kept as '%s'. "
+            "Exiting so the supervisor restarts me on the new build.\n",
+            target.c_str(),
+            own_agent_hash_.empty() ? "unknown" : own_agent_hash_.c_str(),
+            update_hash_.c_str(), previous.c_str());
+        std::fflush(nullptr);
+        std::exit(0);
+    }
+
+    // Byte copy used only for the previous-build backup. Returns false if the
+    // target cannot be written, which aborts the swap.
+    static bool CopyFileOnto(const std::string& from, const std::string& to) {
+        std::FILE* in = std::fopen(from.c_str(), "rb");
+        if (!in) return false;
+        std::FILE* out = std::fopen(to.c_str(), "wb");
+        if (!out) { std::fclose(in); return false; }
+
+        std::vector<char> buf(256 * 1024);
+        bool ok = true;
+        for (;;) {
+            const std::size_t got = std::fread(buf.data(), 1, buf.size(), in);
+            if (got > 0 && std::fwrite(buf.data(), 1, got, out) != got) { ok = false; break; }
+            if (got < buf.size()) break;
+        }
+        std::fflush(out);
+        std::fclose(in);
+        std::fclose(out);
+        if (!ok) std::remove(to.c_str());
+        return ok;
     }
 
     void maybe_fetch_content(const std::string& wanted, std::int64_t size) {
@@ -1142,6 +1454,22 @@ private:
     // Players whose rows this node holds, keyed by character id.
     std::map<std::int64_t, SeatedPlayer> seated_;
     std::int64_t last_data_version_ = 0;
+
+    // ---- build identity + staged updates (see MaybeStartUpdate) -------------
+    // Hashing the running binary at startup gives the node its own byte identity,
+    // which is what the master's offer is compared against.
+    std::string own_agent_path_;
+    std::string own_agent_hash_;
+    std::string dll_path_;
+    // One update transfer at a time; kind is "dll" or "agent".
+    std::string update_kind_;
+    std::string update_hash_;
+    std::int64_t update_size_ = 0;
+    std::string update_buf_;
+    std::string update_target_;
+    std::string update_staged_;   // <target>.new, written and verified
+    bool        update_ready_ = false;   // staged, waiting for idle before the swap
+
     int push_backstop_ticks_ = 0;
     static constexpr int kPushBackstopTicks = 12;   // 12 x 5s = 60s
 
@@ -1157,6 +1485,10 @@ private:
     std::string fetching_buf_;
     // Backstop against a master (or a corrupted message) announcing an absurd size.
     static constexpr std::int64_t kMaxContentBytes = 256ll * 1024 * 1024;
+    // Ceiling for an agent/DLL artifact we are willing to accept. The agent is
+    // ~5 MB and the DLL ~10 MB; 128 MB is "something is wrong" territory, not a
+    // policy about build size.
+    static constexpr std::int64_t kMaxArtifactBytes = 128ll * 1024 * 1024;
     // Which proxy flavour this node has installed ("dinput8.dll" / "version.dll",
     // "" when neither) and its BLAKE2b-256.
     std::string dll_name_;

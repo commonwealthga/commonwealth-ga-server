@@ -38,15 +38,16 @@ A built DLL is available for download [in the releases](https://github.com/commo
 - [x] implement umax
 - [x] implement double agent
 - [x] implement raids
-- [ ] implement open world and quests
+- [ ] *(in progress)* implement open world and quests
 - [ ] implement mission rewards and item drops
 - [ ] implement vendors
 - [ ] implement crafting
+- [ ] *(in progress)* multiple regions
 - [x] website, stats - [link](https://commonwealth.ydns.eu)
 
 ## Useful links
 
 - [Global Agenda on Steam](https://store.steampowered.com/app/17020/Global_Agenda_Free_Agent/) (unlisted)
 - [The Commonwealth Discord](https://discord.gg/CqACf4qArk)
-- [Stats website](https://commonwealth.ydns.eu)
+- [Website](https://commonwealth.ydns.eu)
 

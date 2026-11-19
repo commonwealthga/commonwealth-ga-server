@@ -1,5 +1,7 @@
 #pragma once
 
+#include "src/Shared/BuildVersion.hpp"
+
 // NodeMessages.hpp -- control-plane message types on the master <-> node link.
 //
 // These ride inside sealed frames with kind = kFrameControl and stream = 0. Game
@@ -54,10 +56,16 @@ constexpr const char* kInstanceStop = "INSTANCE_STOP";
 // run matches, as a content-addressed SQLite file. The hash travels in
 // NODE_WELCOME so the node knows before it asks for anything.
 //   NODE_WELCOME adds: { content_hash, content_size }
+//
+// Also carries the two non-content artifacts a node may be behind on, which are
+// offered the same way (hash announced here, fetched with kFetchContent):
+//   NODE_WELCOME adds: { agent_offer_hash, agent_offer_size,
+//                        dll_offer_hash, dll_offer_size }
+// An empty offer hash means "not offered" (no artifact, or auto-update off).
 constexpr const char* kFetchContent = "NODE_FETCH_CONTENT";
-//   { type, hash, offset, len }
+//   { type, kind ("content"|"agent"|"dll"), hash, offset, len }
 constexpr const char* kContentChunk = "NODE_CONTENT_CHUNK";
-//   { type, hash, offset, data (base64), eof, error? }
+//   { type, kind, hash, offset, data (base64), eof, error? }
 
 // Largest chunk a node may ask for. base64 inflates by 4/3, and the result has to
 // fit one sealed frame (NodeLink::kMaxFrameSize = 1 MiB).
@@ -88,7 +96,10 @@ constexpr const char* kPong = "NODE_PONG";
 // Bump when a node's behaviour changes in a way an operator needs to know about.
 // The version policy that acts on a mismatch (drain, never break a live match)
 // lands with artifact delivery in phase 4; until then this is visibility only.
-constexpr const char* kAgentVersion = "0.1.0";
+// Build identity, from git at build time (scripts/gen_version.py) -- not a
+// hand-maintained number. Master and node run the same binary, so both report
+// this and the master compares a node's report against its own.
+constexpr const char* kAgentVersion = BuildVersion::Describe();
 
 // ---- timing --------------------------------------------------------------
 

@@ -1,5 +1,6 @@
 #include "src/Utils/GameRng.hpp"
 #include "src/IpcClient/IpcClient.hpp"
+#include "src/Shared/BuildVersion.hpp"
 #include "src/Shared/IpcFraming.hpp"
 #include "src/Utils/Logger/Logger.hpp"
 #include "lib/nlohmann/json.hpp"
@@ -264,6 +265,12 @@ DWORD WINAPI IpcClient::IpcThread(LPVOID) {
                 // be replayed later. See src/Shared/MatchSeed.hpp.
                 hello["match_seed"]  = (unsigned long long)GameRng::MatchSeed();
                 hello["seed_scheme"] = GameRng::SeedScheme();
+                // Which DLL build this is (git describe, compiled in). The DLL can
+                // be replaced without restarting the control server, so its source
+                // identity is otherwise invisible: the node's dll_hash says which
+                // bytes are installed, this says which commit they came from.
+                hello["dll_version"] = BuildVersion::Describe();
+                hello["dll_commit"]  = BuildVersion::Commit();
                 Send(hello.dump());
                 Logger::Log("ipc",
                     "[IPC] Sent INSTANCE_HELLO: instance_id=%lld seed=%llu scheme=%d\n",

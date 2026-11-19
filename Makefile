@@ -645,6 +645,16 @@ CS_SRC_DIR=src/ControlServer
 $(shell python3 scripts/embed_migrations.py --dir migrations --out $(CS_SRC_DIR)/Database/EmbeddedMigrations.gen.cpp \
          || echo "embed_migrations FAILED: python3 is required to build the control server" >&2)
 
+# Build identity from git (tag-commits-hash[-dirty]). No hand-maintained version
+# number; a tree without .git reports "unknown" and still builds. Writes only when
+# the commit changes, so it does not force a rebuild every invocation.
+#
+# Runs at parse time, so it applies to DLL-only builds too (the DLL reports its
+# build in INSTANCE_HELLO). Built before you tag? Stamp the release number:
+#     GA_BUILD_VERSION=0.1.59 make out/version.dll
+$(shell python3 scripts/gen_version.py --out src/Shared/BuildVersion.gen.hpp \
+         || echo "gen_version failed: build identity will be stale" >&2)
+
 CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/main.cpp \
 	$(CS_SRC_DIR)/Constants/DeviceIds.cpp \
@@ -652,6 +662,11 @@ CS_CPP_SOURCES= \
 	$(CS_SRC_DIR)/Database/Database.cpp \
 	$(CS_SRC_DIR)/Database/EmbeddedMigrations.gen.cpp \
 	$(CS_SRC_DIR)/Database/Migrations.cpp \
+	$(CS_SRC_DIR)/Placement/Placement.cpp \
+	$(CS_SRC_DIR)/NodeStore/NodeStore.cpp \
+	$(CS_SRC_DIR)/NodeStore/NodeKeyVault.cpp \
+	$(CS_SRC_DIR)/NodeData/FileHash.cpp \
+	$(CS_SRC_DIR)/NodeData/AgentArtifact.cpp \
 	$(CS_SRC_DIR)/MapGameInfo/MapGameInfo.cpp \
 	$(CS_SRC_DIR)/Loadouts/ClassLoadouts.cpp \
 	$(CS_SRC_DIR)/Loadouts/CosmeticLoadouts.cpp \

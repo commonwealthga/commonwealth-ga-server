@@ -3,6 +3,7 @@
 #include "src/ControlServer/IpcServer/IpcServer.hpp"
 #include "src/ControlServer/Logger.hpp"
 #include "src/ControlServer/NodeData/ContentSnapshot.hpp"
+#include "src/ControlServer/NodeData/AgentArtifact.hpp"
 #include "src/ControlServer/NodeData/PlayerBundle.hpp"
 #include "src/ControlServer/NodeLink/NodeMessages.hpp"
 #include "src/Shared/Base64.hpp"
@@ -70,6 +71,127 @@ bool OwnsInstance(int node_id, int64_t instance_id) {
 // Setup
 // ---------------------------------------------------------------------------
 
+namespace {
+
+// The config-derived part of a node's runtime record. Shared by Init and Reload
+// so the two can never disagree about what a config change means.
+NodeRuntime MakeRuntime(const NodeEntryConfig& entry) {
+    NodeRuntime rt;
+    rt.id       = entry.id;
+    rt.name     = entry.name.empty() ? std::to_string(entry.id) : entry.name;
+    rt.site     = entry.site;
+    rt.address  = entry.address;
+    rt.capacity = entry.capacity;
+    rt.home_map = entry.home_map;
+    rt.enabled  = entry.enabled;
+    rt.health   = NodeHealth::Configured;
+    return rt;
+}
+
+}  // namespace
+
+void NodeRegistry::Reload(const ControlServerConfig& cfg) {
+    // Order matters: detach first, then carry state forward. Building the new
+    // map before detaching would copy a link pointer that Detach had already
+    // closed, resurrecting a dead link for a node that was just disabled.
+    std::map<int, bool> wanted;          // id -> enabled
+    for (const auto& entry : cfg.nodes) {
+        if (entry.id > 0) wanted[entry.id] = entry.enabled;
+    }
+
+    for (const auto& kv : g_nodes) {
+        const int id = kv.first;
+        auto it = wanted.find(id);
+        const bool gone     = (it == wanted.end());
+        const bool disabled = !gone && !it->second;
+        if (!gone && !disabled) continue;
+
+        const bool was_live = kv.second.link != nullptr;
+        Logger::Log("node",
+            "[NodeRegistry] reload: node '%s' (id %d) %s%s\n",
+            kv.second.name.c_str(), id, gone ? "removed" : "disabled",
+            was_live ? " -- closing its link" : "");
+        if (was_live) {
+            // Closes the tunnel streams, which makes the instances' sessions run
+            // their normal disconnect cleanup. That is the intent of disabling or
+            // removing a node: stop placing work there and stop trusting it.
+            Detach(id, gone ? "removed by config change" : "disabled by config change");
+        }
+    }
+
+    std::map<int, NodeRuntime> next;
+    std::map<int, NodeCrypto::Key> next_keys;
+
+    for (const auto& entry : cfg.nodes) {
+        if (entry.id <= 0) {
+            Logger::Log("node",
+                "[NodeRegistry] reload: entry with id %d ignored (0 is the local master)\n",
+                entry.id);
+            continue;
+        }
+        if (next.count(entry.id)) {
+            Logger::Log("node", "[NodeRegistry] reload: duplicate id %d ignored\n", entry.id);
+            continue;
+        }
+        if (entry.key.empty()) {
+            Logger::Log("node",
+                "[NodeRegistry] reload: id %d has no key -- ignoring\n", entry.id);
+            continue;
+        }
+        NodeCrypto::Key key{};
+        if (!NodeCrypto::KeyFromHex(entry.key, key)) {
+            Logger::Log("node",
+                "[NodeRegistry] reload: id %d has a malformed key (need 64 hex chars) "
+                "-- ignoring\n", entry.id);
+            continue;
+        }
+
+        NodeRuntime rt = MakeRuntime(entry);
+        auto old = g_nodes.find(entry.id);
+        if (old != g_nodes.end()) {
+            // Carry runtime state across: a config edit must not look like a
+            // disconnect to a node that is happily connected.
+            rt.health          = old->second.health;
+            rt.link            = old->second.link;
+            rt.instances       = old->second.instances;
+            rt.content_hash    = old->second.content_hash;
+            rt.agent_version   = old->second.agent_version;
+            rt.dll_name        = old->second.dll_name;
+            rt.dll_hash        = old->second.dll_hash;
+            rt.last_status_ms  = old->second.last_status_ms;
+            rt.connected_at_ms = old->second.connected_at_ms;
+            rt.last_error      = old->second.last_error;
+            rt.link_gen        = old->second.link_gen;
+
+            const bool changed =
+                old->second.site != rt.site || old->second.capacity != rt.capacity ||
+                old->second.address != rt.address || old->second.home_map != rt.home_map ||
+                old->second.enabled != rt.enabled;
+            if (changed) {
+                Logger::Log("node",
+                    "[NodeRegistry] reload: node '%s' (id %d) updated: site %d->%d capacity "
+                    "%d->%d home_map %d->%d enabled %d->%d address '%s'->'%s'\n",
+                    rt.name.c_str(), rt.id, old->second.site, rt.site,
+                    old->second.capacity, rt.capacity, (int)old->second.home_map,
+                    (int)rt.home_map, (int)old->second.enabled, (int)rt.enabled,
+                    old->second.address.c_str(), rt.address.c_str());
+            }
+        } else {
+            Logger::Log("node", "[NodeRegistry] reload: node '%s' (id %d) added, site %d\n",
+                rt.name.c_str(), rt.id, rt.site);
+        }
+
+        next[entry.id] = std::move(rt);
+        next_keys[entry.id] = key;
+    }
+
+    g_nodes = std::move(next);
+    g_keys  = std::move(next_keys);
+    g_device_stats_enabled  = cfg.device_stats_enabled;
+    g_effectiveness_enabled = cfg.effectiveness_enabled;
+    Logger::Log("node", "[NodeRegistry] reload complete: %zu node(s)\n", g_nodes.size());
+}
+
 void NodeRegistry::Init(const ControlServerConfig& cfg) {
     g_nodes.clear();
     g_keys.clear();
@@ -105,15 +227,7 @@ void NodeRegistry::Init(const ControlServerConfig& cfg) {
             // is never Up, so it is never placed into.
         }
 
-        NodeRuntime rt;
-        rt.id       = entry.id;
-        rt.name     = entry.name.empty() ? std::to_string(entry.id) : entry.name;
-        rt.site     = entry.site;
-        rt.address  = entry.address;
-        rt.capacity = entry.capacity;
-        rt.home_map = entry.home_map;
-        rt.enabled  = entry.enabled;
-        rt.health   = NodeHealth::Configured;
+        NodeRuntime rt = MakeRuntime(entry);
 
         for (const auto& kv : g_nodes) {
             if (kv.second.name == rt.name) {
@@ -224,6 +338,15 @@ int NodeRegistry::Attach(std::shared_ptr<NodeLink::Link> link) {
     const auto& content = ContentSnapshot::Current();
     welcome["content_hash"]             = content.ok ? content.hash : std::string();
     welcome["content_size"]             = content.ok ? content.size : 0;
+    // What this master can hand out besides content: its own build, and the proxy
+    // DLL if the operator configured one. Empty hash = nothing offered, which is
+    // also what a node sees when node_auto_update is off.
+    const auto& agent = AgentArtifact::Agent();
+    const auto& dll   = AgentArtifact::Dll();
+    welcome["agent_offer_hash"]         = agent.ok ? agent.hash : std::string();
+    welcome["agent_offer_size"]         = agent.ok ? agent.size : 0;
+    welcome["dll_offer_hash"]           = dll.ok ? dll.hash : std::string();
+    welcome["dll_offer_size"]           = dll.ok ? dll.size : 0;
     SendControl(node_id, welcome.dump());
 
     if (g_hooks.on_up) g_hooks.on_up(node_id);
@@ -453,14 +576,24 @@ void NodeRegistry::HandleControl(int node_id, const std::string& payload) {
         rt.agent_version = j.value("agent_version", rt.agent_version);
         rt.dll_name      = j.value("dll_name", rt.dll_name);
         rt.dll_hash      = j.value("dll_hash", rt.dll_hash);
+        rt.agent_hash    = j.value("agent_hash", rt.agent_hash);
         if (rt.agent_version != prev_version) {
             // Once per change, not once per heartbeat.
+            const auto& mine = AgentArtifact::Agent();
             Logger::Log("node", "[NodeRegistry] %s runs agent %s, proxy %s, dll %s, content %s\n",
                 Describe(node_id).c_str(),
                 rt.agent_version.empty() ? "?" : rt.agent_version.c_str(),
                 rt.dll_name.empty() ? "<none>" : rt.dll_name.c_str(),
                 rt.dll_hash.empty() ? "?" : rt.dll_hash.c_str(),
                 rt.content_hash.empty() ? "?" : rt.content_hash.c_str());
+            // Say whether it has actually converged on our bytes, and in which
+            // direction -- a rollback shows up here as "behind" turning into
+            // "matches" once the node restarts on the older build.
+            if (!rt.agent_hash.empty() && mine.ok) {
+                const char* verdict = (rt.agent_hash == mine.hash) ? "matches" : "differs from";
+                Logger::Log("node", "[NodeRegistry] %s agent bytes %s this master's\n",
+                    Describe(node_id).c_str(), verdict);
+            }
         }
 
         rt.instances.clear();
@@ -539,9 +672,64 @@ void NodeRegistry::HandleControl(int node_id, const std::string& payload) {
     if (type == NodeMsg::kFetchContent) {
         const auto& content = ContentSnapshot::Current();
         const std::string want = j.value("hash", "");
+        const std::string kind = j.value("kind", std::string("content"));
 
         nlohmann::json out;
         out["type"] = NodeMsg::kContentChunk;
+        out["kind"] = kind;
+
+        // The agent binary and the proxy DLL reuse this transfer: same chunking,
+        // same hash verification, same resume-on-reconnect. Only the source file
+        // differs.
+        if (kind == "agent" || kind == "dll") {
+            const auto& info = (kind == "dll") ? AgentArtifact::Dll() : AgentArtifact::Agent();
+            if (!info.ok) {
+                out["hash"]   = std::string();
+                out["offset"] = 0;
+                out["eof"]    = true;
+                out["error"]  = "master has no " + kind + " artifact";
+                SendControl(node_id, out.dump());
+                return;
+            }
+            if (want != info.hash) {
+                out["hash"]   = info.hash;
+                out["offset"] = 0;
+                out["eof"]    = true;
+                out["error"]  = "hash mismatch (the master's artifact changed)";
+                SendControl(node_id, out.dump());
+                return;
+            }
+
+            const std::int64_t offset = j.value("offset", (std::int64_t)0);
+            std::int64_t len = j.value("len", (std::int64_t)0);
+            if (len <= 0 || len > NodeMsg::kMaxContentChunk) len = NodeMsg::kMaxContentChunk;
+            if (offset < 0 || offset >= info.size) {
+                out["hash"]   = info.hash;
+                out["offset"] = offset;
+                out["eof"]    = true;
+                out["error"]  = "offset past the end of the artifact";
+                SendControl(node_id, out.dump());
+                return;
+            }
+            if (offset + len > info.size) len = info.size - offset;
+
+            std::string bytes, err;
+            if (!AgentArtifact::ReadChunk(kind == "dll", offset, len, bytes, err)) {
+                out["hash"]   = info.hash;
+                out["offset"] = offset;
+                out["eof"]    = true;
+                out["error"]  = err;
+                SendControl(node_id, out.dump());
+                return;
+            }
+            out["hash"]   = info.hash;
+            out["offset"] = offset;
+            out["eof"]    = (offset + static_cast<std::int64_t>(bytes.size()) >= info.size);
+            out["data"]   = Base64::Encode(
+                reinterpret_cast<const std::uint8_t*>(bytes.data()), bytes.size());
+            SendControl(node_id, out.dump());
+            return;
+        }
 
         if (!content.ok) {
             out["hash"]  = std::string();
