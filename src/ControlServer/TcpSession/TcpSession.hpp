@@ -650,6 +650,13 @@ private:
     // then calls initiate_player_register_and_go_play().
     void wait_for_home_map_then_register(int remaining_seconds);
 
+    // Re-derive site_id_ from the stored region preference (ga_user_preferences
+    // "sys_site_id"), so a change made in the settings UI is honoured the next
+    // time the player enters a hub rather than only after a relogin. Never
+    // overrides the field with 0: a missing/unresolvable preference leaves the
+    // current site alone. Logs only when the value actually changes.
+    void RefreshSitePreference();
+
     // Open-world travel poll. Waits for a READY instance of map_name (the
     // spawn may still be in flight), then drops the player's current instance
     // row and registers onto the zone. Guarded by travel_in_flight_.

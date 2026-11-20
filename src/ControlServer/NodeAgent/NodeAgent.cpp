@@ -459,6 +459,10 @@ private:
             handle_player_bundle(j, payload);
             return;
         }
+        if (type == NodeMsg::kPlayerCharacterSync) {
+            handle_player_character_sync(j);
+            return;
+        }
 
         if (type == NodeMsg::kArtifactOffer) {
             // Same shape as the NODE_WELCOME block; the master sends this when a
@@ -636,7 +640,7 @@ private:
                 (long long)instance_id);
             return;
         }
-        NoteRegisters(instance_id, encoded_frame);
+        NoteMasterFrames(instance_id, encoded_frame);
         it->second->Deliver(encoded_frame);
     }
 
@@ -656,6 +660,9 @@ private:
             // pid. NodeControl::Stop would refuse and leave the instance running.
             NodeControl::StopLocally(*inst, reason, grace);
         }
+        // Last write-back, before the players stop being tracked: a stopped
+        // instance's rows must not go up again after the master moved on.
+        push_players_up(instance_id);
         InstanceRegistry::MarkStopped(instance_id);
         pids_.erase(it);
         ForgetRoster(instance_id);
@@ -773,6 +780,11 @@ private:
                 ++it;
                 continue;
             }
+            // Final write-back for this instance's players before it is forgotten.
+            // It must go out BEFORE the exit notice: the master marks everyone left
+            // when it hears the instance is gone, and a write-back for a player who
+            // is no longer seated is (correctly) dropped.
+            push_players_up(instance_id);
             if (reaped == pid) {
                 const int code = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
                 Logger::Log("node", "instance=%lld (pid=%d) exited code=%d\n",
@@ -790,8 +802,6 @@ private:
                     "tracking it\n",
                     (long long)instance_id, pid, errno, std::strerror(errno));
             }
-            // Final write-back for this instance's players before it is forgotten.
-            push_players_up(instance_id);
             ForgetRoster(instance_id);
             InstanceRegistry::MarkStopped(instance_id);
             Release(instance_id);
@@ -799,6 +809,12 @@ private:
         }
 #endif
     }
+
+    struct SeatedPlayer {
+        std::int64_t user_id = 0;
+        std::int64_t character_id = 0;
+        std::int64_t instance_id = 0;
+    };
 
     // ── player rows ──────────────────────────────────────────────────────────
     // The master ships a player's rows down before the instance is told about
@@ -813,8 +829,20 @@ private:
         const auto user_id = j.value("user_id", (std::int64_t)0);
         const auto character_id = j.value("character_id", (std::int64_t)0);
         const auto instance_id = j.value("instance_id", (std::int64_t)0);
+        // A refresh is the master re-sending equipment/skill rows it just rewrote
+        // for a player already on this node -- not a new seating.
+        const bool refresh = j.value("refresh", false);
         if (user_id <= 0) {
             Logger::Log("node", "player bundle without a user id -- ignoring\n");
+            return;
+        }
+        // A refresh for a player this node no longer tracks (he left the instance)
+        // must not re-seat him: that would restart the periodic write-back for
+        // someone who is not here, which is exactly what breaks the master's copy.
+        if (refresh && seated_.find(character_id) == seated_.end()) {
+            Logger::Log("node",
+                "equipment refresh for character=%lld, which is not on this node -- "
+                "ignoring\n", (long long)character_id);
             return;
         }
 
@@ -833,8 +861,54 @@ private:
         // Baseline after our own apply: our writes do not bump our own view.
         last_data_version_ = DbDataVersion();
 
+        if (refresh) {
+            Logger::Log("node",
+                "refreshed equipment/skills for player user=%lld character=%lld "
+                "on instance=%lld\n",
+                (long long)user_id, (long long)character_id, (long long)instance_id);
+            return;
+        }
         Logger::Log("node", "holding player user=%lld character=%lld for instance=%lld\n",
             (long long)user_id, (long long)character_id, (long long)instance_id);
+    }
+
+    // The master changed ga_characters columns it owns for a player on this node.
+    // Only those columns are written: replacing the whole row would discard what
+    // the DLL wrote here during the match.
+    void handle_player_character_sync(const nlohmann::json& j) {
+        const auto character_id = j.value("character_id", (std::int64_t)0);
+        const int item_profile_id = j.value("current_item_profile_id", 0);
+        const auto last_respec_at = j.value("last_respec_at", (std::int64_t)0);
+        if (character_id <= 0) return;
+        if (seated_.find(character_id) == seated_.end()) {
+            Logger::Log("node",
+                "character sync for character=%lld, which is not on this node -- ignoring\n",
+                (long long)character_id);
+            return;
+        }
+
+        sqlite3* db = Database::GetConnection();
+        if (!db) return;
+        sqlite3_stmt* stmt = nullptr;
+        if (sqlite3_prepare_v2(db,
+                "UPDATE ga_characters SET current_item_profile_id = ?, last_respec_at = ? "
+                "WHERE id = ?",
+                -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+            Logger::Log("node", "cannot store the character sync for character=%lld: %s\n",
+                (long long)character_id, sqlite3_errmsg(db));
+            return;
+        }
+        sqlite3_bind_int  (stmt, 1, item_profile_id);
+        sqlite3_bind_int64(stmt, 2, last_respec_at);
+        sqlite3_bind_int64(stmt, 3, character_id);
+        const int rc = sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+        // Our own write must not look like the instance changing something.
+        last_data_version_ = DbDataVersion();
+
+        Logger::Log("node", "character=%lld synced: profile=%d last_respec_at=%lld (%s)\n",
+            (long long)character_id, item_profile_id, (long long)last_respec_at,
+            rc == SQLITE_DONE ? "stored" : "write failed");
     }
 
     // Push the current rows back up. `only_instance` limits it to one instance's
@@ -853,24 +927,7 @@ private:
                 continue;
             }
 
-            std::string bundle, err;
-            if (!PlayerBundle::Build(sp.user_id, sp.character_id,
-                                     PlayerBundle::Direction::Up, bundle, err)) {
-                Logger::Log("node", "cannot read back player character=%lld: %s\n",
-                    (long long)sp.character_id, err.c_str());
-                ++it;
-                continue;
-            }
-
-            auto msg = nlohmann::json::parse(bundle, nullptr, false, true);
-            if (msg.is_discarded()) {
-                ++it;
-                continue;
-            }
-            msg["type"]        = NodeMsg::kPlayerBundle;
-            msg["instance_id"] = sp.instance_id;
-            msg["direction"]   = "up";
-            SendControl(msg.dump());
+            send_player_up(sp);
 
             if (only_instance != 0) {
                 it = seated_.erase(it);   // instance is over: this was the last push
@@ -878,6 +935,41 @@ private:
                 ++it;
             }
         }
+    }
+
+    // Build and send one player's UP bundle. Returns false when it could not be
+    // read or encoded, which the callers treat as "keep tracking him".
+    bool send_player_up(const SeatedPlayer& sp) {
+        std::string bundle, err;
+        if (!PlayerBundle::Build(sp.user_id, sp.character_id,
+                                 PlayerBundle::Direction::Up, bundle, err)) {
+            Logger::Log("node", "cannot read back player character=%lld: %s\n",
+                (long long)sp.character_id, err.c_str());
+            return false;
+        }
+
+        auto msg = nlohmann::json::parse(bundle, nullptr, false, true);
+        if (msg.is_discarded()) return false;
+        msg["type"]        = NodeMsg::kPlayerBundle;
+        msg["instance_id"] = sp.instance_id;
+        msg["direction"]   = "up";
+        SendControl(msg.dump());
+        return true;
+    }
+
+    // The player left the instance but it keeps running: send his rows one last
+    // time, then stop tracking him. Otherwise this node keeps pushing a snapshot
+    // taken while he was here -- over anything the master writes for him
+    // afterwards (a loadout edit in the hub, a region change, a skill save).
+    void DropPlayer(std::int64_t instance_id, std::int64_t character_id) {
+        auto it = seated_.find(character_id);
+        if (it == seated_.end() || it->second.instance_id != instance_id) return;
+        if (link_ && link_->IsConnected()) send_player_up(it->second);
+        Logger::Log("node",
+            "player left instance=%lld character=%lld -- writing rows back once and no "
+            "longer tracking them\n",
+            (long long)instance_id, (long long)character_id);
+        seated_.erase(it);
     }
 
     // ── player join/leave log ────────────────────────────────────────────────
@@ -892,19 +984,36 @@ private:
         bool         joined = false;
     };
 
-    // master -> instance: remember who PLAYER_REGISTER puts on the instance.
-    void NoteRegisters(std::int64_t instance_id, const std::string& frames) {
-        if (frames.find(IpcProtocol::MSG_PLAYER_REGISTER) == std::string::npos) return;
+    // master -> instance: remember who PLAYER_REGISTER puts on the instance, and
+    // stop tracking a player the master removes with PLAYER_LEAVE (the DLL does not
+    // always answer with PLAYER_LEFT, e.g. when it never finished joining).
+    void NoteMasterFrames(std::int64_t instance_id, const std::string& frames) {
+        const bool has_register =
+            frames.find(IpcProtocol::MSG_PLAYER_REGISTER) != std::string::npos;
+        const bool has_leave =
+            frames.find(IpcProtocol::MSG_PLAYER_LEAVE) != std::string::npos;
+        if (!has_register && !has_leave) return;
         ForEachIpcMessage(frames, [&](const std::string& body) {
             auto j = nlohmann::json::parse(body, nullptr, false, true);
             if (j.is_discarded() || !j.is_object()) return;
-            if (j.value("type", std::string()) != IpcProtocol::MSG_PLAYER_REGISTER) return;
+            const std::string type = j.value("type", std::string());
             const std::string guid = j.value("session_guid", std::string());
             if (guid.empty()) return;
-            RosterEntry& e = roster_[{instance_id, guid}];
-            e.user_id      = j.value("user_id", (std::int64_t)0);
-            e.character_id = j.value("character_id", (std::int64_t)0);
-            e.name         = j.value("player_name", std::string());
+
+            if (type == IpcProtocol::MSG_PLAYER_REGISTER) {
+                RosterEntry& e = roster_[{instance_id, guid}];
+                e.user_id      = j.value("user_id", (std::int64_t)0);
+                e.character_id = j.value("character_id", (std::int64_t)0);
+                e.name         = j.value("player_name", std::string());
+                return;
+            }
+
+            if (type != IpcProtocol::MSG_PLAYER_LEAVE) return;
+            // Keep the roster entry: the instance still answers with PLAYER_LEFT, and
+            // that is what emits the "player left" console line panels read.
+            auto it = roster_.find({instance_id, guid});
+            if (it == roster_.end()) return;
+            if (it->second.character_id != 0) DropPlayer(instance_id, it->second.character_id);
         });
     }
 
@@ -950,6 +1059,10 @@ private:
                         (long long)instance_id, guid.c_str());
                 }
             }
+            // He is out of the instance but it keeps running. Stop treating his rows
+            // here as current, or the next periodic push undoes whatever the master
+            // writes for him from now on.
+            if (e.character_id != 0) DropPlayer(instance_id, e.character_id);
             roster_.erase(it);
         });
     }
@@ -1595,12 +1708,8 @@ private:
     // what ga_instances.node_id holds.
     int own_node_id_ = 0;
 
-    struct SeatedPlayer {
-        std::int64_t user_id = 0;
-        std::int64_t character_id = 0;
-        std::int64_t instance_id = 0;
-    };
-    // Players whose rows this node holds, keyed by character id.
+    // Players whose rows this node holds, keyed by character id. SeatedPlayer is
+    // declared up with the player-row helpers, which take it by reference.
     std::map<std::int64_t, SeatedPlayer> seated_;
 
     // Who the master registered on each instance, keyed by (instance id, session

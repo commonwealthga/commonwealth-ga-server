@@ -23,15 +23,33 @@
 // username -> id. Sending the password verifier to a volunteer's machine would be
 // indefensible, and a node creating a user row locally would invent an id the
 // master does not have.
+//
+// ga_user_preferences travels both ways, but only the keys the DLL owns may come
+// back up: sys_site_id, solo_mode and the operator's dashboard keys are the
+// master's, and a node's snapshot of them (taken when the player arrived) must
+// never be able to revert a newer master write.
 
 class PlayerBundle {
 public:
     enum class Direction { Down, Up };
 
+    // Which tables a bundle carries.
+    //   All            -- everything kSpecs lists for the direction (register hand-off
+    //                     and the periodic write-back).
+    //   EquipAndSkills -- ga_character_devices + ga_character_skills only, sent down
+    //                     again when the master re-writes one of them for a player
+    //                     who is on a remote node. Both tables are always present,
+    //                     even with zero rows, so the node's Down reconcile can
+    //                     clear them.
+    enum class Scope { All, EquipAndSkills };
+
     // Serialise the rows for one player. `character_id` may be 0 to ship only the
     // user-scoped tables. Returns false with `err` set on a database error.
     static bool Build(std::int64_t user_id, std::int64_t character_id,
                       Direction dir, std::string& json_out, std::string& err);
+    static bool Build(std::int64_t user_id, std::int64_t character_id,
+                      Direction dir, Scope scope,
+                      std::string& json_out, std::string& err);
 
     // Upsert the bundle into the attached database. Rows are replaced by primary
     // key, and for the tables where the DLL deletes rows locally

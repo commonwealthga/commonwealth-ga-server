@@ -868,6 +868,14 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
             PlayerSessionStore::SetSkillsForCharacter(
                 character_id, (int)session->item_profile_id_, skills);
             SkillTreeCatalog::InvalidateCache(character_id);
+            // The node the player is on holds the previous allocation; refresh it so
+            // its periodic write-back cannot restore what this save just replaced.
+            IpcServer::SyncPlayerEquipmentToOwner(session->assigned_instance_id_,
+                                                 session->user_id_, character_id,
+                                                 "a skill save");
+            // Same for the respec timestamp SetSkillsForCharacter just bumped.
+            IpcServer::SyncPlayerCharacterColumns(session->assigned_instance_id_,
+                                                  character_id);
         }
         // Echo current DB state so the UI's inbound 0x00A0 handler has
         // authoritative data whether this was a save or a request.
@@ -885,6 +893,11 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
             PlayerSessionStore::ClearSkillsForCharacter(
                 character_id, (int)session->item_profile_id_);
             SkillTreeCatalog::InvalidateCache(character_id);
+            IpcServer::SyncPlayerEquipmentToOwner(session->assigned_instance_id_,
+                                                 session->user_id_, character_id,
+                                                 "a respec");
+            IpcServer::SyncPlayerCharacterColumns(session->assigned_instance_id_,
+                                                  character_id);
         }
         // Echo the zeroed allocation to the client so the UI matches.
         session->send_player_skills_response();
@@ -968,6 +981,13 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
                 Logger::Log("armor",
                     "[equip_save] REJECTED — DB state unchanged; client will resync from existing\n");
             }
+			// The gameplay device rows only exist here — the DLL writes cosmetics
+			// and armor locally but never the weapons — so a node hosting this
+			// player keeps its pre-edit set until we send the new one down. Its
+			// periodic write-back would otherwise restore the old loadout.
+			IpcServer::SyncPlayerEquipmentToOwner(session->assigned_instance_id_,
+			                                     session->user_id_, character_id,
+			                                     "an equip-save");
 			// Push the authoritative equipped set back regardless of
 			// accept/reject — accept = client sees its save; reject = client's
 			// optimistic UI gets corrected to what's actually persisted.
@@ -993,6 +1013,12 @@ void TcpSession::DeliverGameEvent(const std::string& session_guid, const nlohman
         if (character_id != 0 && item_profile_id >= 1 && item_profile_id <= 5) {
             PlayerSessionStore::SetCurrentItemProfile(character_id, item_profile_id);
             session->item_profile_id_ = item_profile_id;
+            // The node's ga_characters row still names the previous profile, and the
+            // DLL never writes that column -- so without this the node's next
+            // write-back would undo the switch on the master.
+            IpcServer::SyncPlayerCharacterColumns(
+                instance_id != 0 ? instance_id : session->assigned_instance_id_,
+                character_id);
             // The only way a build changes mid-match (no mid-match respec --
             // see SkillTreeCatalog.hpp) -- drop the cached summary now so the
             // overlay's next poll picks up the new profile's points instead
@@ -1832,12 +1858,34 @@ void TcpSession::exit_spectate() {
     wait_for_home_map_then_register(120);
 }
 
+void TcpSession::RefreshSitePreference() {
+    if (user_id_ <= 0) return;
+    const std::string stored = Database::GetUserPreference(user_id_, kSitePreferenceKey);
+    if (stored.empty()) return;
+    const int preferred = std::atoi(stored.c_str());
+    if (preferred <= 0) return;
+
+    std::string why;
+    const int serving = g_site_config.ResolveSite(preferred, &why);
+    if (serving <= 0) return;
+    if (serving == site_id_) return;
+
+    Logger::Log("tcp",
+        "[TcpSession] region preference %d (stored) -> site %d (%s); session was on %d\n",
+        preferred, serving, why.c_str(), site_id_);
+    site_id_ = serving;
+}
+
 void TcpSession::wait_for_home_map_then_register(int remaining_seconds) {
     if (remaining_seconds <= 0) {
         Logger::Log("tcp", "[TcpSession] Home map instance not ready (timeout): %s\n",
             session_guid_.c_str());
         return;  // Client stays on loading screen; no go_play sent
     }
+
+    // Entering a hub is the point where a region change made earlier takes effect
+    // (it may also have been stored while the player was inside an instance).
+    RefreshSitePreference();
 
     // Check for READY home instance first
     auto ready = InstanceRegistry::GetReadyHomeInstance(site_id_);
@@ -2285,10 +2333,13 @@ void TcpSession::handle_packet(const uint8_t* data, size_t length) {
 						Database::SetUserPreference(user_id_, kSitePreferenceKey,
 							std::to_string(serving));
 					}
-					// Only adopt it immediately while the player is still unplaced; a
-					// player already inside an instance keeps their hub until they
-					// leave. The stored preference covers the next login either way.
-					if (serving > 0 && assigned_instance_id_ == 0) site_id_ = serving;
+					// Adopt it into the live session straight away: the matchmaker
+					// places the next match from this field (PreferredSitesOf), so
+					// holding the old value until the next login would keep sending
+					// the player to the region they just left. The hub he is sitting
+					// in stays as it is; RefreshSitePreference() re-derives this from
+					// the stored preference whenever he (re)enters a hub.
+					if (serving > 0) site_id_ = serving;
 				} else {
 					Logger::Log("tcp",
 						"[TcpSession] PLAYER_UPDATE_CLIENT carried no SYS_SITE_ID\n");

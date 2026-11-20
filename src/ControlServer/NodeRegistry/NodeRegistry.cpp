@@ -806,6 +806,19 @@ void NodeRegistry::HandleControl(int node_id, const std::string& payload) {
         }
         if (instance_id != 0 && !OwnsInstance(node_id, instance_id)) return;
 
+        // The write-back is only meaningful for a player who is still playing on
+        // this node. A node that never dropped him (older agent, or an instance
+        // that outlived his visit) would otherwise restore his rows as they were
+        // hours ago over anything the master has written since -- a loadout edit,
+        // a skill save, a region change.
+        if (!InstanceRegistry::IsCharacterSeatedOnNode(character_id, node_id)) {
+            Logger::Log("node",
+                "[NodeRegistry] %s sent rows for character=%lld from instance=%lld, but that "
+                "character is no longer playing on this node -- dropped\n",
+                Describe(node_id).c_str(), (long long)character_id, (long long)instance_id);
+            return;
+        }
+
         std::string err;
         if (!PlayerBundle::Apply(payload, PlayerBundle::Direction::Up, err)) {
             Logger::Log("node", "[NodeRegistry] %s player bundle for character=%lld rejected: %s\n",

@@ -219,6 +219,12 @@ public:
 
     static void MarkInstancePlayerLeft(int64_t instance_id, const std::string& session_guid);
     static void MarkAllInstancePlayersLeft(int64_t instance_id);
+
+    // True when `character_id` is still seated (ga_instance_players.left_at IS NULL)
+    // on an instance that `node_id` owns. The master uses this to reject a node's
+    // player write-back for someone who is no longer playing there. Instance state
+    // is deliberately not part of the test -- see the definition.
+    static bool IsCharacterSeatedOnNode(int64_t character_id, int node_id);
     static std::pair<int, int> GetTeamCounts(int64_t instance_id);
     static int GetActivePlayerCount(int64_t instance_id);
 

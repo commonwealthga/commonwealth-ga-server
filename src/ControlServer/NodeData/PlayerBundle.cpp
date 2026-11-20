@@ -6,6 +6,7 @@
 
 #include "sqlite3.h"
 
+#include <cstring>
 #include <set>
 #include <string>
 #include <vector>
@@ -35,6 +36,20 @@ struct Spec {
     Carried     carried;
 };
 
+// The two tables the master re-writes for a player who is already playing on a
+// node (an equip-screen save or a skill save). Sent down again so the node's copy
+// never diverges -- and so its write-back cannot restore an older loadout.
+bool InEquipAndSkillsScope(const char* table) {
+    return std::strcmp(table, "ga_character_devices") == 0 ||
+           std::strcmp(table, "ga_character_skills") == 0;
+}
+
+// ga_user_preferences keys the DLL itself owns. Everything else in that table is
+// the master's (sys_site_id, solo_mode, dashboard edits) and must not travel up.
+bool DllOwnedPreferenceKey(const std::string& key) {
+    return key == "show_broken_suits" || key == "show_all_suits";
+}
+
 const Spec kSpecs[] = {
     { "ga_users",             "id",           Carried::DownOnly },  // id/username only
     { "ga_characters",        "user_id",      Carried::Both },      // DLL creates/updates
@@ -42,7 +57,7 @@ const Spec kSpecs[] = {
     { "ga_character_skills",  "character_id", Carried::Both },
     { "ga_players_inventory", "user_id",      Carried::DownOnly },  // read-only for the DLL
     { "ga_user_components",   "user_id",      Carried::DownOnly },  // account-wide
-    { "ga_user_preferences",  "user_id",      Carried::Both },      // DLL writes prefs
+    { "ga_user_preferences",  "user_id",      Carried::Both },      // DLL-owned keys only, up
     { "ga_players",           "user_id",      Carried::Both },      // presence rows
 };
 
@@ -181,6 +196,12 @@ std::string PlayerBundle::DescribeTables(Direction dir) {
 
 bool PlayerBundle::Build(std::int64_t user_id, std::int64_t character_id,
                          Direction dir, std::string& json_out, std::string& err) {
+    return Build(user_id, character_id, dir, Scope::All, json_out, err);
+}
+
+bool PlayerBundle::Build(std::int64_t user_id, std::int64_t character_id,
+                         Direction dir, Scope scope,
+                         std::string& json_out, std::string& err) {
     sqlite3* db = Database::GetConnection();
     if (!db) {
         err = "no database connection";
@@ -194,6 +215,7 @@ bool PlayerBundle::Build(std::int64_t user_id, std::int64_t character_id,
     nlohmann::json tables = nlohmann::json::object();
     for (const auto& spec : kSpecs) {
         if (dir == Direction::Up && spec.carried == Carried::DownOnly) continue;
+        if (scope == Scope::EquipAndSkills && !InEquipAndSkillsScope(spec.table)) continue;
         if (std::string(spec.key_column) == "character_id" && character_id <= 0) continue;
 
         const auto cols = TableColumns(db, spec.table);
@@ -225,7 +247,11 @@ bool PlayerBundle::Build(std::int64_t user_id, std::int64_t character_id,
         }
         sqlite3_finalize(stmt);
 
-        if (rows.empty()) continue;
+        // A scoped bundle carries its tables even when they are empty: the receiver
+        // reconciles Down, and "the master has no rows here" is exactly what makes
+        // it clear a slot the player emptied.
+        const bool force_entry = (scope != Scope::All);
+        if (rows.empty() && !force_entry) continue;
         nlohmann::json entry;
         entry["columns"] = nlohmann::json::array();
         for (const auto& c : cols) {
@@ -329,6 +355,22 @@ bool PlayerBundle::Apply(const std::string& json_bundle, Direction dir, std::str
         }
         if (use.empty()) continue;
 
+        // ga_user_preferences is written by both sides. Only the keys the DLL owns
+        // may come up: the master writes sys_site_id (region), solo_mode and
+        // whatever the dashboard sets, and a node's copy of those was taken when
+        // the player arrived -- letting it through would revert a newer write.
+        const bool pref_filter = (dir == Direction::Up && table == "ga_user_preferences");
+        std::size_t pref_key_index = bundle_columns.size();   // == "not found"
+        if (pref_filter) {
+            for (std::size_t i = 0; i < bundle_columns.size(); ++i) {
+                if (bundle_columns[i].is_string() &&
+                    bundle_columns[i].get<std::string>() == "config_key") {
+                    pref_key_index = i;
+                    break;
+                }
+            }
+        }
+
         std::string names;
         std::string placeholders;
         for (std::size_t i = 0; i < use.size(); ++i) {
@@ -355,6 +397,21 @@ bool PlayerBundle::Apply(const std::string& json_bundle, Direction dir, std::str
         }
         for (const auto& row : entry["rows"]) {
             if (!row.is_array() || row.size() != bundle_columns.size()) continue;
+            if (pref_filter) {
+                // No config_key column in the bundle means we cannot tell whose key
+                // it is -- refuse it rather than risk reverting a master key.
+                if (pref_key_index >= row.size() || !row[pref_key_index].is_string()) continue;
+                const std::string pref_key = row[pref_key_index].get<std::string>();
+                if (!DllOwnedPreferenceKey(pref_key)) {
+                    if (WarnOnce(table, pref_key)) {
+                        Logger::Log(kTag,
+                            "[Bundle] preference '%s' is not DLL-owned -- not accepting it "
+                            "from a node (add it to DllOwnedPreferenceKey if the DLL writes "
+                            "it)\n", pref_key.c_str());
+                    }
+                    continue;
+                }
+            }
             for (std::size_t i = 0; i < use.size(); ++i) {
                 BindJsonValue(stmt, static_cast<int>(i + 1), row[use[i].index]);
             }

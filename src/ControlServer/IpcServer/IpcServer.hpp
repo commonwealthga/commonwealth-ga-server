@@ -27,6 +27,25 @@ public:
     // the node link, so g_sessions holds it exactly like a local one.
     static bool SendToInstance(int64_t instance_id, const std::string& json_msg);
 
+    // Re-send a character's equipment / skill rows to the node hosting
+    // `instance_id`, after the master has just re-written them (an equip-screen
+    // save or a skill save). No-op for a local instance, which shares this
+    // database, and for an instance whose node link refuses the message.
+    //
+    // Why: the DLL does not write the gameplay device rows itself -- the master
+    // does -- so without this the node's copy silently drifts, and its next
+    // write-back (NodeAgent::MaybePushPlayers) restores the player's old loadout
+    // over the master's newer one.
+    static void SyncPlayerEquipmentToOwner(int64_t instance_id, int64_t user_id,
+                                           int64_t character_id, const char* why);
+
+    // Tell the node hosting `instance_id` the ga_characters columns the master owns
+    // (active loadout profile, respec timestamp). Same reason as above: the DLL
+    // never writes those, so a node's copy would stay behind and push the old
+    // values back. Reads the master's current values, so the caller only has to say
+    // "this character changed".
+    static void SyncPlayerCharacterColumns(int64_t instance_id, int64_t character_id);
+
     // Serve a game-instance IPC connection that does not come from a socket we
     // accepted -- i.e. a tunnel stream from a remote node. Creates the session and
     // starts its read loop; from there it is indistinguishable from a local

@@ -1285,6 +1285,36 @@ void InstanceRegistry::MarkInstancePlayerLeft(int64_t instance_id, const std::st
         (long long)instance_id, session_guid.c_str());
 }
 
+bool InstanceRegistry::IsCharacterSeatedOnNode(int64_t character_id, int node_id) {
+    if (character_id <= 0) return false;
+    std::lock_guard<std::mutex> lock(mutex_);
+    sqlite3* db = Database::GetConnection();
+    if (!db) return true;   // no database: do not block a write-back
+
+    sqlite3_stmt* stmt = nullptr;
+    // Deliberately not filtered on ga_instances.state: the instance row is already
+    // STOPPED by the time a dying instance's final write-back arrives (the master
+    // marks it when the IPC tunnel drops). Who is still seated is the only thing
+    // that matters, and `left_at IS NULL` answers exactly that.
+    const int rc = sqlite3_prepare_v2(db,
+        "SELECT 1 FROM ga_instance_players ip "
+        "JOIN ga_instances i ON i.instance_id = ip.instance_id "
+        "WHERE ip.character_id = ? AND ip.left_at IS NULL "
+        "  AND COALESCE(i.node_id, 0) = ? "
+        "LIMIT 1",
+        -1, &stmt, nullptr);
+    if (rc != SQLITE_OK || !stmt) {
+        Logger::Log("db", "[InstanceRegistry] IsCharacterSeatedOnNode prepare failed: %s\n",
+            sqlite3_errmsg(db));
+        return true;   // a query failure must not silently drop player data
+    }
+    sqlite3_bind_int64(stmt, 1, character_id);
+    sqlite3_bind_int  (stmt, 2, node_id);
+    const bool seated = (sqlite3_step(stmt) == SQLITE_ROW);
+    sqlite3_finalize(stmt);
+    return seated;
+}
+
 void InstanceRegistry::MarkAllInstancePlayersLeft(int64_t instance_id) {
     std::lock_guard<std::mutex> lock(mutex_);
     sqlite3* db = Database::GetConnection();

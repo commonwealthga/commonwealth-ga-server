@@ -1108,6 +1108,84 @@ bool IpcServer::SendToInstance(int64_t instance_id, const std::string& json_msg)
     return true;
 }
 
+void IpcServer::SyncPlayerEquipmentToOwner(int64_t instance_id, int64_t user_id,
+                                           int64_t character_id, const char* why) {
+    if (instance_id == 0 || user_id <= 0 || character_id <= 0) return;
+
+    auto inst = InstanceRegistry::GetInstanceById(instance_id);
+    if (!inst || inst->node_id == 0) return;   // local instance: it wrote this database
+
+    std::string bundle, err;
+    if (!PlayerBundle::Build(user_id, character_id, PlayerBundle::Direction::Down,
+                             PlayerBundle::Scope::EquipAndSkills, bundle, err)) {
+        Logger::Log("bundle",
+            "[IpcServer] cannot build an equipment refresh for user=%lld character=%lld: %s\n",
+            (long long)user_id, (long long)character_id, err.c_str());
+        return;
+    }
+    nlohmann::json msg = nlohmann::json::parse(bundle, nullptr, false, true);
+    if (msg.is_discarded()) return;
+    msg["type"]        = NodeMsg::kPlayerBundle;
+    msg["instance_id"] = instance_id;
+    msg["direction"]   = "down";
+    // Not a seating: the node already holds this player, so it must not log a
+    // second "holding player" line for him.
+    msg["refresh"]     = true;
+
+    if (!NodeRegistry::SendControl(inst->node_id, msg.dump())) {
+        Logger::Log("bundle",
+            "[IpcServer] cannot send the equipment refresh to node %d (instance=%lld) after "
+            "%s -- that node's copy is now behind\n",
+            inst->node_id, (long long)instance_id, why ? why : "a save");
+        return;
+    }
+    Logger::Log("bundle",
+        "[IpcServer] refreshed node %d equipment for user=%lld character=%lld after %s\n",
+        inst->node_id, (long long)user_id, (long long)character_id, why ? why : "a save");
+}
+
+void IpcServer::SyncPlayerCharacterColumns(int64_t instance_id, int64_t character_id) {
+    if (instance_id == 0 || character_id <= 0) return;
+
+    auto inst = InstanceRegistry::GetInstanceById(instance_id);
+    if (!inst || inst->node_id == 0) return;   // local instance: it wrote this database
+
+    sqlite3* db = Database::GetConnection();
+    if (!db) return;
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db,
+            "SELECT COALESCE(current_item_profile_id, 0), COALESCE(last_respec_at, 0) "
+            "FROM ga_characters WHERE id = ?",
+            -1, &stmt, nullptr) != SQLITE_OK || !stmt) {
+        Logger::Log("bundle",
+            "[IpcServer] cannot read the character columns for character=%lld: %s\n",
+            (long long)character_id, sqlite3_errmsg(db));
+        return;
+    }
+    sqlite3_bind_int64(stmt, 1, character_id);
+    if (sqlite3_step(stmt) != SQLITE_ROW) {
+        sqlite3_finalize(stmt);
+        return;
+    }
+    const int item_profile_id = sqlite3_column_int(stmt, 0);
+    const int64_t last_respec_at = sqlite3_column_int64(stmt, 1);
+    sqlite3_finalize(stmt);
+
+    nlohmann::json msg;
+    msg["type"]                    = NodeMsg::kPlayerCharacterSync;
+    msg["instance_id"]             = instance_id;
+    msg["character_id"]            = character_id;
+    msg["current_item_profile_id"] = item_profile_id;
+    msg["last_respec_at"]          = last_respec_at;
+
+    if (!NodeRegistry::SendControl(inst->node_id, msg.dump())) {
+        Logger::Log("bundle",
+            "[IpcServer] cannot send the character columns to node %d (instance=%lld) -- "
+            "that node's copy of character=%lld stays behind\n",
+            inst->node_id, (long long)instance_id, (long long)character_id);
+    }
+}
+
 void IpcServer::RegisterPendingAck(const std::string& session_guid,
                                    std::function<void(bool, int)> callback) {
     std::lock_guard<std::mutex> lock(ack_mutex_);

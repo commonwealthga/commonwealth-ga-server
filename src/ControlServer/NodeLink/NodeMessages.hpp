@@ -84,6 +84,14 @@ constexpr int kMaxContentChunk = 256 * 1024;
 //     tables: { <table>: { columns: [...], rows: [[...], ...] } } }
 constexpr const char* kPlayerBundle = "PLAYER_BUNDLE";
 
+// The ga_characters columns the master writes and the DLL never does: the active
+// loadout profile and the respec timestamp. Sent master -> node after either
+// changes so the node's copy of the row does not stay behind and get pushed back
+// up -- which would undo the switch on the master. Whole-row bundles are not an
+// option here: REPLACE would discard what the DLL wrote on the node.
+//   { type, instance_id, character_id, current_item_profile_id, last_respec_at }
+constexpr const char* kPlayerCharacterSync = "PLAYER_CHARACTER_SYNC";
+
 // ---- both directions -----------------------------------------------------
 
 // Tells the peer why something was refused. Sent during the handshake and for
