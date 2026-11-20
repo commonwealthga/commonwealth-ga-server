@@ -8,9 +8,11 @@
 #include "src/ControlServer/NodeData/PlayerBundle.hpp"
 #include "src/ControlServer/PlayerSessionStore/PlayerSessionStore.hpp"
 #include "src/ControlServer/NodeControl/NodeControl.hpp"
+#include "src/ControlServer/NodeLink/FrameIo.hpp"
 #include "src/ControlServer/NodeLink/NodeLinkClient.hpp"
 #include "src/ControlServer/NodeLink/NodeMessages.hpp"
 #include "src/Shared/Base64.hpp"
+#include "src/Shared/IpcProtocol.hpp"
 #include "src/ControlServer/NodeData/FileHash.hpp"
 #include "lib/nlohmann/json.hpp"
 #include "monocypher.h"
@@ -33,6 +35,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #ifdef _WIN32
@@ -197,6 +200,20 @@ bool SplitHostPort(const std::string& addr, std::string& host, std::uint16_t& po
     return !host.empty();
 }
 
+// Calls fn(body) for each [u32 len][json] message in a buffer of encoded IPC frames.
+// The relay can hand over several at once (frames queued before INSTANCE_HELLO).
+template <typename Fn>
+void ForEachIpcMessage(const std::string& frames, Fn fn) {
+    std::size_t off = 0;
+    while (off + 4 <= frames.size()) {
+        const std::uint32_t len = NodeLinkIo::DecodeLength(
+            reinterpret_cast<const std::uint8_t*>(frames.data() + off));
+        if (len == 0 || off + 4 + len > frames.size()) return;
+        fn(frames.substr(off + 4, len));
+        off += 4 + static_cast<std::size_t>(len);
+    }
+}
+
 class Agent : public std::enable_shared_from_this<Agent> {
 public:
     explicit Agent(const ControlServerConfig& cfg) : cfg_(cfg) {}
@@ -351,6 +368,7 @@ private:
                 auto relay = std::make_shared<InstanceRelay>(
                     std::move(sock),
                     [this](std::int64_t id, std::string frame) {
+                        NotePlayerEvents(id, frame);
                         // Buffered by the client while the link is down; false means
                         // the offline buffer is full, which the relay treats as fatal.
                         if (!link_) return false;
@@ -618,6 +636,7 @@ private:
                 (long long)instance_id);
             return;
         }
+        NoteRegisters(instance_id, encoded_frame);
         it->second->Deliver(encoded_frame);
     }
 
@@ -639,6 +658,7 @@ private:
         }
         InstanceRegistry::MarkStopped(instance_id);
         pids_.erase(it);
+        ForgetRoster(instance_id);
         Release(instance_id);
     }
 
@@ -772,6 +792,7 @@ private:
             }
             // Final write-back for this instance's players before it is forgotten.
             push_players_up(instance_id);
+            ForgetRoster(instance_id);
             InstanceRegistry::MarkStopped(instance_id);
             Release(instance_id);
             it = pids_.erase(it);
@@ -856,6 +877,104 @@ private:
             } else {
                 ++it;
             }
+        }
+    }
+
+    // ── player join/leave log ────────────────────────────────────────────────
+    // One "player joined" and one "player left" line per player, with the name the
+    // master registered, so panels that read the console can list who is online.
+    // The relay still forwards every frame untouched; these only read a copy.
+
+    struct RosterEntry {
+        std::int64_t user_id = 0;
+        std::int64_t character_id = 0;
+        std::string  name;
+        bool         joined = false;
+    };
+
+    // master -> instance: remember who PLAYER_REGISTER puts on the instance.
+    void NoteRegisters(std::int64_t instance_id, const std::string& frames) {
+        if (frames.find(IpcProtocol::MSG_PLAYER_REGISTER) == std::string::npos) return;
+        ForEachIpcMessage(frames, [&](const std::string& body) {
+            auto j = nlohmann::json::parse(body, nullptr, false, true);
+            if (j.is_discarded() || !j.is_object()) return;
+            if (j.value("type", std::string()) != IpcProtocol::MSG_PLAYER_REGISTER) return;
+            const std::string guid = j.value("session_guid", std::string());
+            if (guid.empty()) return;
+            RosterEntry& e = roster_[{instance_id, guid}];
+            e.user_id      = j.value("user_id", (std::int64_t)0);
+            e.character_id = j.value("character_id", (std::int64_t)0);
+            e.name         = j.value("player_name", std::string());
+        });
+    }
+
+    // instance -> master: log PLAYER_JOINED / PLAYER_LEFT for registered players.
+    void NotePlayerEvents(std::int64_t instance_id, const std::string& frames) {
+        if (frames.find(IpcProtocol::MSG_PLAYER_JOINED) == std::string::npos
+            && frames.find(IpcProtocol::MSG_PLAYER_LEFT) == std::string::npos) {
+            return;
+        }
+        ForEachIpcMessage(frames, [&](const std::string& body) {
+            auto j = nlohmann::json::parse(body, nullptr, false, true);
+            if (j.is_discarded() || !j.is_object()) return;
+            const std::string type = j.value("type", std::string());
+            const bool joined = (type == IpcProtocol::MSG_PLAYER_JOINED);
+            if (!joined && type != IpcProtocol::MSG_PLAYER_LEFT) return;
+            const std::string guid = j.value("session_guid", std::string());
+            if (guid.empty()) return;
+
+            auto it = roster_.find({instance_id, guid});
+            if (it == roster_.end()) {
+                if (!joined) return;
+                // No PLAYER_REGISTER for this guid passed through this agent. Track it
+                // so the leave is logged once too.
+                RosterEntry& e = roster_[{instance_id, guid}];
+                e.joined = true;
+                Logger::Log("node", "player joined instance=%lld guid=%s (not registered through this node)\n",
+                    (long long)instance_id, guid.c_str());
+                return;
+            }
+
+            RosterEntry& e = it->second;
+            if (joined) {
+                if (e.joined) return;   // PLAYER_JOINED is also sent on a task force change
+                e.joined = true;
+                LogPlayer("joined", instance_id, e, nullptr);
+                return;
+            }
+            if (e.joined) {
+                if (e.user_id > 0) {
+                    LogPlayer("left", instance_id, e, "left");
+                } else {
+                    Logger::Log("node", "player left instance=%lld guid=%s (not registered through this node)\n",
+                        (long long)instance_id, guid.c_str());
+                }
+            }
+            roster_.erase(it);
+        });
+    }
+
+    // The instance is gone: anyone still in it has left.
+    void ForgetRoster(std::int64_t instance_id) {
+        auto it = roster_.lower_bound({instance_id, std::string()});
+        while (it != roster_.end() && it->first.first == instance_id) {
+            if (it->second.joined && it->second.user_id > 0) {
+                LogPlayer("left", instance_id, it->second, "instance_ended");
+            }
+            it = roster_.erase(it);
+        }
+    }
+
+    void LogPlayer(const char* what, std::int64_t instance_id, const RosterEntry& e,
+                   const char* reason) {
+        if (reason) {
+            Logger::Log("node", "player %s instance=%lld user=%lld character=%lld name='%s' reason=%s\n",
+                what, (long long)instance_id, (long long)e.user_id, (long long)e.character_id,
+                e.name.c_str(), reason);
+        } else {
+            Logger::Log("node", "player %s instance=%lld user=%lld character=%lld name='%s'\n",
+                what, (long long)instance_id, (long long)e.user_id, (long long)e.character_id,
+                e.name.c_str());
         }
     }
 
@@ -1483,6 +1602,10 @@ private:
     };
     // Players whose rows this node holds, keyed by character id.
     std::map<std::int64_t, SeatedPlayer> seated_;
+
+    // Who the master registered on each instance, keyed by (instance id, session
+    // guid). Only feeds the player joined/left log lines.
+    std::map<std::pair<std::int64_t, std::string>, RosterEntry> roster_;
     std::int64_t last_data_version_ = 0;
 
     // ---- build identity + staged updates (see MaybeStartUpdate) -------------
