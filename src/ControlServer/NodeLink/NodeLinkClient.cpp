@@ -108,6 +108,8 @@ void Client::dial() {
                     Logger::Log("node", "[NodeLink] connect to master timed out\n");
                     asio::error_code ignored;
                     sock->close(ignored);
+                    // The connect handler returns early once settled, so retry from here.
+                    handle_handshake_failed("connect: timed out");
                 });
 
             asio::async_connect(
